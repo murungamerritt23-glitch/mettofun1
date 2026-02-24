@@ -280,7 +280,7 @@ export default function AdminDashboard() {
                       <h3 className="font-semibold text-white">{shop.shopName}</h3>
                       <p className="text-gray-400 text-sm">Code: {shop.shopCode}</p>
                       <p className="text-gray-500 text-xs">
-                        Qualifying: TSh {shop.qualifyingPurchase.toLocaleString()}
+                        Qualifying: KSh {shop.qualifyingPurchase.toLocaleString()}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
                         <span className={`px-2 py-1 rounded text-xs ${
@@ -403,7 +403,7 @@ export default function AdminDashboard() {
                       
                       {/* Item Price */}
                       <p className="text-gold-400 font-bold text-lg">
-                        TSh {item.value.toLocaleString()}
+                        KSh {item.value.toLocaleString()}
                       </p>
                       
                       {/* Status & Stock */}
@@ -502,7 +502,7 @@ export default function AdminDashboard() {
                       <div>
                         <p className="text-white font-medium">{attempt.phoneNumber}</p>
                         <p className="text-gray-400 text-sm">
-                          Purchase: TSh {attempt.purchaseAmount.toLocaleString()} | 
+                          Purchase: KSh {attempt.purchaseAmount.toLocaleString()} | 
                           Selected: Box {attempt.selectedBox}
                         </p>
                         <p className="text-gray-500 text-xs">
@@ -820,7 +820,7 @@ function ShopForm({
   const [formData, setFormData] = useState({
     shopName: shop?.shopName || '',
     shopCode: shop?.shopCode || '',
-    qualifyingPurchase: shop?.qualifyingPurchase || 10000,
+    qualifyingPurchase: shop?.qualifyingPurchase || 100,
     promoMessage: shop?.promoMessage || 'Play & Win Amazing Rewards!',
     isActive: shop?.isActive ?? true,
   });
@@ -862,7 +862,7 @@ function ShopForm({
         />
       </div>
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Qualifying Purchase (TSh)</label>
+        <label className="block text-sm text-gray-400 mb-1">Qualifying Purchase (KSh)</label>
         <input
           type="number"
           value={formData.qualifyingPurchase}
@@ -927,7 +927,7 @@ function ItemForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isPriceValid) {
-      alert(`Item value must be <= 80% of qualifying purchase (TSh ${(qualifyingPurchase * 0.8).toLocaleString()})`);
+      alert(`Item value must be <= 80% of qualifying purchase (KSh ${(qualifyingPurchase * 0.8).toLocaleString()})`);
       return;
     }
     onSave({
@@ -966,7 +966,7 @@ function ItemForm({
       </div>
       
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Value (TSh)</label>
+        <label className="block text-sm text-gray-400 mb-1">Value (KSh)</label>
         <input
           type="number"
           value={formData.value}
@@ -976,8 +976,8 @@ function ItemForm({
         />
         <p className={`text-xs mt-1 ${isPriceValid ? 'text-green-400' : 'text-red-400'}`}>
           {isPriceValid 
-            ? `✓ Within limit (max TSh ${(qualifyingPurchase * 0.8).toLocaleString()})`
-            : `⚠ Exceeds limit (max TSh ${(qualifyingPurchase * 0.8).toLocaleString()})`
+            ? `✓ Within limit (max KSh ${(qualifyingPurchase * 0.8).toLocaleString()})`
+            : `⚠ Exceeds limit (max KSh ${(qualifyingPurchase * 0.8).toLocaleString()})`
           }
         </p>
       </div>

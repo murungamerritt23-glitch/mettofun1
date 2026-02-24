@@ -98,8 +98,8 @@ export default function GameMode() {
     const amount = parseFloat(purchaseAmount);
     if (isNaN(amount) || amount < (currentShop?.qualifyingPurchase || 0)) {
       alert(language === 'sw' 
-        ? `Kiwango cha chini ni TSh ${currentShop?.qualifyingPurchase || 0}`
-        : `Minimum amount is TSh ${currentShop?.qualifyingPurchase || 0}`);
+        ? `Kiwango cha chini ni KSh ${currentShop?.qualifyingPurchase || 0}`
+        : `Minimum amount is KSh ${currentShop?.qualifyingPurchase || 0}`);
       return;
     }
 
@@ -109,7 +109,7 @@ export default function GameMode() {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     const formattedPhone = formatPhoneNumber(phoneNumber);
-    const config = calculateBoxConfiguration(amount, currentShop?.qualifyingPurchase || 10000);
+    const config = calculateBoxConfiguration(amount, currentShop?.qualifyingPurchase || 100);
     
     setCustomerSession({
       phoneNumber: formattedPhone,
@@ -154,7 +154,7 @@ export default function GameMode() {
       currentShop?.id || 'demo',
       customerSession?.phoneNumber || phoneNumber,
       parseFloat(purchaseAmount),
-      currentShop?.qualifyingPurchase || 10000,
+      currentShop?.qualifyingPurchase || 100,
       selectedBox || 0,
       correctNumber,
       won,
@@ -187,7 +187,7 @@ export default function GameMode() {
     // Generate new winning number
     const config = calculateBoxConfiguration(
       parseFloat(purchaseAmount), 
-      currentShop?.qualifyingPurchase || 10000
+      currentShop?.qualifyingPurchase || 100
     );
     const newWinningNum = generateSecureRandomNumber(config.boxCount);
     setCorrectNumber(newWinningNum);
@@ -230,7 +230,7 @@ export default function GameMode() {
   }
 
   const config = customerSession?.purchaseAmount 
-    ? calculateBoxConfiguration(customerSession.purchaseAmount, currentShop?.qualifyingPurchase || 10000)
+    ? calculateBoxConfiguration(customerSession.purchaseAmount, currentShop?.qualifyingPurchase || 100))
     : { boxCount: 17, ratio: '<150%' };
 
   const translations = {
@@ -239,7 +239,7 @@ export default function GameMode() {
       subtitle: 'Win Amazing Rewards!',
       qualifyingPurchase: 'Qualifying Purchase',
       enterPhone: 'Enter Phone Number',
-      enterAmount: 'Purchase Amount (TSh)',
+      enterAmount: 'Purchase Amount (KSh)',
       authorize: 'Start Game',
       demoMode: 'Demo Mode',
       selectBox: 'Select a Box',
@@ -256,7 +256,7 @@ export default function GameMode() {
       subtitle: 'Shinda Ajira Za Kushangaza!',
       qualifyingPurchase: 'Manunuzi Yanayokubali',
       enterPhone: 'Weka Nambari ya Simu',
-      enterAmount: 'Kiwango cha Manunuzi (TSh)',
+      enterAmount: 'Kiwango cha Manunuzi (KSh)',
       authorize: 'Anza Kucheza',
       demoMode: 'Hali ya Demo',
       selectBox: 'Chagua Sanduku',
@@ -331,11 +331,11 @@ export default function GameMode() {
                   value={purchaseAmount}
                   onChange={(e) => setPurchaseAmount(e.target.value)}
                   className="input"
-                  placeholder="10000"
+                  placeholder="100"
                   disabled={isDemoMode}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {t.qualifyingPurchase}: TSh {currentShop?.qualifyingPurchase || 10000}
+                  {t.qualifyingPurchase}: KSh {currentShop?.qualifyingPurchase || 100}
                 </p>
               </div>
 
@@ -459,7 +459,7 @@ export default function GameMode() {
                     <Sparkles className="w-8 h-8 mx-auto text-gold-400 mb-2" />
                     <p className="text-gray-400 text-sm">{language === 'sw' ? 'Umepata' : 'You won'}</p>
                     <p className="gold-gradient-text text-2xl font-bold">{winningItem.name}</p>
-                    <p className="text-gold-400 text-xl">TSh {winningItem.value.toLocaleString()}</p>
+                    <p className="text-gold-400 text-xl">KSh {winningItem.value.toLocaleString()}</p>
                   </div>
                 )}
 

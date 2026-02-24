@@ -39,7 +39,7 @@ export default function ShopSelector() {
       shopCode: newShopCode.toUpperCase(),
       deviceId: crypto.randomUUID(),
       deviceLocked: false,
-      qualifyingPurchase: 10000,
+      qualifyingPurchase: 100,
       promoMessage: 'Play & Win Amazing Rewards!',
       isActive: true,
       createdAt: new Date(),

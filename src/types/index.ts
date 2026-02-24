@@ -1,5 +1,5 @@
 // User Types
-export type AdminLevel = 'super_admin' | 'manager_admin' | 'mini_admin';
+export type AdminLevel = 'super_admin' | 'shop_admin' | 'manager_admin' | 'mini_admin';
 
 export interface Admin {
   id: string;
