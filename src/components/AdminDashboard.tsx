@@ -369,6 +369,20 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   {items.map((item) => (
                     <div key={item.id} className="card">
+                      {/* Item Image */}
+                      <div className="h-32 bg-gray-800 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                        {item.imageUrl ? (
+                          <img 
+                            src={item.imageUrl} 
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Package size={48} className="text-gray-600" />
+                        )}
+                      </div>
+                      
+                      {/* Item Name */}
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-semibold text-white">{item.name}</h3>
                         <div className="flex gap-1">
@@ -386,9 +400,13 @@ export default function AdminDashboard() {
                           </button>
                         </div>
                       </div>
-                      <p className="text-gold-400 font-bold">
+                      
+                      {/* Item Price */}
+                      <p className="text-gold-400 font-bold text-lg">
                         TSh {item.value.toLocaleString()}
                       </p>
+                      
+                      {/* Status & Stock */}
                       <div className="flex items-center justify-between mt-2">
                         <span className={`text-xs px-2 py-1 rounded ${
                           item.isActive ? 'bg-green-900/50 text-green-400' : 'bg-gray-700 text-gray-400'
@@ -400,6 +418,7 @@ export default function AdminDashboard() {
                         </span>
                       </div>
                       
+                      {/* Price Validation */}
                       {currentShop && (
                         <div className={`mt-2 text-xs ${
                           validateItemPrice(item.value, currentShop.qualifyingPurchase)
@@ -898,6 +917,7 @@ function ItemForm({
   const [formData, setFormData] = useState({
     name: item.name,
     value: item.value,
+    imageUrl: item.imageUrl || '',
     stockStatus: item.stockStatus,
     isActive: item.isActive,
   });
@@ -913,6 +933,7 @@ function ItemForm({
     onSave({
       ...item,
       ...formData,
+      imageUrl: formData.imageUrl || undefined,
     });
   };
 
@@ -928,6 +949,22 @@ function ItemForm({
           required
         />
       </div>
+      
+      {/* Image URL Field */}
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Image URL (optional)</label>
+        <input
+          type="url"
+          value={formData.imageUrl}
+          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+          className="input"
+          placeholder="https://example.com/image.jpg"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Enter a URL for the item image
+        </p>
+      </div>
+      
       <div>
         <label className="block text-sm text-gray-400 mb-1">Value (TSh)</label>
         <input

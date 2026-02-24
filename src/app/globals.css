@@ -399,7 +399,7 @@ body {
   }
 }
 
-/* TV mode (larger touch targets) */
+/* TV mode (larger touch targets for Smart TV) */
 @media (min-width: 1280px) and (pointer: coarse) {
   .game-box {
     min-height: 100px;
@@ -409,5 +409,180 @@ body {
   .btn-gold {
     padding: 1rem 2rem;
     font-size: 1.125rem;
+  }
+}
+
+/* Smart TV specific (1920px+) */
+@media (min-width: 1920px) {
+  body {
+    font-size: 18px;
+  }
+  
+  .game-box {
+    min-height: 120px;
+    font-size: 2.5rem;
+    border-radius: 1rem;
+  }
+  
+  .btn-gold {
+    padding: 1.25rem 2.5rem;
+    font-size: 1.25rem;
+  }
+  
+  .card, .card-gold {
+    padding: 2rem;
+    border-radius: 1.5rem;
+  }
+  
+  .input {
+    padding: 1rem 1.25rem;
+    font-size: 1.125rem;
+  }
+  
+  h1 {
+    font-size: 3rem;
+  }
+  
+  h2 {
+    font-size: 2rem;
+  }
+  
+  .gold-gradient-text {
+    font-size: 2.5rem;
+  }
+}
+
+/* Android phones - small screens */
+@media (max-width: 400px) {
+  body {
+    font-size: 14px;
+  }
+  
+  .game-box {
+    min-height: 60px;
+    font-size: 1.25rem;
+    border-radius: 0.5rem;
+  }
+  
+  .btn-gold {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+  }
+  
+  .card, .card-gold {
+    padding: 1rem;
+    border-radius: 0.75rem;
+  }
+  
+  .input {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  h2 {
+    font-size: 1.25rem;
+  }
+  
+  .gold-gradient-text {
+    font-size: 1.5rem;
+  }
+  
+  .splash-logo {
+    width: 80px;
+    height: 80px;
+    font-size: 2rem;
+  }
+}
+
+/* Tablet support */
+@media (min-width: 600px) and (max-width: 1024px) {
+  .game-box {
+    min-height: 80px;
+    font-size: 1.75rem;
+  }
+  
+  .btn-gold {
+    padding: 1rem 2rem;
+  }
+  
+  .card, .card-gold {
+    padding: 1.5rem;
+  }
+}
+
+/* Computer/Desktop - medium screens */
+@media (min-width: 1024px) and (max-width: 1919px) {
+  .game-box {
+    min-height: 90px;
+    font-size: 1.75rem;
+  }
+  
+  .btn-gold {
+    padding: 0.875rem 1.75rem;
+  }
+}
+
+/* Ensure proper viewport for mobile devices */
+@viewport {
+  width: device-width;
+  zoom: 1;
+  user-scalable: yes;
+}
+
+/* Prevent horizontal scroll on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Safe area for notched phones */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Touch-friendly improvements for mobile */
+@media (pointer: coarse) {
+  .game-box {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  button, a, input, select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .btn-gold {
+    min-height: 48px;
+  }
+  
+  .input {
+    min-height: 48px;
+  }
+}
+
+/* Landscape mode on phones - adjust game grid */
+@media (max-height: 500px) and (orientation: landscape) {
+  .game-grid-12,
+  .game-grid-13,
+  .game-grid-14,
+  .game-grid-15,
+  .game-grid-16,
+  .game-grid-17 {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .game-box {
+    min-height: 50px;
+    font-size: 1.25rem;
   }
 }

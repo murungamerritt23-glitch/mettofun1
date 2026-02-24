@@ -187,6 +187,17 @@ export const localAttempts = {
     const today = new Date().toISOString().split('T')[0];
     const all = await database.getAllFromIndex('attempts', 'by-phone', phoneNumber);
     return all.filter(a => a.timestamp.toString().split('T')[0] === today);
+  },
+
+  async getLastAttemptTime(phoneNumber: string): Promise<number | null> {
+    const database = await initDB();
+    const all = await database.getAllFromIndex('attempts', 'by-phone', phoneNumber);
+    if (all.length === 0) return null;
+    // Sort by timestamp descending and get the most recent
+    const sorted = all.sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    return new Date(sorted[0].timestamp).getTime();
   }
 };
 

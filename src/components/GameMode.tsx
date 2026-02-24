@@ -167,7 +167,23 @@ export default function GameMode() {
     setGameStatus(won ? 'won' : 'lost');
   };
 
-  const handlePlayAgain = () => {
+  const handlePlayAgain = async () => {
+    // One attempt per qualified purchase - check if they need to make new purchase
+    const lastAttemptTime = await localAttempts.getLastAttemptTime(customerSession?.phoneNumber || '');
+    const now = Date.now();
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    
+    // Check if last attempt was more than a day ago (allow new attempt)
+    if (lastAttemptTime && (now - lastAttemptTime) < ONE_DAY_MS) {
+      // Already played today - need to make new purchase
+      alert(language === 'sw' 
+        ? 'Unacheza mara moja kwa kununua! Tafadhali nunua tena ili kucheza tena.'
+        : 'One attempt per purchase! Please make a new purchase to play again.');
+      resetGame();
+      setGameStatus('idle');
+      return;
+    }
+    
     // Generate new winning number
     const config = calculateBoxConfiguration(
       parseFloat(purchaseAmount), 
@@ -365,15 +381,32 @@ export default function GameMode() {
           <h2 className="gold-gradient-text text-2xl font-bold text-center mb-2">
             {t.selectNumber}
           </h2>
-          <p className="text-gray-400 text-center mb-6">
+          <p className="text-gray-400 text-center mb-2">
             {language === 'sw' 
               ? `Chagua nambari kati ya 1 na ${config.boxCount}`
               : `Pick a number between 1 and ${config.boxCount}`}
           </p>
+          
+          {/* Dynamic Odds Info */}
+          <div className="text-center mb-4 p-2 bg-gold-900/30 rounded-lg">
+            <p className="text-gold-400 text-sm">
+              {language === 'sw' 
+                ? `Muujiza: ${config.ratio} ya kiwango`
+                : `Odds: ${config.ratio} of qualifying amount`}
+            </p>
+            <p className="text-gray-500 text-xs mt-1">
+              {language === 'sw'
+                ? 'Nambari zaidi = nafasi bora'
+                : 'Higher numbers = better chances'}
+            </p>
+          </div>
 
-          <div className={`grid gap-3 ${
-            config.boxCount <= 12 ? 'grid-cols-3' : 
-            config.boxCount <= 15 ? 'grid-cols-4' : 'grid-cols-5'
+          <div className={`grid gap-2 sm:gap-3 ${
+            config.boxCount <= 12 
+              ? 'grid-cols-3 sm:grid-cols-4' 
+              : config.boxCount <= 15 
+                ? 'grid-cols-4 sm:grid-cols-5' 
+                : 'grid-cols-4 sm:grid-cols-5 lg:grid-cols-6'
           }`}>
             {Array.from({ length: config.boxCount }, (_, i) => i + 1).map((num) => (
               <motion.button
