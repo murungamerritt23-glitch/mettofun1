@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Gift, ArrowLeft, Volume2, VolumeX, RefreshCw, 
-  Check, X, Star, Zap, Trophy, Sparkles, Languages
+  Check, X, Star, Zap, Trophy, Sparkles, Languages, MapPin
 } from 'lucide-react';
 import { useGameStore, useShopStore, useItemStore, useUIStore } from '@/store';
 import { localItems, localAttempts } from '@/lib/local-db';
@@ -18,6 +18,7 @@ import {
   formatPhoneNumber
 } from '@/lib/game-utils';
 import type { Item, GameAttempt } from '@/types';
+import { verifyShopLocation } from '@/lib/location';
 
 export default function GameMode() {
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +32,7 @@ export default function GameMode() {
   const [gameWon, setGameWon] = useState(false);
   const [winningItem, setWinningItem] = useState<Item | null>(null);
   const [todayAttempts, setTodayAttempts] = useState(0);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const { 
     gameStatus, setGameStatus, 
@@ -104,6 +106,20 @@ export default function GameMode() {
     }
 
     setIsAuthorizing(true);
+    setLocationError(null);
+    
+    // Check if user is at the shop location
+    const locationResult = await verifyShopLocation(currentShop?.location);
+    
+    if (!locationResult.isValid) {
+      setIsAuthorizing(false);
+      setLocationError(
+        language === 'sw' 
+          ? `Unapotoka dukani! ${locationResult.error || 'Hauwezi kucheza hapa.'}`
+          : `You must be at the shop to play! ${locationResult.error || 'Location verification failed.'}`
+      );
+      return;
+    }
     
     // Simulate authorization
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -230,7 +246,7 @@ export default function GameMode() {
   }
 
   const config = customerSession?.purchaseAmount 
-    ? calculateBoxConfiguration(customerSession.purchaseAmount, currentShop?.qualifyingPurchase || 100))
+    ? calculateBoxConfiguration(customerSession.purchaseAmount, currentShop?.qualifyingPurchase || 100)
     : { boxCount: 17, ratio: '<150%' };
 
   const translations = {

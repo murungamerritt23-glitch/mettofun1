@@ -15,6 +15,12 @@ export interface Admin {
 }
 
 // Shop Types
+export interface ShopLocation {
+  latitude: number;
+  longitude: number;
+  radiusMeters: number; // How close user must be to play (default 100m)
+}
+
 export interface Shop {
   id: string;
   shopName: string;
@@ -29,6 +35,7 @@ export interface Shop {
   createdBy: string;
   backupEnabled: boolean;
   lastBackup?: Date;
+  location?: ShopLocation;
 }
 
 // Item Types

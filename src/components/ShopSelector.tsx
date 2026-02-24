@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Store, ArrowLeft, Plus, Search, MapPin, Check } from 'lucide-react';
-import { useShopStore, useUIStore } from '@/store';
+import { Store, ArrowLeft, Plus, Search, MapPin, Check, Lock } from 'lucide-react';
+import { useShopStore, useUIStore, useGameStore } from '@/store';
 import { localShops } from '@/lib/local-db';
+import { isDeviceAuthorized, getDeviceId } from '@/lib/device';
 import type { Shop } from '@/types';
 
 export default function ShopSelector() {
@@ -14,6 +15,9 @@ export default function ShopSelector() {
   
   const { shops, setCurrentShop, addShop } = useShopStore();
   const { setCurrentView } = useUIStore();
+  const { language } = useGameStore();
+  
+  const [deviceError, setDeviceError] = useState<string | null>(null);
 
   const filteredShops = shops.filter(shop => 
     shop.shopName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -21,11 +25,20 @@ export default function ShopSelector() {
   );
 
   const handleSelectShop = async (shop: Shop) => {
-    // Check device lock
-    if (shop.deviceLocked && shop.deviceId) {
-      // In production, verify device ID
-      // For demo, allow all
+    setDeviceError(null);
+    
+    // Check if device is authorized for this shop
+    const authorized = isDeviceAuthorized(shop.deviceId, shop.deviceLocked);
+    
+    if (!authorized) {
+      setDeviceError(
+        language === 'sw'
+          ? `Kifaa hiki hakikiriwa kwa duka hili! Wasiliana na msimamizi.`
+          : `This device is not authorized for this shop! Contact administrator.`
+      );
+      return;
     }
+    
     setCurrentShop(shop);
     setCurrentView('customer');
   };
@@ -72,6 +85,14 @@ export default function ShopSelector() {
         <p className="text-gray-400 text-center mb-6">
           Choose a shop to continue
         </p>
+
+        {/* Device Error Alert */}
+        {deviceError && (
+          <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 mb-4 flex items-center gap-3">
+            <Lock className="text-red-400 flex-shrink-0" size={24} />
+            <p className="text-red-400 text-sm">{deviceError}</p>
+          </div>
+        )}
 
         {/* Search */}
         <div className="relative mb-4">

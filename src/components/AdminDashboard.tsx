@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
-  Save, Smartphone, Power, PowerOff
+  Save, Smartphone, Power, PowerOff, Copy
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore } from '@/store';
 import { localShops, localItems, localAttempts, clearAllData } from '@/lib/local-db';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice } from '@/lib/game-utils';
+import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item } from '@/types';
 
 type TabType = 'dashboard' | 'shops' | 'items' | 'attempts' | 'analytics' | 'settings' | 'staff';
@@ -823,15 +824,28 @@ function ShopForm({
     qualifyingPurchase: shop?.qualifyingPurchase || 100,
     promoMessage: shop?.promoMessage || 'Play & Win Amazing Rewards!',
     isActive: shop?.isActive ?? true,
+    deviceId: shop?.deviceId || '',
+    deviceLocked: shop?.deviceLocked || false,
   });
+
+  const handleRegisterDevice = () => {
+    const newDeviceId = registerCurrentDevice();
+    setFormData({ ...formData, deviceId: newDeviceId, deviceLocked: true });
+  };
+
+  const handleCopyDeviceId = () => {
+    if (formData.deviceId) {
+      navigator.clipboard.writeText(formData.deviceId);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
       id: shop?.id || crypto.randomUUID(),
       ...formData,
-      deviceId: shop?.deviceId || crypto.randomUUID(),
-      deviceLocked: shop?.deviceLocked || false,
+      deviceId: formData.deviceId || crypto.randomUUID(),
+      deviceLocked: formData.deviceLocked || false,
       createdAt: shop?.createdAt || new Date(),
       updatedAt: new Date(),
       createdBy: shop?.createdBy || 'admin',
@@ -889,6 +903,59 @@ function ShopForm({
         />
         <label className="text-sm text-gray-300">Active</label>
       </div>
+
+      {/* Device Registration */}
+      <div className="border-t border-gray-700 pt-4 mt-4">
+        <h4 className="text-sm font-semibold text-gray-300 mb-3">Device Authorization</h4>
+        <div className="bg-gray-800 rounded-lg p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={formData.deviceLocked}
+              onChange={(e) => setFormData({ ...formData, deviceLocked: e.target.checked })}
+              className="w-4 h-4"
+            />
+            <label className="text-sm text-gray-300">Lock to this device</label>
+          </div>
+          
+          {formData.deviceLocked && (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Device ID</label>
+                  <input
+                    type="text"
+                    value={formData.deviceId}
+                    onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
+                    className="input text-xs"
+                    placeholder="No device registered"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyDeviceId}
+                  className="mt-5 p-2 text-gray-400 hover:text-gold-400"
+                  title="Copy Device ID"
+                >
+                  <Copy size={16} />
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleRegisterDevice}
+                className="btn-gold-outline w-full text-sm"
+              >
+                <Smartphone size={14} className="mr-2" />
+                Register This Device
+              </button>
+              <p className="text-xs text-gray-500">
+                Click to register current device. Only this device can play at this shop.
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+
       <div className="flex gap-2">
         <button type="submit" className="btn-gold flex-1">
           <Save size={16} className="mr-2" />
