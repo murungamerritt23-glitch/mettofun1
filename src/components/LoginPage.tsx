@@ -1,0 +1,222 @@
+'use client';
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Mail, Phone, Lock, Eye, EyeOff, ShoppingCart, Loader2 } from 'lucide-react';
+import { useAuthStore, useUIStore } from '@/store';
+import { firebaseAuth } from '@/lib/firebase';
+
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
+  const { setCurrentView } = useUIStore();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+    setLoading(true);
+
+    try {
+      // Try Firebase login first
+      const result = await firebaseAuth.signIn(email, password);
+      
+      if (result.error) {
+        // For demo/offline mode, use local authentication
+        if (email && password) {
+          // Demo login - in production this would validate against Firebase
+          const demoAdmin = {
+            id: 'demo-admin',
+            email,
+            phone: '',
+            name: email.split('@')[0],
+            level: 'super_admin' as const,
+            createdAt: new Date(),
+            lastLogin: new Date(),
+            isActive: true,
+            region: 'Demo Region'
+          };
+          setAdmin(demoAdmin);
+          setCurrentView('admin');
+        } else {
+          setError(result.error);
+        }
+      } else if (result.user) {
+        // Create admin record from Firebase user
+        const admin = {
+          id: result.user.uid,
+          email: result.user.email || '',
+          phone: result.user.phoneNumber || '',
+          name: result.user.displayName || email.split('@')[0],
+          level: 'super_admin' as const, // Would be fetched from Firestore
+          createdAt: new Date(),
+          lastLogin: new Date(),
+          isActive: true
+        };
+        setAdmin(admin);
+        setCurrentView('admin');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = () => {
+    // Quick demo login for testing
+    const demoAdmin = {
+      id: 'demo-admin',
+      email: 'demo@metofun.com',
+      phone: '+255123456789',
+      name: 'Demo Admin',
+      level: 'super_admin' as const,
+      createdAt: new Date(),
+      lastLogin: new Date(),
+      isActive: true,
+      region: 'Demo Region'
+    };
+    setAdmin(demoAdmin);
+    setCurrentView('admin');
+  };
+
+  const handleCustomerMode = () => {
+    setCurrentView('shop-select');
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      {/* Background pattern */}
+      <div className="fixed inset-0 opacity-10">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 2px 2px, #f59e0b 1px, transparent 0)`,
+          backgroundSize: '40px 40px'
+        }} />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md relative z-10"
+      >
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 200 }}
+            className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4"
+            style={{
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              boxShadow: '0 0 30px rgba(245,158,11,0.4)'
+            }}
+          >
+            <ShoppingCart size={40} className="text-black" />
+          </motion.div>
+          <h1 className="gold-gradient-text text-4xl font-bold">MetoFun</h1>
+          <p className="text-gray-400 mt-2">Admin Login</p>
+        </div>
+
+        {/* Login Form */}
+        <div className="card-gold">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input pl-10"
+                  placeholder="admin@shop.com"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input pl-10 pr-10"
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-red-900/50 border border-red-500 text-red-300 px-4 py-2 rounded-lg text-sm"
+              >
+                {error}
+              </motion.div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn-gold w-full flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin" size={20} />
+                  Signing in...
+                </>
+              ) : (
+                'Sign In'
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t border-gray-700">
+            <button
+              onClick={handleDemoLogin}
+              className="btn-gold-outline w-full mb-3"
+            >
+              Demo Login
+            </button>
+            <button
+              onClick={handleCustomerMode}
+              className="text-gray-400 text-sm hover:text-gold-400 w-full text-center"
+            >
+              Continue as Customer →
+            </button>
+          </div>
+        </div>
+
+        {/* Offline indicator */}
+        <div className="mt-6 text-center">
+          <div className="inline-flex items-center gap-2 text-gray-500 text-sm">
+            <div className="w-2 h-2 rounded-full status-online" />
+            Online Mode
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

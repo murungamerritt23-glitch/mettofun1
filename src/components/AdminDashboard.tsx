@@ -1,0 +1,979 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  LayoutDashboard, Store, Package, Users, BarChart3, 
+  Settings, LogOut, Menu, X, Plus, Edit, Trash2,
+  Save, Smartphone, Power, PowerOff
+} from 'lucide-react';
+import { useAuthStore, useShopStore, useItemStore, useUIStore } from '@/store';
+import { localShops, localItems, localAttempts, clearAllData } from '@/lib/local-db';
+import { generateDefaultItems, calculateShopAnalytics, validateItemPrice } from '@/lib/game-utils';
+import type { Shop, Item } from '@/types';
+
+type TabType = 'dashboard' | 'shops' | 'items' | 'attempts' | 'analytics' | 'settings' | 'staff';
+
+export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [editingShop, setEditingShop] = useState<Shop | null>(null);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [isCreatingShop, setIsCreatingShop] = useState(false);
+  const [attempts, setAttempts] = useState<any[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
+  
+  const { admin, logout } = useAuthStore();
+  const { currentShop, setCurrentShop } = useShopStore();
+  const { items, setItems } = useItemStore();
+  const { setCurrentView } = useUIStore();
+
+  // Load shops on mount
+  useEffect(() => {
+    localShops.getAll().then(setShops);
+  }, []);
+
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'shops', label: 'Shops', icon: Store },
+    { id: 'items', label: 'Items', icon: Package },
+    { id: 'attempts', label: 'Attempts', icon: Users },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'staff', label: 'Staff', icon: Users },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ];
+
+  const handleLogout = () => {
+    logout();
+    setCurrentView('login');
+  };
+
+  const loadAttempts = async () => {
+    if (currentShop) {
+      const shopAttempts = await localAttempts.getByShop(currentShop.id);
+      setAttempts(shopAttempts);
+    }
+  };
+
+  const loadItems = async () => {
+    if (currentShop) {
+      const shopItems = await localItems.getByShop(currentShop.id);
+      setItems(shopItems.length > 0 ? shopItems : generateDefaultItems(currentShop.id));
+    }
+  };
+
+  const handleSaveShop = async (shop: Shop) => {
+    await localShops.save(shop);
+    setEditingShop(null);
+    setIsCreatingShop(false);
+    localShops.getAll().then(setShops);
+  };
+
+  const handleToggleShopActive = async (shop: Shop) => {
+    const updatedShop = { ...shop, isActive: !shop.isActive };
+    await localShops.save(updatedShop);
+    localShops.getAll().then(setShops);
+  };
+
+  const handleDeleteShop = async (shopId: string) => {
+    if (confirm('Are you sure you want to delete this shop?')) {
+      await localShops.delete(shopId);
+      await localItems.deleteByShop(shopId);
+      localShops.getAll().then(setShops);
+    }
+  };
+
+  const handleSaveItem = async (item: Item) => {
+    await localItems.save(item);
+    setEditingItem(null);
+    loadItems();
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (confirm('Are you sure you want to delete this item?')) {
+      await localItems.delete(itemId);
+      loadItems();
+    }
+  };
+
+  const handleBackup = async () => {
+    const data = {
+      shops: await localShops.getAll(),
+      items: items,
+      attempts: await localAttempts.getAll(),
+      timestamp: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `metofun-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+  };
+
+  // Dashboard view
+  if (activeTab === 'dashboard') {
+    const analytics = attempts.length > 0 ? calculateShopAnalytics(attempts) : null;
+    
+    return (
+      <div className="min-h-screen flex">
+        <AdminSidebar 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onLogout={handleLogout}
+          admin={admin}
+        />
+
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">
+            <h1 className="gold-gradient-text text-3xl font-bold mb-6">Dashboard</h1>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <div className="card">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gold-900/50 flex items-center justify-center">
+                    <Store className="text-gold-500" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Active Shops</p>
+                    <p className="text-2xl font-bold text-white">{shops.filter(s => s.isActive).length}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="card">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-green-900/50 flex items-center justify-center">
+                    <Users className="text-green-500" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Total Attempts</p>
+                    <p className="text-2xl font-bold text-white">{attempts.length}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="card">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-900/50 flex items-center justify-center">
+                    <Package className="text-blue-500" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Active Items</p>
+                    <p className="text-2xl font-bold text-white">{items.filter(i => i.isActive).length}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="card">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-purple-900/50 flex items-center justify-center">
+                    <BarChart3 className="text-purple-500" size={24} />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Win Rate</p>
+                    <p className="text-2xl font-bold text-white">
+                      {analytics ? `${analytics.winRate.toFixed(1)}%` : '0%'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button
+                onClick={() => setCurrentView('customer')}
+                className="card hover:border-gold-500 transition-all text-left"
+              >
+                <Store className="text-gold-500 mb-2" size={24} />
+                <h3 className="font-semibold text-white">Customer Mode</h3>
+                <p className="text-gray-400 text-sm">Start a game session</p>
+              </button>
+              
+              <button
+                onClick={() => setActiveTab('items')}
+                className="card hover:border-gold-500 transition-all text-left"
+              >
+                <Package className="text-gold-500 mb-2" size={24} />
+                <h3 className="font-semibold text-white">Manage Items</h3>
+                <p className="text-gray-400 text-sm">Update prizes & values</p>
+              </button>
+              
+              <button
+                onClick={handleBackup}
+                className="card hover:border-gold-500 transition-all text-left"
+              >
+                <Settings className="text-gold-500 mb-2" size={24} />
+                <h3 className="font-semibold text-white">Backup Data</h3>
+                <p className="text-gray-400 text-sm">Export all data</p>
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Shops view
+  if (activeTab === 'shops') {
+    return (
+      <div className="min-h-screen flex">
+        <AdminSidebar 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onLogout={handleLogout}
+          admin={admin}
+        />
+        
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="gold-gradient-text text-3xl font-bold">Shops</h1>
+              <button
+                onClick={() => setIsCreatingShop(true)}
+                className="btn-gold flex items-center gap-2"
+              >
+                <Plus size={20} />
+                Add Shop
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {(isCreatingShop || editingShop) && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="card-gold mb-6"
+                >
+                  <h3 className="font-semibold mb-4">
+                    {isCreatingShop ? 'Create New Shop' : 'Edit Shop'}
+                  </h3>
+                  <ShopForm
+                    shop={editingShop}
+                    onSave={handleSaveShop}
+                    onCancel={() => {
+                      setIsCreatingShop(false);
+                      setEditingShop(null);
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="space-y-4">
+              {shops.length === 0 ? (
+                <div className="text-center py-12">
+                  <Store size={48} className="mx-auto text-gray-600 mb-4" />
+                  <p className="text-gray-500">No shops yet</p>
+                </div>
+              ) : (
+                shops.map((shop) => (
+                  <div key={shop.id} className="card flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-white">{shop.shopName}</h3>
+                      <p className="text-gray-400 text-sm">Code: {shop.shopCode}</p>
+                      <p className="text-gray-500 text-xs">
+                        Qualifying: TSh {shop.qualifyingPurchase.toLocaleString()}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          shop.isActive 
+                            ? 'bg-green-900/50 text-green-400' 
+                            : 'bg-red-900/50 text-red-400'
+                        }`}>
+                          {shop.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                        {shop.deviceLocked && (
+                          <span className="px-2 py-1 bg-gray-700 text-gray-400 rounded text-xs">
+                            <Smartphone size={12} className="inline mr-1" />
+                            Device Locked
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setCurrentShop(shop);
+                          loadItems();
+                          loadAttempts();
+                        }}
+                        className="p-2 text-gold-500 hover:bg-gold-900/30 rounded"
+                        title="Manage Items"
+                      >
+                        <Package size={20} />
+                      </button>
+                      <button
+                        onClick={() => handleToggleShopActive(shop)}
+                        className={`p-2 rounded ${
+                          shop.isActive 
+                            ? 'text-red-500 hover:bg-red-900/30' 
+                            : 'text-green-500 hover:bg-green-900/30'
+                        }`}
+                        title={shop.isActive ? 'Deactivate' : 'Activate'}
+                      >
+                        {shop.isActive ? <PowerOff size={20} /> : <Power size={20} />}
+                      </button>
+                      <button
+                        onClick={() => setEditingShop(shop)}
+                        className="p-2 text-blue-500 hover:bg-blue-900/30 rounded"
+                      >
+                        <Edit size={20} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteShop(shop.id)}
+                        className="p-2 text-red-500 hover:bg-red-900/30 rounded"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Items view
+  if (activeTab === 'items') {
+    return (
+      <div className="min-h-screen flex">
+        <AdminSidebar 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onLogout={handleLogout}
+          admin={admin}
+        />
+        
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">
+            <h1 className="gold-gradient-text text-3xl font-bold mb-6">
+              Items - {currentShop?.shopName || 'No Shop Selected'}
+            </h1>
+
+            {currentShop ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  {items.map((item) => (
+                    <div key={item.id} className="card">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-white">{item.name}</h3>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => setEditingItem(item)}
+                            className="p-1 text-blue-500 hover:bg-blue-900/30 rounded"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="p-1 text-red-500 hover:bg-red-900/30 rounded"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-gold-400 font-bold">
+                        TSh {item.value.toLocaleString()}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          item.isActive ? 'bg-green-900/50 text-green-400' : 'bg-gray-700 text-gray-400'
+                        }`}>
+                          {item.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {item.stockStatus}
+                        </span>
+                      </div>
+                      
+                      {currentShop && (
+                        <div className={`mt-2 text-xs ${
+                          validateItemPrice(item.value, currentShop.qualifyingPurchase)
+                            ? 'text-green-400'
+                            : 'text-red-400'
+                        }`}>
+                          {validateItemPrice(item.value, currentShop.qualifyingPurchase)
+                            ? '✓ Within 80% limit'
+                            : '⚠ Exceeds 80% limit'}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <AnimatePresence>
+                  {editingItem && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="card-gold"
+                    >
+                      <h3 className="font-semibold mb-4">Edit Item</h3>
+                      <ItemForm
+                        item={editingItem}
+                        qualifyingPurchase={currentShop.qualifyingPurchase}
+                        onSave={handleSaveItem}
+                        onCancel={() => setEditingItem(null)}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <Package size={48} className="mx-auto text-gray-600 mb-4" />
+                <p className="text-gray-500">Select a shop to manage items</p>
+                <button
+                  onClick={() => setActiveTab('shops')}
+                  className="btn-gold-outline mt-4"
+                >
+                  Go to Shops
+                </button>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Attempts view
+  if (activeTab === 'attempts') {
+    return (
+      <div className="min-h-screen flex">
+        <AdminSidebar 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onLogout={handleLogout}
+          admin={admin}
+        />
+        
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">
+            <h1 className="gold-gradient-text text-3xl font-bold mb-6">Game Attempts</h1>
+            
+            {currentShop ? (
+              <div className="space-y-3">
+                {attempts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users size={48} className="mx-auto text-gray-600 mb-4" />
+                    <p className="text-gray-500">No attempts yet</p>
+                  </div>
+                ) : (
+                  attempts.map((attempt) => (
+                    <div key={attempt.id} className="card flex items-center justify-between">
+                      <div>
+                        <p className="text-white font-medium">{attempt.phoneNumber}</p>
+                        <p className="text-gray-400 text-sm">
+                          Purchase: TSh {attempt.purchaseAmount.toLocaleString()} | 
+                          Selected: Box {attempt.selectedBox}
+                        </p>
+                        <p className="text-gray-500 text-xs">
+                          {new Date(attempt.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className={`px-3 py-1 rounded ${
+                        attempt.won 
+                          ? 'bg-green-900/50 text-green-400' 
+                          : 'bg-red-900/50 text-red-400'
+                      }`}>
+                        {attempt.won ? 'WIN' : 'LOSE'}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Users size={48} className="mx-auto text-gray-600 mb-4" />
+                <p className="text-gray-500">Select a shop to view attempts</p>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Analytics view
+  if (activeTab === 'analytics') {
+    const analytics = attempts.length > 0 ? calculateShopAnalytics(attempts) : null;
+    
+    return (
+      <div className="min-h-screen flex">
+        <AdminSidebar 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onLogout={handleLogout}
+          admin={admin}
+        />
+        
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">
+            <h1 className="gold-gradient-text text-3xl font-bold mb-6">Analytics</h1>
+            
+            {analytics && currentShop ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="card text-center">
+                    <p className="text-gray-400 text-sm">Total Attempts</p>
+                    <p className="text-4xl font-bold text-gold-400">{analytics.totalAttempts}</p>
+                  </div>
+                  <div className="card text-center">
+                    <p className="text-gray-400 text-sm">Total Wins</p>
+                    <p className="text-4xl font-bold text-green-400">{analytics.totalWins}</p>
+                  </div>
+                  <div className="card text-center">
+                    <p className="text-gray-400 text-sm">Win Rate</p>
+                    <p className="text-4xl font-bold text-blue-400">{analytics.winRate.toFixed(1)}%</p>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <h3 className="font-semibold mb-4">Most Selected Items</h3>
+                  <div className="space-y-2">
+                    {analytics.mostSelectedItems.slice(0, 5).map((item, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <span className="text-gray-300">Item {item.itemId}</span>
+                        <span className="text-gold-400">{item.count} times</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <BarChart3 size={48} className="mx-auto text-gray-600 mb-4" />
+                <p className="text-gray-500">No data available</p>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Staff management view (Super Admin only)
+  if (activeTab === 'staff') {
+    return (
+      <div className="min-h-screen flex">
+        <AdminSidebar 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onLogout={handleLogout}
+          admin={admin}
+        />
+        
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">
+            <h1 className="gold-gradient-text text-3xl font-bold mb-6">Staff Management</h1>
+            
+            <div className="card mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-white">Add New Staff</h3>
+                  <p className="text-gray-400 text-sm">Assign staff to manage shops</p>
+                </div>
+                <button className="btn-gold">
+                  <Plus size={16} className="mr-2" />
+                  Add Staff
+                </button>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3 className="font-semibold mb-4">Staff List</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
+                  <div>
+                    <p className="text-white font-medium">Demo Admin</p>
+                    <p className="text-gray-400 text-sm">demo@metofun.com</p>
+                  </div>
+                  <span className="px-3 py-1 bg-gold-900/50 text-gold-400 rounded text-sm">
+                    Super Admin
+                  </span>
+                </div>
+                <p className="text-gray-500 text-sm text-center py-4">
+                  Staff management coming soon...
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Settings view
+  if (activeTab === 'settings') {
+    return (
+      <div className="min-h-screen flex">
+        <AdminSidebar 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onLogout={handleLogout}
+          admin={admin}
+        />
+        
+        <main className="flex-1 p-6">
+          <div className="max-w-2xl mx-auto">
+            <h1 className="gold-gradient-text text-3xl font-bold mb-6">Settings</h1>
+            
+            <div className="space-y-4">
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-white">Device Lock</h3>
+                    <p className="text-gray-400 text-sm">Lock this shop to this device</p>
+                  </div>
+                  <button className="btn-gold-outline">
+                    <Smartphone size={16} className="mr-2" />
+                    Lock Device
+                  </button>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-white">Backup Data</h3>
+                    <p className="text-gray-400 text-sm">Export all shop data</p>
+                  </div>
+                  <button onClick={handleBackup} className="btn-gold-outline">
+                    <Settings size={16} className="mr-2" />
+                    Backup
+                  </button>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-white">Restore Data</h3>
+                    <p className="text-gray-400 text-sm">Import data from backup</p>
+                  </div>
+                  <button className="btn-gold-outline">
+                    <Settings size={16} className="mr-2" />
+                    Restore
+                  </button>
+                </div>
+              </div>
+
+              <div className="card border-red-900/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-white">Clear All Data</h3>
+                    <p className="text-gray-400 text-sm">Reset the application</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (confirm('Are you sure? This will delete all data!')) {
+                        clearAllData();
+                      }
+                    }}
+                    className="btn-gold-outline text-red-400 border-red-400 hover:bg-red-900/30"
+                  >
+                    <Trash2 size={16} className="mr-2" />
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// Sidebar Component
+function AdminSidebar({ 
+  tabs, 
+  activeTab, 
+  setActiveTab,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
+  onLogout,
+  admin 
+}: { 
+  tabs: any[]; 
+  activeTab: string; 
+  setActiveTab: (tab: TabType) => void;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
+  onLogout: () => void;
+  admin: any;
+}) {
+  return (
+    <>
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="fixed top-4 left-4 z-50 p-2 bg-dark-surface rounded-lg lg:hidden"
+      >
+        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      <aside className={`
+        fixed lg:static inset-y-0 left-0 z-40 w-64 bg-dark-surface border-r border-dark-border
+        transform transition-transform lg:transform-none
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <div className="p-6">
+          <h1 className="gold-gradient-text text-2xl font-bold mb-8">MetoFun</h1>
+          
+          <nav className="space-y-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id as TabType);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`nav-item w-full flex items-center gap-3 ${
+                  activeTab === tab.id ? 'active' : ''
+                }`}
+              >
+                <tab.icon size={20} />
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="absolute bottom-20 left-6 right-6">
+            <div className="card">
+              <p className="text-white font-medium">{admin?.name || 'Admin'}</p>
+              <p className="text-gray-400 text-sm capitalize">{admin?.level?.replace('_', ' ') || 'Admin'}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={onLogout}
+            className="absolute bottom-6 left-6 right-6 nav-item flex items-center gap-3 text-red-400 hover:bg-red-900/30"
+          >
+            <LogOut size={20} />
+            Logout
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+// Shop Form Component
+function ShopForm({ 
+  shop, 
+  onSave, 
+  onCancel 
+}: { 
+  shop: Shop | null; 
+  onSave: (shop: Shop) => void; 
+  onCancel: () => void;
+}) {
+  const [formData, setFormData] = useState({
+    shopName: shop?.shopName || '',
+    shopCode: shop?.shopCode || '',
+    qualifyingPurchase: shop?.qualifyingPurchase || 10000,
+    promoMessage: shop?.promoMessage || 'Play & Win Amazing Rewards!',
+    isActive: shop?.isActive ?? true,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      id: shop?.id || crypto.randomUUID(),
+      ...formData,
+      deviceId: shop?.deviceId || crypto.randomUUID(),
+      deviceLocked: shop?.deviceLocked || false,
+      createdAt: shop?.createdAt || new Date(),
+      updatedAt: new Date(),
+      createdBy: shop?.createdBy || 'admin',
+      backupEnabled: shop?.backupEnabled || false,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Shop Name</label>
+        <input
+          type="text"
+          value={formData.shopName}
+          onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
+          className="input"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Shop Code</label>
+        <input
+          type="text"
+          value={formData.shopCode}
+          onChange={(e) => setFormData({ ...formData, shopCode: e.target.value.toUpperCase() })}
+          className="input"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Qualifying Purchase (TSh)</label>
+        <input
+          type="number"
+          value={formData.qualifyingPurchase}
+          onChange={(e) => setFormData({ ...formData, qualifyingPurchase: parseInt(e.target.value) })}
+          className="input"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Promo Message</label>
+        <input
+          type="text"
+          value={formData.promoMessage}
+          onChange={(e) => setFormData({ ...formData, promoMessage: e.target.value })}
+          className="input"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={formData.isActive}
+          onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+          className="w-4 h-4"
+        />
+        <label className="text-sm text-gray-300">Active</label>
+      </div>
+      <div className="flex gap-2">
+        <button type="submit" className="btn-gold flex-1">
+          <Save size={16} className="mr-2" />
+          Save
+        </button>
+        <button type="button" onClick={onCancel} className="btn-gold-outline">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// Item Form Component
+function ItemForm({ 
+  item, 
+  qualifyingPurchase,
+  onSave, 
+  onCancel 
+}: { 
+  item: Item; 
+  qualifyingPurchase: number;
+  onSave: (item: Item) => void; 
+  onCancel: () => void;
+}) {
+  const [formData, setFormData] = useState({
+    name: item.name,
+    value: item.value,
+    stockStatus: item.stockStatus,
+    isActive: item.isActive,
+  });
+
+  const isPriceValid = formData.value <= qualifyingPurchase * 0.8;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isPriceValid) {
+      alert(`Item value must be <= 80% of qualifying purchase (TSh ${(qualifyingPurchase * 0.8).toLocaleString()})`);
+      return;
+    }
+    onSave({
+      ...item,
+      ...formData,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Item Name</label>
+        <input
+          type="text"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="input"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Value (TSh)</label>
+        <input
+          type="number"
+          value={formData.value}
+          onChange={(e) => setFormData({ ...formData, value: parseInt(e.target.value) })}
+          className="input"
+          required
+        />
+        <p className={`text-xs mt-1 ${isPriceValid ? 'text-green-400' : 'text-red-400'}`}>
+          {isPriceValid 
+            ? `✓ Within limit (max TSh ${(qualifyingPurchase * 0.8).toLocaleString()})`
+            : `⚠ Exceeds limit (max TSh ${(qualifyingPurchase * 0.8).toLocaleString()})`
+          }
+        </p>
+      </div>
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Stock Status</label>
+        <select
+          value={formData.stockStatus}
+          onChange={(e) => setFormData({ ...formData, stockStatus: e.target.value as any })}
+          className="input"
+        >
+          <option value="unlimited">Unlimited</option>
+          <option value="in_stock">In Stock</option>
+          <option value="out_of_stock">Out of Stock</option>
+        </select>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={formData.isActive}
+          onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+          className="w-4 h-4"
+        />
+        <label className="text-sm text-gray-300">Active</label>
+      </div>
+      <div className="flex gap-2">
+        <button type="submit" className="btn-gold flex-1">
+          <Save size={16} className="mr-2" />
+          Save
+        </button>
+        <button type="button" onClick={onCancel} className="btn-gold-outline">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}

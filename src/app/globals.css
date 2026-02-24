@@ -1,1 +1,413 @@
 @import "tailwindcss";
+
+:root {
+  --gold-50: #fffbeb;
+  --gold-100: #fef3c7;
+  --gold-200: #fde68a;
+  --gold-300: #fcd34d;
+  --gold-400: #fbbf24;
+  --gold-500: #f59e0b;
+  --gold-600: #d97706;
+  --gold-700: #b45309;
+  --gold-800: #92400e;
+  --gold-900: #78350f;
+  --gold-950: #451a03;
+  
+  --dark-bg: #1a1a1a;
+  --dark-surface: #2d2d2d;
+  --dark-border: #404040;
+}
+
+@theme {
+  --color-gold-50: var(--gold-50);
+  --color-gold-100: var(--gold-100);
+  --color-gold-200: var(--gold-200);
+  --color-gold-300: var(--gold-300);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+  --color-gold-700: var(--gold-700);
+  --color-gold-800: var(--gold-800);
+  --color-gold-900: var(--gold-900);
+  --color-gold-950: var(--gold-950);
+  
+  --color-dark-bg: var(--dark-bg);
+  --color-dark-surface: var(--dark-surface);
+  --color-dark-border: var(--dark-border);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, var(--dark-bg) 0%, #0f0f0f 100%);
+  color: #ffffff;
+  min-height: 100vh;
+}
+
+/* Gold gradient text */
+.gold-gradient-text {
+  background: linear-gradient(135deg, #fcd34d 0%, #f59e0b 50%, #fcd34d 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gold button styles */
+.btn-gold {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border: 2px solid #fbbf24;
+  color: #000;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+}
+
+.btn-gold:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+}
+
+.btn-gold:active {
+  transform: translateY(0);
+}
+
+.btn-gold-outline {
+  background: transparent;
+  border: 2px solid #f59e0b;
+  color: #f59e0b;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.btn-gold-outline:hover {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
+/* Card styles */
+.card {
+  background: linear-gradient(145deg, #2d2d2d 0%, #1a1a1a 100%);
+  border: 1px solid #404040;
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.card-gold {
+  background: linear-gradient(145deg, #2d2d2d 0%, #1a1a1a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+}
+
+/* Input styles */
+.input {
+  background: #1a1a1a;
+  border: 2px solid #404040;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+.input::placeholder {
+  color: #6b7280;
+}
+
+/* Box/Grid game styles */
+.game-box {
+  aspect-ratio: 1;
+  background: linear-gradient(145deg, #404040 0%, #2d2d2d 100%);
+  border: 2px solid #525252;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fcd34d;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.game-box:hover {
+  border-color: #f59e0b;
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+}
+
+.game-box.selected {
+  background: linear-gradient(145deg, #f59e0b 0%, #d97706 100%);
+  border-color: #fbbf24;
+  color: #000;
+}
+
+.game-box.winner {
+  background: linear-gradient(145deg, #22c55e 0%, #16a34a 100%);
+  border-color: #4ade80;
+  color: #fff;
+  animation: pulse 1s infinite;
+}
+
+.game-box.loser {
+  background: linear-gradient(145deg, #ef4444 0%, #dc2626 100%);
+  border-color: #f87171;
+  color: #fff;
+}
+
+/* Animation keyframes */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes roll {
+  0% {
+    transform: translateX(-100px) rotate(0deg);
+  }
+  50% {
+    transform: translateX(0px) rotate(360deg);
+  }
+  100% {
+    transform: translateX(100px) rotate(720deg);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-roll {
+  animation: roll 3s ease-in-out infinite;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}
+
+/* Status indicators */
+.status-online {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.status-offline {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+/* Responsive container */
+.container-main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Navigation for Android TV */
+.nav-item {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover,
+.nav-item:focus {
+  background: rgba(245, 158, 11, 0.1);
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.nav-item.active {
+  background: rgba(245, 158, 11, 0.2);
+  border-left: 3px solid #f59e0b;
+}
+
+/* Splash screen animation */
+.splash-container {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.splash-logo {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.5);
+}
+
+/* Grid layouts */
+.game-grid-12 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.game-grid-13 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.game-grid-14 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+}
+
+.game-grid-15 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+}
+
+.game-grid-16 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.game-grid-17 {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .game-grid-12,
+  .game-grid-13,
+  .game-grid-14,
+  .game-grid-15,
+  .game-grid-16,
+  .game-grid-17 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .game-grid-12,
+  .game-grid-13,
+  .game-grid-14,
+  .game-grid-15,
+  .game-grid-16,
+  .game-grid-17 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .game-box {
+    font-size: 1rem;
+  }
+}
+
+/* TV mode (larger touch targets) */
+@media (min-width: 1280px) and (pointer: coarse) {
+  .game-box {
+    min-height: 100px;
+    font-size: 2rem;
+  }
+  
+  .btn-gold {
+    padding: 1rem 2rem;
+    font-size: 1.125rem;
+  }
+}
