@@ -262,11 +262,18 @@ export default function AdminDashboard() {
 
   // My Shop view - for shop admins to edit their shop's qualifying purchase
   if (activeTab === 'myShop') {
-    // Get shops assigned to this admin or all shops if no assignment
+    // Get shops assigned to this admin based on their level
+    // Shop admins can only see their assigned shops
     const assignedShopIds = admin?.assignedShops || [];
-    const availableShops = assignedShopIds.length > 0 
+    const isShopAdmin = admin?.level === 'shop_admin';
+    
+    // For shop admins, only show their assigned shops
+    // For super/agent admins, show all shops (or assigned if specified)
+    const availableShops = isShopAdmin 
       ? shops.filter(s => assignedShopIds.includes(s.id))
-      : shops;
+      : assignedShopIds.length > 0 
+        ? shops.filter(s => assignedShopIds.includes(s.id))
+        : shops;
     
     return (
       <div className="min-h-screen flex">
