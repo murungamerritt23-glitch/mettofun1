@@ -2,22 +2,34 @@ import CryptoJS from 'crypto-js';
 import type { Item, GameAttempt, BoxConfiguration } from '@/types';
 
 // Dynamic Odds Calculator - Fair Boost System
+// Always 17 boxes, but winning threshold changes based on purchase
+// Higher purchase = lower threshold = easier to win
 export const calculateBoxConfiguration = (purchaseAmount: number, qualifyingAmount: number): BoxConfiguration => {
   const ratio = (purchaseAmount / qualifyingAmount) * 100;
   
+  // Threshold determines winning probability (lower = easier to win)
+  // With 17 boxes:
+  // - threshold 1: 1/17 = 5.9% win rate
+  // - threshold 2: 2/17 = 11.8% win rate
+  // - threshold 3: 3/17 = 17.6% win rate
+  // etc.
+  let threshold: number;
+  
   if (ratio < 150) {
-    return { boxCount: 17, ratio: '<150%' };
+    threshold = 1;  // Hardest - only 1 winning number out of 17
   } else if (ratio < 200) {
-    return { boxCount: 16, ratio: '150-199%' };
+    threshold = 2;  // 2 winning numbers
   } else if (ratio < 300) {
-    return { boxCount: 15, ratio: '200-299%' };
+    threshold = 3;  // 3 winning numbers
   } else if (ratio < 400) {
-    return { boxCount: 14, ratio: '300-399%' };
+    threshold = 4;  // 4 winning numbers
   } else if (ratio < 500) {
-    return { boxCount: 13, ratio: '400-499%' };
+    threshold = 5;  // 5 winning numbers
   } else {
-    return { boxCount: 12, ratio: '500%+' };
+    threshold = 6;  // Easiest - 6 winning numbers out of 17
   }
+  
+  return { boxCount: 17, threshold, ratio: ratio.toString() };
 };
 
 // Secure random number generation with obfuscation

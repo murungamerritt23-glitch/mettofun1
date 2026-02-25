@@ -77,8 +77,9 @@ export interface CustomerSession {
 
 // Dynamic Odds Types
 export interface BoxConfiguration {
-  boxCount: number;
-  ratio: string;
+  boxCount: number;  // Always 17
+  threshold: number; // How many winning numbers (1-6 based on purchase)
+  ratio: string;     // Display ratio for UI
 }
 
 // Analytics Types

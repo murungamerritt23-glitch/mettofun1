@@ -102,6 +102,7 @@ interface GameState {
   gameStatus: 'idle' | 'playing' | 'won' | 'lost';
   selectedBox: number | null;
   correctNumber: number | null;
+  thresholdNumber: number | null; // Winning threshold based on purchase amount
   customerSession: CustomerSession | null;
   selectedItem: Item | null;
   isDemoMode: boolean;
@@ -109,6 +110,7 @@ interface GameState {
   setGameStatus: (status: 'idle' | 'playing' | 'won' | 'lost') => void;
   setSelectedBox: (box: number | null) => void;
   setCorrectNumber: (number: number | null) => void;
+  setThresholdNumber: (threshold: number | null) => void;
   setCustomerSession: (session: CustomerSession | null) => void;
   setSelectedItem: (item: Item | null) => void;
   setDemoMode: (isDemo: boolean) => void;
@@ -122,6 +124,7 @@ export const useGameStore = create<GameState>()(
       gameStatus: 'idle',
       selectedBox: null,
       correctNumber: null,
+      thresholdNumber: null,
       customerSession: null,
       selectedItem: null,
       isDemoMode: false,
@@ -129,6 +132,7 @@ export const useGameStore = create<GameState>()(
       setGameStatus: (gameStatus) => set({ gameStatus }),
       setSelectedBox: (selectedBox) => set({ selectedBox }),
       setCorrectNumber: (correctNumber) => set({ correctNumber }),
+      setThresholdNumber: (thresholdNumber) => set({ thresholdNumber }),
       setCustomerSession: (customerSession) => set({ customerSession }),
       setSelectedItem: (selectedItem) => set({ selectedItem }),
       setDemoMode: (isDemoMode) => set({ isDemoMode }),
@@ -137,6 +141,7 @@ export const useGameStore = create<GameState>()(
         gameStatus: 'idle',
         selectedBox: null,
         correctNumber: null,
+        thresholdNumber: null,
         selectedItem: null
       })
     }),

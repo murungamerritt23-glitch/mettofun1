@@ -38,6 +38,7 @@ export default function GameMode() {
     gameStatus, setGameStatus, 
     selectedBox, setSelectedBox,
     correctNumber, setCorrectNumber,
+    thresholdNumber, setThresholdNumber,
     customerSession, setCustomerSession,
     selectedItem, setSelectedItem,
     isDemoMode, setDemoMode,
@@ -136,8 +137,14 @@ export default function GameMode() {
     });
     
     // Generate winning number (stored in memory only - not displayed)
-    const winningNum = generateSecureRandomNumber(config.boxCount);
+    // Always generate from 1-17, but use threshold to determine win
+    const winningNum = generateSecureRandomNumber(17);
+    const threshold = config.threshold;
+    
+    // Store both the winning number and threshold
+    // Win if selected number <= threshold (lower threshold = harder)
     setCorrectNumber(winningNum);
+    setThresholdNumber(threshold);
     
     setGameStatus('playing');
     setIsAuthorizing(false);
@@ -155,8 +162,8 @@ export default function GameMode() {
     
     setSelectedNumber(number);
     
-    // Check if won
-    const won = number === correctNumber;
+    // Check if won - player wins if selected number is within threshold range
+    const won = number <= (thresholdNumber || 1);
     setGameWon(won);
     
     if (won) {
@@ -200,13 +207,15 @@ export default function GameMode() {
       return;
     }
     
-    // Generate new winning number
+    // Generate new winning number (always 1-17)
     const config = calculateBoxConfiguration(
       parseFloat(purchaseAmount), 
       currentShop?.qualifyingPurchase || 100
     );
-    const newWinningNum = generateSecureRandomNumber(config.boxCount);
+    const newWinningNum = generateSecureRandomNumber(17);
+    const newThreshold = config.threshold;
     setCorrectNumber(newWinningNum);
+    setThresholdNumber(newThreshold);
     
     // Reset game state
     setSelectedBox(null);
