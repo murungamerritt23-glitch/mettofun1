@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Store, ArrowLeft, Plus, Search, MapPin, Check, Lock } from 'lucide-react';
 import { useShopStore, useUIStore, useGameStore } from '@/store';
+import { firebaseShops } from '@/lib/firebase';
 import { localShops } from '@/lib/local-db';
 import { isDeviceAuthorized } from '@/lib/device';
 import type { Shop } from '@/types';
@@ -50,6 +51,9 @@ export default function ShopSelector() {
       backupEnabled: false
     };
     
+    // Save to Firebase (Firestore) - primary storage
+    await firebaseShops.save(newShop);
+    // Also save to local for offline support
     await localShops.save(newShop);
     addShop(newShop);
     setNewShopCode('');

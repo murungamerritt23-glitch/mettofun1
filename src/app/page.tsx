@@ -7,7 +7,8 @@ import ShopSelector from '@/components/ShopSelector';
 import GameMode from '@/components/GameMode';
 import AdminDashboard from '@/components/AdminDashboard';
 import { useUIStore, useShopStore } from '@/store';
-import { initDB, localShops } from '@/lib/local-db';
+import { firebaseShops } from '@/lib/firebase';
+import { initDB } from '@/lib/local-db';
 
 export default function Home() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -15,23 +16,24 @@ export default function Home() {
   const { setShops, setCurrentShop } = useShopStore();
 
   useEffect(() => {
-    // Initialize local database
+    // Initialize local database and load shops from Firebase
     const init = async () => {
       try {
+        // Initialize local DB for offline support
         await initDB();
         
-        // Ensure default shop exists and load shops
-        const defaultShop = await localShops.ensureDefaultShop();
-        const allShops = await localShops.getAll();
-        setShops(allShops);
+        // Load shops from Firebase (Firestore)
+        const shops = await firebaseShops.getAllActive();
+        console.log('Loaded shops from Firebase:', shops);
+        setShops(shops);
         
-        // If no current shop is set but there's a default, set it
+        // If no current shop but there are shops, set the first one
         const storedShop = useShopStore.getState().currentShop;
-        if (!storedShop && defaultShop) {
-          setCurrentShop(defaultShop);
+        if (!storedShop && shops.length > 0) {
+          setCurrentShop(shops[0]);
         }
       } catch (error) {
-        console.error('Failed to initialize database:', error);
+        console.error('Failed to initialize:', error);
       }
       setIsInitialized(true);
     };

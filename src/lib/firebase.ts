@@ -25,6 +25,7 @@ import {
   Firestore,
   serverTimestamp
 } from 'firebase/firestore';
+import type { Shop } from '@/types';
 
 // Firebase configuration - Replace with your own config
 const firebaseConfig = {
@@ -177,3 +178,100 @@ export const firebaseDb = {
 };
 
 export { app, auth, db };
+
+// Shop collection helper functions for Firestore
+const SHOPS_COLLECTION = 'shops';
+
+export const firebaseShops = {
+  // Get all active shops
+  async getAllActive(): Promise<Shop[]> {
+    const result = await firebaseDb.getAll(SHOPS_COLLECTION, [
+      where('isActive', '==', true)
+    ]);
+    if (result.error) {
+      console.error('Error fetching shops:', result.error);
+      return [];
+    }
+    return (result.data || []).map((doc: any) => ({
+      id: doc.id,
+      shopName: doc.shopName,
+      shopCode: doc.shopCode,
+      deviceId: doc.deviceId,
+      deviceLocked: doc.deviceLocked,
+      qualifyingPurchase: doc.qualifyingPurchase,
+      promoMessage: doc.promoMessage,
+      isActive: doc.isActive,
+      createdAt: doc.createdAt?.toDate?.() || new Date(doc.createdAt),
+      updatedAt: doc.updatedAt?.toDate?.() || new Date(doc.updatedAt),
+      createdBy: doc.createdBy,
+      backupEnabled: doc.backupEnabled
+    }));
+  },
+
+  // Get shop by code
+  async getByCode(code: string): Promise<Shop | null> {
+    const result = await firebaseDb.getAll(SHOPS_COLLECTION, [
+      where('shopCode', '==', code)
+    ]);
+    if (result.error || !result.data || result.data.length === 0) {
+      return null;
+    }
+    const doc = result.data[0] as any;
+    return {
+      id: doc.id,
+      shopName: doc.shopName,
+      shopCode: doc.shopCode,
+      deviceId: doc.deviceId,
+      deviceLocked: doc.deviceLocked,
+      qualifyingPurchase: doc.qualifyingPurchase,
+      promoMessage: doc.promoMessage,
+      isActive: doc.isActive,
+      createdAt: doc.createdAt?.toDate?.() || new Date(doc.createdAt),
+      updatedAt: doc.updatedAt?.toDate?.() || new Date(doc.updatedAt),
+      createdBy: doc.createdBy,
+      backupEnabled: doc.backupEnabled
+    };
+  },
+
+  // Create or update a shop
+  async save(shop: Shop): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.set(SHOPS_COLLECTION, shop.id, {
+      shopName: shop.shopName,
+      shopCode: shop.shopCode,
+      deviceId: shop.deviceId,
+      deviceLocked: shop.deviceLocked,
+      qualifyingPurchase: shop.qualifyingPurchase,
+      promoMessage: shop.promoMessage,
+      isActive: shop.isActive,
+      createdAt: shop.createdAt,
+      createdBy: shop.createdBy,
+      backupEnabled: shop.backupEnabled
+    });
+    return { success: !result.error, error: result.error };
+  },
+
+  // Subscribe to active shops (real-time)
+  subscribeToActiveShops(callback: (shops: Shop[]) => void): () => void {
+    return firebaseDb.subscribe(
+      SHOPS_COLLECTION,
+      [where('isActive', '==', true)],
+      (docs: any[]) => {
+        const shops = docs.map((doc) => ({
+          id: doc.id,
+          shopName: doc.shopName,
+          shopCode: doc.shopCode,
+          deviceId: doc.deviceId,
+          deviceLocked: doc.deviceLocked,
+          qualifyingPurchase: doc.qualifyingPurchase,
+          promoMessage: doc.promoMessage,
+          isActive: doc.isActive,
+          createdAt: doc.createdAt?.toDate?.() || new Date(doc.createdAt),
+          updatedAt: doc.updatedAt?.toDate?.() || new Date(doc.updatedAt),
+          createdBy: doc.createdBy,
+          backupEnabled: doc.backupEnabled
+        }));
+        callback(shops);
+      }
+    );
+  }
+};

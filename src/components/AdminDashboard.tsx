@@ -8,7 +8,8 @@ import {
   Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore } from '@/store';
-import { localShops, localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData } from '@/lib/local-db';
+import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops } from '@/lib/local-db';
+import { firebaseShops, firebaseDb } from '@/lib/firebase';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer } from '@/types';
@@ -48,7 +49,18 @@ export default function AdminDashboard() {
 
   // Load shops on mount
   useEffect(() => {
-    localShops.getAll().then(setShops);
+    // Load shops from Firebase (primary) and fallback to local
+    const loadShops = async () => {
+      const fbShops = await firebaseShops.getAllActive();
+      if (fbShops.length > 0) {
+        setShops(fbShops);
+      } else {
+        // Fallback to local if Firebase has no shops
+        const localShopList = await localShops.getAll();
+        setShops(localShopList);
+      }
+    };
+    loadShops();
     localAdmins.getAll().then(setAdmins);
   }, []);
 
@@ -105,23 +117,34 @@ export default function AdminDashboard() {
   };
 
   const handleSaveShop = async (shop: Shop) => {
+    // Save to Firebase first, then local for offline
+    await firebaseShops.save(shop);
     await localShops.save(shop);
     setEditingShop(null);
     setIsCreatingShop(false);
-    localShops.getAll().then(setShops);
+    // Refresh from Firebase
+    const fbShops = await firebaseShops.getAllActive();
+    setShops(fbShops);
   };
 
   const handleToggleShopActive = async (shop: Shop) => {
     const updatedShop = { ...shop, isActive: !shop.isActive };
+    await firebaseShops.save(updatedShop);
     await localShops.save(updatedShop);
-    localShops.getAll().then(setShops);
+    const fbShops = await firebaseShops.getAllActive();
+    setShops(fbShops);
   };
 
   const handleDeleteShop = async (shopId: string) => {
     if (confirm('Are you sure you want to delete this shop?')) {
+      // Delete from Firebase
+      await firebaseDb.delete('shops', shopId);
+      // Delete from local
       await localShops.delete(shopId);
       await localItems.deleteByShop(shopId);
-      localShops.getAll().then(setShops);
+      // Refresh
+      const fbShops = await firebaseShops.getAllActive();
+      setShops(fbShops);
     }
   };
 
@@ -344,10 +367,12 @@ export default function AdminDashboard() {
                         value={currentShop.qualifyingPurchase}
                         onChange={async (e) => {
                           const newValue = parseInt(e.target.value) || 0;
-                          const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                          await localShops.save(updatedShop);
-                          setCurrentShop(updatedShop);
-                          localShops.getAll().then(setShops);
+      const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+      await firebaseShops.save(updatedShop);
+      await localShops.save(updatedShop);
+      setCurrentShop(updatedShop);
+      const fbShops = await firebaseShops.getAllActive();
+      setShops(fbShops);
                         }}
                         className="input w-full"
                         min={0}
