@@ -65,14 +65,16 @@ export default function AdminDashboard() {
     };
     loadShops();
     localAdmins.getAll().then(setAdmins);
-    
-    // Load terms content for super admin
+  }, []);
+
+  // Load terms content for super admin
+  useEffect(() => {
     if (admin?.level === 'super_admin') {
       firebaseSettings.getSettings().then(settings => {
         setTermsContent(settings.termsContent);
       });
     }
-  }, []);
+  }, [admin]);
 
   // Admin handlers
   const handleSaveAdmin = async (adminData: Admin) => {
