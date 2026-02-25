@@ -279,3 +279,65 @@ export const firebaseShops = {
     );
   }
 };
+
+// Settings collection helper functions for Firestore
+const SETTINGS_COLLECTION = 'settings';
+
+export const firebaseSettings = {
+  // Get app settings (includes terms and conditions)
+  async getSettings(): Promise<{ termsContent: string; helpContent: string; version: string }> {
+    const result = await firebaseDb.get(SETTINGS_COLLECTION, 'app_settings');
+    if (result.error) {
+      console.error('Error fetching settings:', result.error);
+      return {
+        termsContent: 'Default terms and conditions content. Please contact support.',
+        helpContent: '',
+        version: '1.0.0'
+      };
+    }
+    if (result.data) {
+      const data = result.data as any;
+      return {
+        termsContent: data.termsContent || '',
+        helpContent: data.helpContent || '',
+        version: data.version || '1.0.0'
+      };
+    }
+    return {
+      termsContent: '',
+      helpContent: '',
+      version: '1.0.0'
+    };
+  },
+
+  // Update terms and conditions (super admin only)
+  async updateTerms(termsContent: string): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.set(SETTINGS_COLLECTION, 'app_settings', {
+      termsContent,
+      updatedAt: new Date()
+    });
+    return { success: result.success || false, error: result.error };
+  },
+
+  // Update help content (super admin only)
+  async updateHelp(helpContent: string): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.set(SETTINGS_COLLECTION, 'app_settings', {
+      helpContent,
+      updatedAt: new Date()
+    });
+    return { success: result.success || false, error: result.error };
+  },
+
+  // Update all settings at once (super admin only)
+  async updateAllSettings(settings: {
+    termsContent?: string;
+    helpContent?: string;
+    version?: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.set(SETTINGS_COLLECTION, 'app_settings', {
+      ...settings,
+      updatedAt: new Date()
+    });
+    return { success: result.success || false, error: result.error };
+  }
+};

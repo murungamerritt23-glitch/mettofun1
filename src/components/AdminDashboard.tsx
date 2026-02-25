@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops } from '@/lib/local-db';
-import { firebaseShops, firebaseDb } from '@/lib/firebase';
+import { firebaseShops, firebaseDb, firebaseSettings } from '@/lib/firebase';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer } from '@/types';
@@ -28,6 +28,9 @@ export default function AdminDashboard() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
+  const [termsContent, setTermsContent] = useState('');
+  const [isEditingTerms, setIsEditingTerms] = useState(false);
+  const [termsSaved, setTermsSaved] = useState(false);
   
   const { admin, logout } = useAuthStore();
   const { currentShop, setCurrentShop } = useShopStore();
@@ -62,6 +65,13 @@ export default function AdminDashboard() {
     };
     loadShops();
     localAdmins.getAll().then(setAdmins);
+    
+    // Load terms content for super admin
+    if (admin?.level === 'super_admin') {
+      firebaseSettings.getSettings().then(settings => {
+        setTermsContent(settings.termsContent);
+      });
+    }
   }, []);
 
   // Admin handlers
@@ -96,6 +106,16 @@ export default function AdminDashboard() {
   const tabs = allTabs.filter(tab => 
     tab.requiredPermission === null || (permissions as any)[tab.requiredPermission]
   );
+
+  // Save terms and conditions
+  const handleSaveTerms = async () => {
+    const result = await firebaseSettings.updateTerms(termsContent);
+    if (result.success) {
+      setTermsSaved(true);
+      setIsEditingTerms(false);
+      setTimeout(() => setTermsSaved(false), 3000);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -1189,6 +1209,65 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </div>
+
+              {/* Terms and Conditions - Super Admin Only */}
+              {admin?.level === 'super_admin' && (
+                <div className="card">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-white">Terms & Conditions</h3>
+                      <p className="text-gray-400 text-sm">Manage platform terms and conditions</p>
+                    </div>
+                    {!isEditingTerms ? (
+                      <button 
+                        onClick={() => setIsEditingTerms(true)}
+                        className="btn-gold-outline"
+                      >
+                        <Edit size={16} className="mr-2" />
+                        Edit
+                      </button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            setIsEditingTerms(false);
+                            firebaseSettings.getSettings().then(s => setTermsContent(s.termsContent));
+                          }}
+                          className="btn-gold-outline text-gray-400"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={handleSaveTerms}
+                          className="btn-gold"
+                        >
+                          <Save size={16} className="mr-2" />
+                          Save
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {termsSaved && (
+                    <div className="mb-4 p-3 bg-green-900/30 border border-green-700 rounded-lg text-green-400 text-sm">
+                      ✓ Terms & Conditions saved successfully!
+                    </div>
+                  )}
+                  
+                  {isEditingTerms ? (
+                    <textarea
+                      value={termsContent}
+                      onChange={(e) => setTermsContent(e.target.value)}
+                      className="w-full h-64 bg-gray-900 border border-gray-700 rounded-lg p-4 text-white text-sm resize-none focus:border-amber-500 focus:outline-none"
+                      placeholder="Enter terms and conditions content..."
+                    />
+                  ) : (
+                    <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 text-gray-300 text-sm max-h-64 overflow-y-auto">
+                      {termsContent || 'No terms and conditions defined. Click Edit to add content.'}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="card border-red-900/50">
                 <div className="flex items-center justify-between">
