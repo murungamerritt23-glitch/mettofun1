@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import type { Shop, Item, GameAttempt, Admin, SyncQueue, CustomerSession } from '@/types';
+import type { Shop, Item, GameAttempt, Admin, SyncQueue, CustomerSession, PendingCustomer } from '@/types';
 
 interface MetoFunDB extends DBSchema {
   shops: {
@@ -30,6 +30,11 @@ interface MetoFunDB extends DBSchema {
     key: string;
     value: CustomerSession;
   };
+  pendingCustomers: {
+    key: string;
+    value: PendingCustomer;
+    indexes: { 'by-shop': string; 'by-phone': string; 'by-authorized': string };
+  };
   settings: {
     key: string;
     value: any;
@@ -41,8 +46,8 @@ let db: IDBPDatabase<MetoFunDB> | null = null;
 export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
   if (db) return db;
 
-  db = await openDB<MetoFunDB>('metofun-db', 1, {
-    upgrade(database) {
+  db = await openDB<MetoFunDB>('metofun-db', 2, {
+    upgrade(database, oldVersion) {
       // Shops store
       const shopStore = database.createObjectStore('shops', { keyPath: 'id' });
       shopStore.createIndex('by-code', 'shopCode');
@@ -66,6 +71,14 @@ export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
 
       // Sessions store
       database.createObjectStore('sessions', { keyPath: 'phoneNumber' });
+
+      // Pending customers store (v2)
+      if (oldVersion < 2) {
+        const pendingStore = database.createObjectStore('pendingCustomers', { keyPath: 'id' });
+        pendingStore.createIndex('by-shop', 'shopId');
+        pendingStore.createIndex('by-phone', 'phoneNumber');
+        pendingStore.createIndex('by-authorized', 'authorized');
+      }
 
       // Settings store
       database.createObjectStore('settings', { keyPath: 'key' });
@@ -256,7 +269,65 @@ export const localSettings = {
   }
 };
 
-// Sync queue operations
+// Pending customers operations
+export const localPendingCustomers = {
+  async get(id: string): Promise<PendingCustomer | undefined> {
+    const database = await initDB();
+    return database.get('pendingCustomers', id);
+  },
+
+  async getAll(): Promise<PendingCustomer[]> {
+    const database = await initDB();
+    return database.getAll('pendingCustomers');
+  },
+
+  async getByShop(shopId: string): Promise<PendingCustomer[]> {
+    const database = await initDB();
+    return database.getAllFromIndex('pendingCustomers', 'by-shop', shopId);
+  },
+
+  async getByPhone(phoneNumber: string): Promise<PendingCustomer[]> {
+    const database = await initDB();
+    return database.getAllFromIndex('pendingCustomers', 'by-phone', phoneNumber);
+  },
+
+  async getAuthorized(shopId: string): Promise<PendingCustomer[]> {
+    const database = await initDB();
+    const all = await database.getAllFromIndex('pendingCustomers', 'by-shop', shopId);
+    return all.filter(c => c.authorized && !c.used);
+  },
+
+  async save(customer: PendingCustomer): Promise<void> {
+    const database = await initDB();
+    await database.put('pendingCustomers', customer);
+  },
+
+  async authorize(id: string, authorizedBy: string): Promise<void> {
+    const database = await initDB();
+    const customer = await database.get('pendingCustomers', id);
+    if (customer) {
+      customer.authorized = true;
+      customer.authorizedBy = authorizedBy;
+      customer.authorizedAt = new Date();
+      await database.put('pendingCustomers', customer);
+    }
+  },
+
+  async markUsed(id: string): Promise<void> {
+    const database = await initDB();
+    const customer = await database.get('pendingCustomers', id);
+    if (customer) {
+      customer.used = true;
+      customer.usedAt = new Date();
+      await database.put('pendingCustomers', customer);
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    const database = await initDB();
+    await database.delete('pendingCustomers', id);
+  }
+};
 export const localSync = {
   async addToQueue(type: SyncQueue['type'], data: any): Promise<void> {
     const database = await initDB();

@@ -5,16 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
-  Save, Smartphone, Power, PowerOff, Copy
+  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore } from '@/store';
-import { localShops, localItems, localAttempts, localAdmins, clearAllData } from '@/lib/local-db';
+import { localShops, localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData } from '@/lib/local-db';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
-import type { Shop, Item, AdminPermissions, Admin, AdminLevel } from '@/types';
+import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer } from '@/types';
 import { ADMIN_PERMISSIONS } from '@/types';
 
-type TabType = 'dashboard' | 'shops' | 'items' | 'attempts' | 'analytics' | 'settings' | 'staff' | 'myShop';
+type TabType = 'dashboard' | 'shops' | 'items' | 'attempts' | 'analytics' | 'settings' | 'staff' | 'myShop' | 'customers';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -71,6 +71,7 @@ export default function AdminDashboard() {
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
     { id: 'myShop', label: 'My Shop', icon: Store, requiredPermission: 'canEditQualifyingPurchase' },
+    { id: 'customers', label: 'Customers', icon: UserCheck, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canOnboardShops' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
     { id: 'attempts', label: 'Attempts', icon: Users, requiredPermission: 'canViewAnalytics' },
@@ -375,6 +376,234 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 )}
+              </>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Customers view - for shop staff to record purchases and authorize customers
+  if (activeTab === 'customers') {
+    const [pendingCustomers, setPendingCustomers] = useState<any[]>([]);
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [newCustomer, setNewCustomer] = useState({ phoneNumber: '', purchaseAmount: '', itemId: '' });
+    const [itemsList, setItemsList] = useState<Item[]>([]);
+
+    useEffect(() => {
+      if (currentShop) {
+        localPendingCustomers.getByShop(currentShop.id).then(setPendingCustomers);
+        localItems.getByShop(currentShop.id).then(setItemsList);
+      }
+    }, [currentShop]);
+
+    const handleAddCustomer = async () => {
+      if (!newCustomer.phoneNumber || !newCustomer.purchaseAmount || !newCustomer.itemId) {
+        alert('Please fill in all fields');
+        return;
+      }
+      const amount = parseFloat(newCustomer.purchaseAmount);
+      if (isNaN(amount) || amount < (currentShop?.qualifyingPurchase || 0)) {
+        alert(`Minimum purchase is KSh ${currentShop?.qualifyingPurchase || 0}`);
+        return;
+      }
+      const selectedItem = itemsList.find(i => i.id === newCustomer.itemId);
+      const customer: PendingCustomer = {
+        id: crypto.randomUUID(),
+        phoneNumber: newCustomer.phoneNumber,
+        shopId: currentShop!.id,
+        purchaseAmount: amount,
+        qualifyingAmount: currentShop!.qualifyingPurchase,
+        itemId: newCustomer.itemId,
+        itemName: selectedItem?.name || '',
+        recordedBy: admin?.id || '',
+        recordedAt: new Date(),
+        authorized: false,
+        used: false
+      };
+      await localPendingCustomers.save(customer);
+      setPendingCustomers(await localPendingCustomers.getByShop(currentShop!.id));
+      setShowAddForm(false);
+      setNewCustomer({ phoneNumber: '', purchaseAmount: '', itemId: '' });
+    };
+
+    const handleAuthorize = async (id: string) => {
+      await localPendingCustomers.authorize(id, admin?.id || '');
+      setPendingCustomers(await localPendingCustomers.getByShop(currentShop!.id));
+    };
+
+    const handleDelete = async (id: string) => {
+      if (confirm('Remove this customer record?')) {
+        await localPendingCustomers.delete(id);
+        setPendingCustomers(await localPendingCustomers.getByShop(currentShop!.id));
+      }
+    };
+
+    const authorized = pendingCustomers.filter(c => c.authorized && !c.used);
+    const pending = pendingCustomers.filter(c => !c.authorized);
+
+    return (
+      <div className="min-h-screen flex">
+        <AdminSidebar 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onLogout={handleLogout}
+          admin={admin}
+        />
+        
+        <main className="flex-1 p-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="gold-gradient-text text-3xl font-bold">Customers</h1>
+              <button 
+                onClick={() => setShowAddForm(true)}
+                className="btn-primary flex items-center gap-2"
+              >
+                <UserPlus size={20} /> Record Purchase
+              </button>
+            </div>
+
+            {!currentShop ? (
+              <div className="card p-8 text-center">
+                <p className="text-gray-400">Please select a shop from "My Shop" first.</p>
+              </div>
+            ) : (
+              <>
+                {/* Add Customer Form Modal */}
+                {showAddForm && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="card p-6 max-w-md w-full mx-4">
+                      <h2 className="text-xl font-bold text-white mb-4">Record Customer Purchase</h2>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-gray-400 text-sm mb-1">Phone Number</label>
+                          <input
+                            type="tel"
+                            value={newCustomer.phoneNumber}
+                            onChange={(e) => setNewCustomer({...newCustomer, phoneNumber: e.target.value})}
+                            placeholder="0712345678"
+                            className="input-field w-full"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-gray-400 text-sm mb-1">
+                            Purchase Amount (Min: KSh {currentShop.qualifyingPurchase})
+                          </label>
+                          <input
+                            type="number"
+                            value={newCustomer.purchaseAmount}
+                            onChange={(e) => setNewCustomer({...newCustomer, purchaseAmount: e.target.value})}
+                            placeholder="Enter amount"
+                            className="input-field w-full"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-gray-400 text-sm mb-1">Item to Win</label>
+                          <select
+                            value={newCustomer.itemId}
+                            onChange={(e) => setNewCustomer({...newCustomer, itemId: e.target.value})}
+                            className="input-field w-full"
+                          >
+                            <option value="">Select item</option>
+                            {itemsList.filter(i => i.isActive).map(item => (
+                              <option key={item.id} value={item.id}>
+                                {item.name} - KSh {item.value.toLocaleString()}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div className="flex gap-3 pt-4">
+                          <button onClick={handleAddCustomer} className="btn-primary flex-1">
+                            Save
+                          </button>
+                          <button 
+                            onClick={() => { setShowAddForm(false); setNewCustomer({ phoneNumber: '', purchaseAmount: '', itemId: '' }); }}
+                            className="btn-secondary flex-1"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Authorized Customers */}
+                {authorized.length > 0 && (
+                  <div className="mb-8">
+                    <h2 className="text-xl font-semibold text-green-400 mb-4 flex items-center gap-2">
+                      <UserCheck size={20} /> Ready to Play ({authorized.length})
+                    </h2>
+                    <div className="space-y-2">
+                      {authorized.map(c => (
+                        <div key={c.id} className="card p-4 flex justify-between items-center border-green-500/30">
+                          <div>
+                            <p className="text-white font-medium">{c.phoneNumber}</p>
+                            <p className="text-gray-400 text-sm">
+                              {c.itemName} - KSh {c.purchaseAmount.toLocaleString()}
+                            </p>
+                          </div>
+                          <button 
+                            onClick={() => handleDelete(c.id)}
+                            className="text-red-400 hover:text-red-300"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pending Authorization */}
+                <div>
+                  <h2 className="text-xl font-semibold text-yellow-400 mb-4 flex items-center gap-2">
+                    <UserPlus size={20} /> Waiting for Authorization ({pending.length})
+                  </h2>
+                  {pending.length === 0 ? (
+                    <div className="card p-8 text-center text-gray-500">
+                      No customers waiting. Click "Record Purchase" to add one.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {pending.map(c => (
+                        <div key={c.id} className="card p-4 flex justify-between items-center">
+                          <div>
+                            <p className="text-white font-medium">{c.phoneNumber}</p>
+                            <p className="text-gray-400 text-sm">
+                              {c.itemName} - KSh {c.purchaseAmount.toLocaleString()}
+                            </p>
+                            <p className="text-gray-500 text-xs">
+                              Recorded: {new Date(c.recordedAt).toLocaleTimeString()}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => handleAuthorize(c.id)}
+                              className="btn-primary flex items-center gap-1"
+                            >
+                              <UserCheck size={16} /> Authorize
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(c.id)}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

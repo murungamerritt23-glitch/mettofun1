@@ -128,6 +128,24 @@ export interface CustomerSession {
   purchaseAmount?: number;
 }
 
+// Pending customer purchase - recorded by shop staff
+export interface PendingCustomer {
+  id: string;
+  phoneNumber: string;
+  shopId: string;
+  purchaseAmount: number;
+  qualifyingAmount: number;
+  itemId: string;          // Item they're attempting to win
+  itemName: string;         // Item name for display
+  recordedBy: string;       // admin ID who recorded
+  recordedAt: Date;
+  authorized: boolean;
+  authorizedBy?: string;
+  authorizedAt?: Date;
+  used: boolean;             // whether they've played
+  usedAt?: Date;
+}
+
 // Dynamic Odds Types
 export interface BoxConfiguration {
   boxCount: number;  // Always 17
