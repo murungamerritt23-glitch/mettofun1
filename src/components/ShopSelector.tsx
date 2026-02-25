@@ -26,15 +26,8 @@ export default function ShopSelector() {
   const handleSelectShop = async (shop: Shop) => {
     setDeviceError(null);
     
-    // Check if device is authorized for this shop
-    // Only authorized devices (shop devices) can access Metofun
-    const authorized = isDeviceAuthorized(shop.deviceId, shop.deviceLocked);
-    
-    if (!authorized) {
-      setDeviceError('This device is not authorized to access this shop. Please use an authorized shop device.');
-      return;
-    }
-    
+    // Set current shop and navigate to customer game mode
+    // Device authorization check removed - customers should be able to play from any device
     setCurrentShop(shop);
     setCurrentView('customer');
   };
