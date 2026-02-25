@@ -17,6 +17,8 @@ export interface Admin {
   isActive: boolean;
   assignedShops?: string[];
   region?: string;
+  deviceId?: string;        // Device ID this admin is locked to
+  deviceLocked?: boolean;   // Whether device locking is enabled for this admin
 }
 
 // Permission types for role-based access control

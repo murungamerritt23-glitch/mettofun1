@@ -1219,6 +1219,8 @@ function AdminForm({
     isActive: admin?.isActive ?? true,
     assignedShops: admin?.assignedShops || [] as string[],
     region: admin?.region || '',
+    deviceId: admin?.deviceId || '',
+    deviceLocked: admin?.deviceLocked ?? false,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1234,6 +1236,8 @@ function AdminForm({
       isActive: formData.isActive,
       assignedShops: formData.assignedShops,
       region: formData.region,
+      deviceId: formData.deviceLocked ? formData.deviceId : undefined,
+      deviceLocked: formData.deviceLocked,
     });
   };
 
@@ -1337,6 +1341,55 @@ function AdminForm({
           className="w-4 h-4"
         />
         <label className="text-sm text-gray-300">Active</label>
+      </div>
+
+      {/* Device Locking Section */}
+      <div className="border-t border-gray-700 pt-4">
+        <div className="flex items-center gap-2 mb-3">
+          <input
+            type="checkbox"
+            id="deviceLocked"
+            checked={formData.deviceLocked}
+            onChange={(e) => setFormData({ ...formData, deviceLocked: e.target.checked })}
+            className="w-4 h-4"
+          />
+          <label htmlFor="deviceLocked" className="text-sm text-gray-300 font-medium">
+            Lock to Device
+          </label>
+        </div>
+        
+        {formData.deviceLocked && (
+          <div className="bg-gray-800 rounded-lg p-3 space-y-3">
+            <p className="text-xs text-gray-400">
+              When enabled, this admin can only log in from the registered device.
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <label className="block text-sm text-gray-400 mb-1">Device ID</label>
+                <input
+                  type="text"
+                  value={formData.deviceId}
+                  onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
+                  className="input text-sm"
+                  placeholder="Enter device ID or register"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, deviceId: getDeviceId() })}
+                className="btn-gold-outline mt-5"
+                title="Register current device"
+              >
+                <Smartphone size={16} />
+              </button>
+            </div>
+            {formData.deviceId && (
+              <p className="text-xs text-gray-500">
+                Current device ID: {formData.deviceId.substring(0, 8)}...
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2 pt-4">

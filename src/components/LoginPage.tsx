@@ -5,7 +5,9 @@ import { motion } from 'framer-motion';
 import { Mail, Phone, Lock, Eye, EyeOff, ShoppingCart, Loader2 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/store';
 import { firebaseAuth } from '@/lib/firebase';
-import type { AdminLevel } from '@/types';
+import { getDeviceId } from '@/lib/device';
+import { localAdmins } from '@/lib/local-db';
+import type { AdminLevel, Admin } from '@/types';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -17,6 +19,29 @@ export default function LoginPage() {
   
   const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
   const { setCurrentView } = useUIStore();
+
+  // Check if device is authorized for admin
+  const checkDeviceAuthorization = (admin: { deviceId?: string; deviceLocked?: boolean }): string | null => {
+    if (!admin.deviceLocked) return null; // No device locking, allow
+    if (!admin.deviceId) return 'This admin account is locked to a device but no device is registered. Contact super admin.';
+    
+    const currentDeviceId = getDeviceId();
+    if (currentDeviceId !== admin.deviceId) {
+      return 'Device not authorized. This admin account is locked to a different device.';
+    }
+    return null;
+  };
+
+  // Fetch admin from local DB to get device settings
+  const fetchAdminSettings = async (email: string): Promise<Partial<Admin> | null> => {
+    try {
+      const admins = await localAdmins.getAll();
+      const admin = admins.find(a => a.email.toLowerCase() === email.toLowerCase());
+      return admin || null;
+    } catch {
+      return null;
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,18 +56,34 @@ export default function LoginPage() {
       if (result.error) {
         // For demo/offline mode, use local authentication
         if (email && password) {
+          // Check if admin exists in local DB with device settings
+          const storedAdmin = await fetchAdminSettings(email);
+          
           // Demo login - in production this would validate against Firebase
           const demoAdmin = {
-            id: 'demo-admin',
+            id: storedAdmin?.id || 'demo-admin',
             email,
-            phone: '',
-            name: email.split('@')[0],
-            level: selectedRole,
-            createdAt: new Date(),
+            phone: storedAdmin?.phone || '',
+            name: storedAdmin?.name || email.split('@')[0],
+            level: storedAdmin?.level || selectedRole,
+            createdAt: storedAdmin?.createdAt || new Date(),
             lastLogin: new Date(),
-            isActive: true,
-            region: 'Demo Region'
+            isActive: storedAdmin?.isActive ?? true,
+            region: storedAdmin?.region || 'Demo Region',
+            assignedShops: storedAdmin?.assignedShops,
+            deviceId: storedAdmin?.deviceId,
+            deviceLocked: storedAdmin?.deviceLocked ?? false
           };
+          
+          // Check device authorization
+          const deviceError = checkDeviceAuthorization(demoAdmin);
+          if (deviceError) {
+            setError(deviceError);
+            setIsLoading(false);
+            setLoading(false);
+            return;
+          }
+          
           setAdmin(demoAdmin);
           setCurrentView('admin');
         } else {
@@ -50,16 +91,31 @@ export default function LoginPage() {
         }
       } else if (result.user) {
         // Create admin record from Firebase user
+        const storedAdmin = await fetchAdminSettings(email);
         const admin = {
           id: result.user.uid,
           email: result.user.email || '',
           phone: result.user.phoneNumber || '',
           name: result.user.displayName || email.split('@')[0],
-          level: selectedRole, // Would be fetched from Firestore
-          createdAt: new Date(),
+          level: storedAdmin?.level || selectedRole, // Would be fetched from Firestore
+          createdAt: storedAdmin?.createdAt || new Date(),
           lastLogin: new Date(),
-          isActive: true
+          isActive: storedAdmin?.isActive ?? true,
+          region: storedAdmin?.region,
+          assignedShops: storedAdmin?.assignedShops,
+          deviceId: storedAdmin?.deviceId,
+          deviceLocked: storedAdmin?.deviceLocked ?? false
         };
+        
+        // Check device authorization
+        const deviceError = checkDeviceAuthorization(admin);
+        if (deviceError) {
+          setError(deviceError);
+          setIsLoading(false);
+          setLoading(false);
+          return;
+        }
+        
         setAdmin(admin);
         setCurrentView('admin');
       }
@@ -82,8 +138,17 @@ export default function LoginPage() {
       createdAt: new Date(),
       lastLogin: new Date(),
       isActive: true,
-      region: 'Demo Region'
+      region: 'Demo Region',
+      deviceLocked: false
     };
+    
+    // Check device authorization for demo login
+    const deviceError = checkDeviceAuthorization(demoAdmin);
+    if (deviceError) {
+      setError(deviceError);
+      return;
+    }
+    
     setAdmin(demoAdmin);
     setCurrentView('admin');
   };
