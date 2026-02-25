@@ -136,13 +136,13 @@ export default function GameMode() {
       purchaseAmount: amount
     });
     
-    // Generate winning number (stored in memory only - not displayed)
-    // Always generate from 1-17, but use threshold to determine win
-    const winningNum = generateSecureRandomNumber(17);
+    // Generate winning number from the displayed range (1 to 18-threshold)
+    // Only ONE number wins from the displayed range
+    const winningNum = generateSecureRandomNumber(18 - config.threshold);
     const threshold = config.threshold;
     
     // Store both the winning number and threshold
-    // Win if selected number <= threshold (lower threshold = harder)
+    // Win if selected number === winning number (exact match)
     setCorrectNumber(winningNum);
     setThresholdNumber(threshold);
     
@@ -162,9 +162,8 @@ export default function GameMode() {
     
     setSelectedNumber(number);
     
-    // Check if won - player wins if selected number is in winning range (1 to 18-threshold)
-    const winningEndNumber = 18 - (thresholdNumber || 1);
-    const won = number <= winningEndNumber;
+    // Check if won - player wins only if selected number === correctNumber (exact match)
+    const won = number === correctNumber;
     setGameWon(won);
     
     if (won) {
@@ -208,13 +207,13 @@ export default function GameMode() {
       return;
     }
     
-    // Generate new winning number (always 1-17)
+    // Generate new winning number from displayed range (1 to 18-threshold)
     const config = calculateBoxConfiguration(
       parseFloat(purchaseAmount), 
       currentShop?.qualifyingPurchase || 100
     );
-    const newWinningNum = generateSecureRandomNumber(17);
     const newThreshold = config.threshold;
+    const newWinningNum = generateSecureRandomNumber(18 - newThreshold);
     setCorrectNumber(newWinningNum);
     setThresholdNumber(newThreshold);
     
@@ -427,8 +426,8 @@ export default function GameMode() {
             </p>
             <p className="text-gray-500 text-xs mt-1">
               {language === 'sw'
-                ? `${threshold} nambari pekee zinazoweza kushinda`
-                : `Only ${threshold} numbers can win`}
+                ? 'Nambari moja pekee ndiyo inashinda'
+                : 'Only one number wins'}
             </p>
           </div>
 
