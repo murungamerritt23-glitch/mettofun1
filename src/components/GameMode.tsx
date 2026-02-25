@@ -162,8 +162,8 @@ export default function GameMode() {
     
     setSelectedNumber(number);
     
-    // Check if won - player wins if selected number is within threshold range
-    const won = number <= (thresholdNumber || 1);
+    // Check if won - player wins if selected number is in 12-17 range based on threshold
+    const won = number >= (18 - (thresholdNumber || 1));
     setGameWon(won);
     
     if (won) {
@@ -398,9 +398,12 @@ export default function GameMode() {
     );
   }
 
-  // Number picker modal - shows only numbers up to threshold (dynamic odds)
+  // Number picker modal - shows only numbers 12-17 based on threshold (dynamic odds)
   if (showNumberPicker && !showResult) {
-    const availableNumbers = thresholdNumber || 1;
+    const threshold = thresholdNumber || 1;
+    const startNumber = 18 - threshold; // 12-17 range
+    const endNumber = 17;
+    const winningNumbersCount = threshold;
     
     return (
       <div className="min-h-screen p-4 flex flex-col">
@@ -410,8 +413,8 @@ export default function GameMode() {
           </h2>
           <p className="text-gray-400 text-center mb-2">
             {language === 'sw' 
-              ? `Chagua nambari kati ya 1 na ${availableNumbers}`
-              : `Pick a number between 1 and ${availableNumbers}`}
+              ? `Chagua nambari kati ya ${startNumber} na ${endNumber}`
+              : `Pick a number between ${startNumber} and ${endNumber}`}
           </p>
           
           {/* Dynamic Odds Info */}
@@ -423,19 +426,19 @@ export default function GameMode() {
             </p>
             <p className="text-gray-500 text-xs mt-1">
               {language === 'sw'
-                ? `${availableNumbers} nambari pekee zinazoweza kushinda`
-                : `Only ${availableNumbers} numbers can win`}
+                ? `${winningNumbersCount} nambari pekee zinazoweza kushinda`
+                : `Only ${winningNumbersCount} numbers can win`}
             </p>
           </div>
 
           <div className={`grid gap-2 sm:gap-3 ${
-            availableNumbers <= 3 
+            winningNumbersCount <= 3 
               ? 'grid-cols-3' 
-              : availableNumbers <= 6
+              : winningNumbersCount <= 6
                 ? 'grid-cols-3 sm:grid-cols-6'
                 : 'grid-cols-4 sm:grid-cols-5'
           }`}>
-            {Array.from({ length: availableNumbers }, (_, i) => i + 1).map((num) => (
+            {Array.from({ length: winningNumbersCount }, (_, i) => startNumber + i).map((num) => (
               <motion.button
                 key={num}
                 whileHover={{ scale: 1.05 }}
