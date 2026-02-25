@@ -11,7 +11,8 @@ import { useAuthStore, useShopStore, useItemStore, useUIStore } from '@/store';
 import { localShops, localItems, localAttempts, clearAllData } from '@/lib/local-db';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
-import type { Shop, Item } from '@/types';
+import type { Shop, Item, AdminPermissions } from '@/types';
+import { ADMIN_PERMISSIONS } from '@/types';
 
 type TabType = 'dashboard' | 'shops' | 'items' | 'attempts' | 'analytics' | 'settings' | 'staff';
 
@@ -29,20 +30,39 @@ export default function AdminDashboard() {
   const { items, setItems } = useItemStore();
   const { setCurrentView } = useUIStore();
 
+  // Get permissions based on admin level
+  const permissions: AdminPermissions = admin?.level ? 
+    (ADMIN_PERMISSIONS as any)[admin.level] : {
+      canManageAdmins: false,
+      canOnboardShops: false,
+      canActivateShops: false,
+      canEditQualifyingPurchase: false,
+      canEditItems: false,
+      canViewAnalytics: false,
+      canBackupData: false,
+      canManageSettings: false,
+    };
+
   // Load shops on mount
   useEffect(() => {
     localShops.getAll().then(setShops);
   }, []);
 
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'shops', label: 'Shops', icon: Store },
-    { id: 'items', label: 'Items', icon: Package },
-    { id: 'attempts', label: 'Attempts', icon: Users },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'staff', label: 'Staff', icon: Users },
-    { id: 'settings', label: 'Settings', icon: Settings },
+  // Define available tabs based on permissions
+  const allTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
+    { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canOnboardShops' },
+    { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
+    { id: 'attempts', label: 'Attempts', icon: Users, requiredPermission: 'canViewAnalytics' },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, requiredPermission: 'canViewAnalytics' },
+    { id: 'staff', label: 'Staff', icon: Users, requiredPermission: 'canManageAdmins' },
+    { id: 'settings', label: 'Settings', icon: Settings, requiredPermission: 'canManageSettings' },
   ];
+
+  // Filter tabs based on permissions
+  const tabs = allTabs.filter(tab => 
+    tab.requiredPermission === null || (permissions as any)[tab.requiredPermission]
+  );
 
   const handleLogout = () => {
     logout();
@@ -203,14 +223,16 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 text-sm">Update prizes & values</p>
               </button>
               
-              <button
-                onClick={handleBackup}
-                className="card hover:border-gold-500 transition-all text-left"
-              >
-                <Settings className="text-gold-500 mb-2" size={24} />
-                <h3 className="font-semibold text-white">Backup Data</h3>
-                <p className="text-gray-400 text-sm">Export all data</p>
-              </button>
+              {permissions.canBackupData && (
+                <button
+                  onClick={handleBackup}
+                  className="card hover:border-gold-500 transition-all text-left"
+                >
+                  <Settings className="text-gold-500 mb-2" size={24} />
+                  <h3 className="font-semibold text-white">Backup Data</h3>
+                  <p className="text-gray-400 text-sm">Export all data</p>
+                </button>
+              )}
             </div>
           </div>
         </main>
@@ -236,13 +258,15 @@ export default function AdminDashboard() {
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-6">
               <h1 className="gold-gradient-text text-3xl font-bold">Shops</h1>
-              <button
-                onClick={() => setIsCreatingShop(true)}
-                className="btn-gold flex items-center gap-2"
-              >
-                <Plus size={20} />
-                Add Shop
-              </button>
+              {permissions.canOnboardShops && (
+                <button
+                  onClick={() => setIsCreatingShop(true)}
+                  className="btn-gold flex items-center gap-2"
+                >
+                  <Plus size={20} />
+                  Add Shop
+                </button>
+              )}
             </div>
 
             <AnimatePresence>
@@ -311,29 +335,35 @@ export default function AdminDashboard() {
                       >
                         <Package size={20} />
                       </button>
-                      <button
-                        onClick={() => handleToggleShopActive(shop)}
-                        className={`p-2 rounded ${
-                          shop.isActive 
-                            ? 'text-red-500 hover:bg-red-900/30' 
-                            : 'text-green-500 hover:bg-green-900/30'
-                        }`}
-                        title={shop.isActive ? 'Deactivate' : 'Activate'}
-                      >
-                        {shop.isActive ? <PowerOff size={20} /> : <Power size={20} />}
-                      </button>
-                      <button
-                        onClick={() => setEditingShop(shop)}
-                        className="p-2 text-blue-500 hover:bg-blue-900/30 rounded"
-                      >
-                        <Edit size={20} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteShop(shop.id)}
-                        className="p-2 text-red-500 hover:bg-red-900/30 rounded"
-                      >
-                        <Trash2 size={20} />
-                      </button>
+                      {permissions.canActivateShops && (
+                        <button
+                          onClick={() => handleToggleShopActive(shop)}
+                          className={`p-2 rounded ${
+                            shop.isActive 
+                              ? 'text-red-500 hover:bg-red-900/30' 
+                              : 'text-green-500 hover:bg-green-900/30'
+                          }`}
+                          title={shop.isActive ? 'Deactivate' : 'Activate'}
+                        >
+                          {shop.isActive ? <PowerOff size={20} /> : <Power size={20} />}
+                        </button>
+                      )}
+                      {permissions.canOnboardShops && (
+                        <>
+                          <button
+                            onClick={() => setEditingShop(shop)}
+                            className="p-2 text-blue-500 hover:bg-blue-900/30 rounded"
+                          >
+                            <Edit size={20} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteShop(shop.id)}
+                            className="p-2 text-red-500 hover:bg-red-900/30 rounded"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))
@@ -386,20 +416,22 @@ export default function AdminDashboard() {
                       {/* Item Name */}
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-semibold text-white">{item.name}</h3>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => setEditingItem(item)}
-                            className="p-1 text-blue-500 hover:bg-blue-900/30 rounded"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteItem(item.id)}
-                            className="p-1 text-red-500 hover:bg-red-900/30 rounded"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                        {permissions.canEditItems && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => setEditingItem(item)}
+                              className="p-1 text-blue-500 hover:bg-blue-900/30 rounded"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(item.id)}
+                              className="p-1 text-red-500 hover:bg-red-900/30 rounded"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                       
                       {/* Item Price */}

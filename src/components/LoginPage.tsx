@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Mail, Phone, Lock, Eye, EyeOff, ShoppingCart, Loader2 } from 'lucide-react';
 import { useAuthStore, useUIStore } from '@/store';
 import { firebaseAuth } from '@/lib/firebase';
+import type { AdminLevel } from '@/types';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedRole, setSelectedRole] = useState<AdminLevel>('super_admin');
   
   const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
   const { setCurrentView } = useUIStore();
@@ -35,7 +37,7 @@ export default function LoginPage() {
             email,
             phone: '',
             name: email.split('@')[0],
-            level: 'super_admin' as const,
+            level: selectedRole,
             createdAt: new Date(),
             lastLogin: new Date(),
             isActive: true,
@@ -53,7 +55,7 @@ export default function LoginPage() {
           email: result.user.email || '',
           phone: result.user.phoneNumber || '',
           name: result.user.displayName || email.split('@')[0],
-          level: 'super_admin' as const, // Would be fetched from Firestore
+          level: selectedRole, // Would be fetched from Firestore
           createdAt: new Date(),
           lastLogin: new Date(),
           isActive: true
@@ -69,14 +71,14 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = () => {
+  const handleDemoLogin = (role: AdminLevel = 'super_admin') => {
     // Quick demo login for testing
     const demoAdmin = {
       id: 'demo-admin',
       email: 'demo@metofun.com',
       phone: '+255123456789',
       name: 'Demo Admin',
-      level: 'super_admin' as const,
+      level: role,
       createdAt: new Date(),
       lastLogin: new Date(),
       isActive: true,
@@ -194,11 +196,50 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-700">
+            {/* Role selector for testing */}
+            <div className="mb-4">
+              <label className="text-gray-400 text-xs mb-2 block">Select Role (Demo):</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('super_admin')}
+                  className={`flex-1 py-2 px-3 rounded text-xs font-medium transition-colors ${
+                    selectedRole === 'super_admin'
+                      ? 'bg-gold-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  Super Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('agent_admin')}
+                  className={`flex-1 py-2 px-3 rounded text-xs font-medium transition-colors ${
+                    selectedRole === 'agent_admin'
+                      ? 'bg-gold-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  Agent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('shop_admin')}
+                  className={`flex-1 py-2 px-3 rounded text-xs font-medium transition-colors ${
+                    selectedRole === 'shop_admin'
+                      ? 'bg-gold-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  Shop Admin
+                </button>
+              </div>
+            </div>
             <button
-              onClick={handleDemoLogin}
+              onClick={() => handleDemoLogin(selectedRole)}
               className="btn-gold-outline w-full mb-3"
             >
-              Demo Login
+              Demo Login ({selectedRole.replace('_', ' ')})
             </button>
             <button
               onClick={handleCustomerMode}

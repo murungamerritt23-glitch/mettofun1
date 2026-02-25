@@ -1,5 +1,10 @@
 // User Types
-export type AdminLevel = 'super_admin' | 'shop_admin' | 'manager_admin' | 'mini_admin';
+// Admin Levels:
+// - super_admin: Full access (add/remove admins, onboard shops, activate/deactivate shops, set qualifying purchase, edit items)
+// - agent_admin: Can onboard shops, activate/deactivate shops
+// - shop_admin: Can set qualifying purchase, edit items
+
+export type AdminLevel = 'super_admin' | 'agent_admin' | 'shop_admin';
 
 export interface Admin {
   id: string;
@@ -13,6 +18,52 @@ export interface Admin {
   assignedShops?: string[];
   region?: string;
 }
+
+// Permission types for role-based access control
+export interface AdminPermissions {
+  canManageAdmins: boolean;      // Add/remove other admins
+  canOnboardShops: boolean;      // Create new shops
+  canActivateShops: boolean;     // Activate/deactivate shops
+  canEditQualifyingPurchase: boolean; // Set qualifying purchase amount
+  canEditItems: boolean;          // Edit the 17 items
+  canViewAnalytics: boolean;      // View analytics
+  canBackupData: boolean;         // Backup/restore data
+  canManageSettings: boolean;     // App settings
+}
+
+// Map admin level to permissions
+export const ADMIN_PERMISSIONS: Record<AdminLevel, AdminPermissions> = {
+  super_admin: {
+    canManageAdmins: true,
+    canOnboardShops: true,
+    canActivateShops: true,
+    canEditQualifyingPurchase: true,
+    canEditItems: true,
+    canViewAnalytics: true,
+    canBackupData: true,
+    canManageSettings: true,
+  },
+  agent_admin: {
+    canManageAdmins: false,
+    canOnboardShops: true,
+    canActivateShops: true,
+    canEditQualifyingPurchase: false,
+    canEditItems: false,
+    canViewAnalytics: false,
+    canBackupData: false,
+    canManageSettings: false,
+  },
+  shop_admin: {
+    canManageAdmins: false,
+    canOnboardShops: false,
+    canActivateShops: false,
+    canEditQualifyingPurchase: true,
+    canEditItems: true,
+    canViewAnalytics: false,
+    canBackupData: false,
+    canManageSettings: false,
+  },
+};
 
 // Shop Types
 export interface ShopLocation {
