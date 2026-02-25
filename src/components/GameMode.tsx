@@ -343,7 +343,6 @@ export default function GameMode() {
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="input"
                   placeholder="+255 700 000 000"
-                  disabled={isDemoMode}
                 />
               </div>
               
@@ -357,7 +356,6 @@ export default function GameMode() {
                   onChange={(e) => setPurchaseAmount(e.target.value)}
                   className="input"
                   placeholder="100"
-                  disabled={isDemoMode}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   {t.qualifyingPurchase}: KSh {currentShop?.qualifyingPurchase || 100}
@@ -366,7 +364,7 @@ export default function GameMode() {
 
               <button
                 onClick={handleAuthorize}
-                disabled={isAuthorizing || isDemoMode}
+                disabled={isAuthorizing}
                 className="btn-gold w-full flex items-center justify-center gap-2"
               >
                 {isAuthorizing ? (
