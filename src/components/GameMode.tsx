@@ -398,8 +398,10 @@ export default function GameMode() {
     );
   }
 
-  // Number picker modal
+  // Number picker modal - shows only numbers up to threshold (dynamic odds)
   if (showNumberPicker && !showResult) {
+    const availableNumbers = thresholdNumber || 1;
+    
     return (
       <div className="min-h-screen p-4 flex flex-col">
         <div className="max-w-md mx-auto w-full">
@@ -408,8 +410,8 @@ export default function GameMode() {
           </h2>
           <p className="text-gray-400 text-center mb-2">
             {language === 'sw' 
-              ? `Chagua nambari kati ya 1 na ${config.boxCount}`
-              : `Pick a number between 1 and ${config.boxCount}`}
+              ? `Chagua nambari kati ya 1 na ${availableNumbers}`
+              : `Pick a number between 1 and ${availableNumbers}`}
           </p>
           
           {/* Dynamic Odds Info */}
@@ -421,19 +423,19 @@ export default function GameMode() {
             </p>
             <p className="text-gray-500 text-xs mt-1">
               {language === 'sw'
-                ? 'Nambari zaidi = nafasi bora'
-                : 'Higher numbers = better chances'}
+                ? `${availableNumbers} nambari pekee zinazoweza kushinda`
+                : `Only ${availableNumbers} numbers can win`}
             </p>
           </div>
 
           <div className={`grid gap-2 sm:gap-3 ${
-            config.boxCount <= 12 
-              ? 'grid-cols-3 sm:grid-cols-4' 
-              : config.boxCount <= 15 
-                ? 'grid-cols-4 sm:grid-cols-5' 
-                : 'grid-cols-4 sm:grid-cols-5 lg:grid-cols-6'
+            availableNumbers <= 3 
+              ? 'grid-cols-3' 
+              : availableNumbers <= 6
+                ? 'grid-cols-3 sm:grid-cols-6'
+                : 'grid-cols-4 sm:grid-cols-5'
           }`}>
-            {Array.from({ length: config.boxCount }, (_, i) => i + 1).map((num) => (
+            {Array.from({ length: availableNumbers }, (_, i) => i + 1).map((num) => (
               <motion.button
                 key={num}
                 whileHover={{ scale: 1.05 }}
