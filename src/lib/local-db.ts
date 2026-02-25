@@ -208,6 +208,11 @@ export const localAdmins = {
     return database.get('admins', id);
   },
 
+  async getAll(): Promise<Admin[]> {
+    const database = await initDB();
+    return database.getAll('admins');
+  },
+
   async save(admin: Admin): Promise<void> {
     const database = await initDB();
     await database.put('admins', admin);

@@ -8,13 +8,13 @@ import {
   Save, Smartphone, Power, PowerOff, Copy
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore } from '@/store';
-import { localShops, localItems, localAttempts, clearAllData } from '@/lib/local-db';
+import { localShops, localItems, localAttempts, localAdmins, clearAllData } from '@/lib/local-db';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
-import type { Shop, Item, AdminPermissions } from '@/types';
+import type { Shop, Item, AdminPermissions, Admin, AdminLevel } from '@/types';
 import { ADMIN_PERMISSIONS } from '@/types';
 
-type TabType = 'dashboard' | 'shops' | 'items' | 'attempts' | 'analytics' | 'settings' | 'staff';
+type TabType = 'dashboard' | 'shops' | 'items' | 'attempts' | 'analytics' | 'settings' | 'staff' | 'myShop';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -24,6 +24,9 @@ export default function AdminDashboard() {
   const [isCreatingShop, setIsCreatingShop] = useState(false);
   const [attempts, setAttempts] = useState<any[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
+  const [admins, setAdmins] = useState<Admin[]>([]);
+  const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
   
   const { admin, logout } = useAuthStore();
   const { currentShop, setCurrentShop } = useShopStore();
@@ -46,11 +49,28 @@ export default function AdminDashboard() {
   // Load shops on mount
   useEffect(() => {
     localShops.getAll().then(setShops);
+    localAdmins.getAll().then(setAdmins);
   }, []);
+
+  // Admin handlers
+  const handleSaveAdmin = async (adminData: Admin) => {
+    await localAdmins.save(adminData);
+    setEditingAdmin(null);
+    setIsCreatingAdmin(false);
+    localAdmins.getAll().then(setAdmins);
+  };
+
+  const handleDeleteAdmin = async (adminId: string) => {
+    if (confirm('Are you sure you want to delete this admin?')) {
+      await localAdmins.delete(adminId);
+      localAdmins.getAll().then(setAdmins);
+    }
+  };
 
   // Define available tabs based on permissions
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
+    { id: 'myShop', label: 'My Shop', icon: Store, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canOnboardShops' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
     { id: 'attempts', label: 'Attempts', icon: Users, requiredPermission: 'canViewAnalytics' },
@@ -234,6 +254,122 @@ export default function AdminDashboard() {
                 </button>
               )}
             </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // My Shop view - for shop admins to edit their shop's qualifying purchase
+  if (activeTab === 'myShop') {
+    // Get shops assigned to this admin or all shops if no assignment
+    const assignedShopIds = admin?.assignedShops || [];
+    const availableShops = assignedShopIds.length > 0 
+      ? shops.filter(s => assignedShopIds.includes(s.id))
+      : shops;
+    
+    return (
+      <div className="min-h-screen flex">
+        <AdminSidebar 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onLogout={handleLogout}
+          admin={admin}
+        />
+        
+        <main className="flex-1 p-6">
+          <div className="max-w-2xl mx-auto">
+            <h1 className="gold-gradient-text text-3xl font-bold mb-6">My Shop</h1>
+            
+            {!currentShop ? (
+              <div className="card">
+                <h3 className="font-semibold text-white mb-4">Select Your Shop</h3>
+                {availableShops.length === 0 ? (
+                  <p className="text-gray-500">No shops assigned to your account.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {availableShops.map((shop) => (
+                      <button
+                        key={shop.id}
+                        onClick={() => {
+                          setCurrentShop(shop);
+                          loadItems();
+                        }}
+                        className="w-full card hover:border-gold-500 text-left"
+                      >
+                        <h4 className="font-semibold text-white">{shop.shopName}</h4>
+                        <p className="text-gray-400 text-sm">Code: {shop.shopCode}</p>
+                        <p className="text-gray-500 text-xs">
+                          Qualifying: KSh {shop.qualifyingPurchase.toLocaleString()}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="card mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-white text-lg">{currentShop.shopName}</h3>
+                      <p className="text-gray-400 text-sm">Code: {currentShop.shopCode}</p>
+                    </div>
+                    <button
+                      onClick={() => setCurrentShop(null)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                  
+                  {permissions.canEditQualifyingPurchase && (
+                    <div className="mb-4">
+                      <label className="block text-gray-400 text-sm mb-2">
+                        Qualifying Purchase Amount (KSh)
+                      </label>
+                      <input
+                        type="number"
+                        value={currentShop.qualifyingPurchase}
+                        onChange={async (e) => {
+                          const newValue = parseInt(e.target.value) || 0;
+                          const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                          await localShops.save(updatedShop);
+                          setCurrentShop(updatedShop);
+                          localShops.getAll().then(setShops);
+                        }}
+                        className="input w-full"
+                        min={0}
+                        step={100}
+                      />
+                      <p className="text-gray-500 text-xs mt-1">
+                        Minimum purchase amount required to play
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {permissions.canEditItems && (
+                  <div className="card">
+                    <h3 className="font-semibold text-white mb-4">Quick Edit Items</h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Go to the Items tab to edit prize values. 
+                      Item values must be ≤ 80% of qualifying purchase (KSh {(currentShop.qualifyingPurchase * 0.8).toLocaleString()})
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('items')}
+                      className="btn-gold"
+                    >
+                      <Package size={18} className="mr-2" />
+                      Manage Items
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </main>
       </div>
@@ -628,6 +764,22 @@ export default function AdminDashboard() {
 
   // Staff management view (Super Admin only)
   if (activeTab === 'staff') {
+    const handleAddStaff = () => {
+      setEditingAdmin({
+        id: crypto.randomUUID(),
+        email: '',
+        phone: '',
+        name: '',
+        level: 'agent_admin',
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        isActive: true,
+        assignedShops: [],
+        region: ''
+      });
+      setIsCreatingAdmin(true);
+    };
+
     return (
       <div className="min-h-screen flex">
         <AdminSidebar 
@@ -644,34 +796,73 @@ export default function AdminDashboard() {
           <div className="max-w-6xl mx-auto">
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">Staff Management</h1>
             
-            <div className="card mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-white">Add New Staff</h3>
-                  <p className="text-gray-400 text-sm">Assign staff to manage shops</p>
-                </div>
-                <button className="btn-gold">
-                  <Plus size={16} className="mr-2" />
-                  Add Staff
-                </button>
-              </div>
-            </div>
+            <AnimatePresence>
+              {(isCreatingAdmin || editingAdmin) && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="card-gold mb-6"
+                >
+                  <h3 className="font-semibold mb-4">
+                    {isCreatingAdmin ? 'Add New Staff' : 'Edit Staff'}
+                  </h3>
+                  <AdminForm
+                    admin={editingAdmin}
+                    shops={shops}
+                    onSave={handleSaveAdmin}
+                    onCancel={() => {
+                      setIsCreatingAdmin(false);
+                      setEditingAdmin(null);
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="card">
               <h3 className="font-semibold mb-4">Staff List</h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
-                  <div>
-                    <p className="text-white font-medium">Demo Admin</p>
-                    <p className="text-gray-400 text-sm">demo@metofun.com</p>
-                  </div>
-                  <span className="px-3 py-1 bg-gold-900/50 text-gold-400 rounded text-sm">
-                    Super Admin
-                  </span>
-                </div>
-                <p className="text-gray-500 text-sm text-center py-4">
-                  Staff management coming soon...
-                </p>
+                {admins.length === 0 ? (
+                  <p className="text-gray-500 text-sm text-center py-4">No staff members yet</p>
+                ) : (
+                  admins.map((staff) => (
+                    <div key={staff.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
+                      <div>
+                        <p className="text-white font-medium">{staff.name || 'Unnamed'}</p>
+                        <p className="text-gray-400 text-sm">{staff.email}</p>
+                        <p className="text-gray-500 text-xs">{staff.phone}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded text-sm ${
+                          staff.level === 'super_admin' 
+                            ? 'bg-gold-900/50 text-gold-400' 
+                            : staff.level === 'agent_admin'
+                            ? 'bg-blue-900/50 text-blue-400'
+                            : 'bg-green-900/50 text-green-400'
+                        }`}>
+                          {staff.level === 'super_admin' ? 'Super Admin' : staff.level === 'agent_admin' ? 'Agent Admin' : 'Shop Admin'}
+                        </span>
+                        {staff.id !== admin?.id && (
+                          <>
+                            <button
+                              onClick={() => setEditingAdmin(staff)}
+                              className="p-2 text-blue-500 hover:bg-blue-900/30 rounded"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAdmin(staff.id)}
+                              className="p-2 text-red-500 hover:bg-red-900/30 rounded"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -992,6 +1183,159 @@ function ShopForm({
         <button type="submit" className="btn-gold flex-1">
           <Save size={16} className="mr-2" />
           Save
+        </button>
+        <button type="button" onClick={onCancel} className="btn-gold-outline">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// Admin Form Component
+function AdminForm({
+  admin,
+  shops,
+  onSave,
+  onCancel,
+}: {
+  admin: Admin | null;
+  shops: Shop[];
+  onSave: (admin: Admin) => void;
+  onCancel: () => void;
+}) {
+  const [formData, setFormData] = useState({
+    name: admin?.name || '',
+    email: admin?.email || '',
+    phone: admin?.phone || '',
+    level: admin?.level || 'agent_admin' as AdminLevel,
+    isActive: admin?.isActive ?? true,
+    assignedShops: admin?.assignedShops || [] as string[],
+    region: admin?.region || '',
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!admin) return;
+    
+    onSave({
+      ...admin,
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      level: formData.level,
+      isActive: formData.isActive,
+      assignedShops: formData.assignedShops,
+      region: formData.region,
+    });
+  };
+
+  const toggleShop = (shopId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      assignedShops: prev.assignedShops.includes(shopId)
+        ? prev.assignedShops.filter(id => id !== shopId)
+        : [...prev.assignedShops, shopId]
+    }));
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Name</label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="input"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Email</label>
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            className="input"
+            required
+          />
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Phone</label>
+          <input
+            type="tel"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            className="input"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Admin Level</label>
+          <select
+            value={formData.level}
+            onChange={(e) => setFormData({ ...formData, level: e.target.value as AdminLevel })}
+            className="input"
+          >
+            <option value="agent_admin">Agent Admin</option>
+            <option value="shop_admin">Shop Admin</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Region</label>
+        <input
+          type="text"
+          value={formData.region}
+          onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+          className="input"
+          placeholder="e.g., Nairobi, Mombasa"
+        />
+      </div>
+
+      {formData.level === 'shop_admin' && (
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">Assigned Shops</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto bg-gray-800 rounded-lg p-3">
+            {shops.length === 0 ? (
+              <p className="text-gray-500 text-sm">No shops available</p>
+            ) : (
+              shops.map(shop => (
+                <label key={shop.id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.assignedShops.includes(shop.id)}
+                    onChange={() => toggleShop(shop.id)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-gray-300">{shop.shopName}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={formData.isActive}
+          onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+          className="w-4 h-4"
+        />
+        <label className="text-sm text-gray-300">Active</label>
+      </div>
+
+      <div className="flex gap-2 pt-4">
+        <button type="submit" className="btn-gold flex-1">
+          <Save size={16} className="mr-2" />
+          Save Staff
         </button>
         <button type="button" onClick={onCancel} className="btn-gold-outline">
           Cancel
