@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Store, ArrowLeft, Plus, Search, MapPin, Check, Lock } from 'lucide-react';
 import { useShopStore, useUIStore, useGameStore } from '@/store';
 import { localShops } from '@/lib/local-db';
+import { isDeviceAuthorized } from '@/lib/device';
 import type { Shop } from '@/types';
 
 export default function ShopSelector() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [newShopCode, setNewShopCode] = useState('');
+  const [deviceError, setDeviceError] = useState<string | null>(null);
   
   const { shops, setCurrentShop, addShop } = useShopStore();
   const { setCurrentView } = useUIStore();
@@ -22,8 +24,16 @@ export default function ShopSelector() {
   );
 
   const handleSelectShop = async (shop: Shop) => {
-    // Note: Device locking is for admins only, not customers
-    // Customers can play from any device
+    setDeviceError(null);
+    
+    // Check if device is authorized for this shop
+    // Only authorized devices (shop devices) can access Metofun
+    const authorized = isDeviceAuthorized(shop.deviceId, shop.deviceLocked);
+    
+    if (!authorized) {
+      setDeviceError('This device is not authorized to access this shop. Please use an authorized shop device.');
+      return;
+    }
     
     setCurrentShop(shop);
     setCurrentView('customer');
@@ -123,6 +133,14 @@ export default function ShopSelector() {
 
       {/* Shop List */}
       <div className="max-w-2xl mx-auto space-y-3">
+        {deviceError && (
+          <div className="card border-red-500 bg-red-900/20 mb-4">
+            <div className="flex items-center gap-2 text-red-400">
+              <Lock size={20} />
+              <span>{deviceError}</span>
+            </div>
+          </div>
+        )}
         {filteredShops.length === 0 ? (
           <div className="text-center py-12">
             <Store size={48} className="mx-auto text-gray-600 mb-4" />
@@ -164,16 +182,6 @@ export default function ShopSelector() {
             </motion.button>
           ))
         )}
-      </div>
-
-      {/* Customer Mode Link */}
-      <div className="max-w-2xl mx-auto mt-8 text-center">
-        <button
-          onClick={() => setCurrentView('customer')}
-          className="text-gold-400 hover:text-gold-300 text-sm"
-        >
-          Or continue as customer without shop →
-        </button>
       </div>
     </div>
   );
