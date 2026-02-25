@@ -6,7 +6,8 @@ import {
   signOut,
   onAuthStateChanged,
   Auth,
-  User
+  User,
+  connectAuthEmulator
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -23,7 +24,8 @@ import {
   limit,
   onSnapshot,
   Firestore,
-  serverTimestamp
+  serverTimestamp,
+  connectFirestoreEmulator
 } from 'firebase/firestore';
 import type { Shop } from '@/types';
 
@@ -42,14 +44,16 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 
-if (typeof window !== 'undefined' && !getApps().length) {
-  app = initializeApp(firebaseConfig);
+if (typeof window !== 'undefined') {
+  app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
-} else if (typeof window !== 'undefined') {
-  app = getApps()[0];
-  auth = getAuth(app);
-  db = getFirestore(app);
+  
+  // Connect to emulators in development
+  if (process.env.NODE_ENV === 'development') {
+    connectAuthEmulator(auth, "http://localhost:9099");
+    connectFirestoreEmulator(db, 'localhost', 8080);
+  }
 }
 
 // Auth functions
