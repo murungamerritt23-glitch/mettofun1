@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, Lock, Eye, EyeOff, ShoppingCart, Loader2 } from 'lucide-react';
-import { useAuthStore, useUIStore } from '@/store';
+import { useAuthStore, useUIStore, useShopStore } from '@/store';
 import { firebaseAuth } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
-import { localAdmins } from '@/lib/local-db';
+import { localAdmins, localShops } from '@/lib/local-db';
 import type { AdminLevel, Admin } from '@/types';
 
 export default function LoginPage() {

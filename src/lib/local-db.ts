@@ -105,9 +105,40 @@ export const localShops = {
     return database.getFromIndex('shops', 'by-code', code);
   },
 
+  async getByCreator(createdBy: string): Promise<Shop[]> {
+    const database = await initDB();
+    const all = await database.getAll('shops');
+    return all.filter(shop => shop.createdBy === createdBy);
+  },
+
   async save(shop: Shop): Promise<void> {
     const database = await initDB();
     await database.put('shops', shop);
+  },
+
+  async ensureDefaultShop(): Promise<Shop> {
+    // Check if default shop exists
+    const existing = await this.getByCode('METOFUN');
+    if (existing) return existing;
+    
+    // Create default shop
+    const defaultShop: Shop = {
+      id: crypto.randomUUID(),
+      shopName: 'Metofun Demo Shop',
+      shopCode: 'METOFUN',
+      deviceId: crypto.randomUUID(),
+      deviceLocked: false,
+      qualifyingPurchase: 100,
+      promoMessage: 'Play & Win Amazing Rewards!',
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'system',
+      backupEnabled: false
+    };
+    
+    await this.save(defaultShop);
+    return defaultShop;
   },
 
   async delete(id: string): Promise<void> {
