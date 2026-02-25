@@ -162,8 +162,9 @@ export default function GameMode() {
     
     setSelectedNumber(number);
     
-    // Check if won - player wins if selected number is in 12-17 range based on threshold
-    const won = number >= (18 - (thresholdNumber || 1));
+    // Check if won - player wins if selected number is in winning range (1 to 18-threshold)
+    const winningEndNumber = 18 - (thresholdNumber || 1);
+    const won = number <= winningEndNumber;
     setGameWon(won);
     
     if (won) {
@@ -398,12 +399,12 @@ export default function GameMode() {
     );
   }
 
-  // Number picker modal - shows only numbers 12-17 based on threshold (dynamic odds)
+  // Number picker modal - shows numbers 1 to (18-threshold) based on odds percentage
   if (showNumberPicker && !showResult) {
     const threshold = thresholdNumber || 1;
-    const startNumber = 18 - threshold; // 12-17 range
-    const endNumber = 17;
-    const winningNumbersCount = threshold;
+    const startNumber = 1;
+    const endNumber = 18 - threshold; // 12-17 based on ratio
+    const availableNumbers = endNumber - startNumber + 1;
     
     return (
       <div className="min-h-screen p-4 flex flex-col">
@@ -426,19 +427,19 @@ export default function GameMode() {
             </p>
             <p className="text-gray-500 text-xs mt-1">
               {language === 'sw'
-                ? `${winningNumbersCount} nambari pekee zinazoweza kushinda`
-                : `Only ${winningNumbersCount} numbers can win`}
+                ? `${threshold} nambari pekee zinazoweza kushinda`
+                : `Only ${threshold} numbers can win`}
             </p>
           </div>
 
           <div className={`grid gap-2 sm:gap-3 ${
-            winningNumbersCount <= 3 
+            availableNumbers <= 3 
               ? 'grid-cols-3' 
-              : winningNumbersCount <= 6
+              : availableNumbers <= 6
                 ? 'grid-cols-3 sm:grid-cols-6'
                 : 'grid-cols-4 sm:grid-cols-5'
           }`}>
-            {Array.from({ length: winningNumbersCount }, (_, i) => startNumber + i).map((num) => (
+            {Array.from({ length: availableNumbers }, (_, i) => startNumber + i).map((num) => (
               <motion.button
                 key={num}
                 whileHover={{ scale: 1.05 }}
