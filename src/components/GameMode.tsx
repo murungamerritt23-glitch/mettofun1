@@ -109,17 +109,21 @@ export default function GameMode() {
     setIsAuthorizing(true);
     setLocationError(null);
     
-    // Check if user is at the shop location
-    const locationResult = await verifyShopLocation(currentShop?.location);
-    
-    if (!locationResult.isValid) {
-      setIsAuthorizing(false);
-      setLocationError(
-        language === 'sw' 
-          ? `Unapotoka dukani! ${locationResult.error || 'Hauwezi kucheza hapa.'}`
-          : `You must be at the shop to play! ${locationResult.error || 'Location verification failed.'}`
-      );
-      return;
+    // Check if user is at the shop location (non-blocking - allow play if it fails)
+    try {
+      const locationResult = await verifyShopLocation(currentShop?.location);
+      
+      if (!locationResult.isValid) {
+        // Show warning but allow play (location is advisory only)
+        setLocationError(
+          language === 'sw' 
+            ? `Maonyo: ${locationResult.error || 'Hauko karibu na duka.'}`
+            : `Warning: ${locationResult.error || 'Not near shop (playing anyway).'}`
+        );
+      }
+    } catch (error) {
+      // Location check failed - allow play anyway (non-blocking)
+      console.log('Location verification skipped:', error);
     }
     
     // Simulate authorization
