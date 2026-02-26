@@ -21,6 +21,10 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
   - Assign subscription packages (Basic/Medium/Pro)
   - View all shops including inactive (super_admin only)
   - Subscription channels configuration for each tier
+- [x] Add shop assignment feature for super admin and agent admin:
+  - New `canAssignShops` permission for agent_admin level
+  - Staff tab now visible for both canManageAdmins and canAssignShops
+  - Firebase admin functions for syncing assigned shops
 
 ## Current Structure
 
