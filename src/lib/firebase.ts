@@ -27,7 +27,7 @@ import {
   serverTimestamp,
   connectFirestoreEmulator
 } from 'firebase/firestore';
-import type { Shop } from '@/types';
+import type { Shop, Subscription, SubscriptionTier } from '@/types';
 
 // Firebase configuration - Replace with your own config
 const firebaseConfig = {
@@ -351,5 +351,98 @@ export const firebaseSettings = {
       updatedAt: new Date()
     });
     return { success: result.success || false, error: result.error };
+  }
+};
+
+// Subscription collection helper functions for Firestore
+const SUBSCRIPTIONS_COLLECTION = 'subscriptions';
+
+export const firebaseSubscriptions = {
+  // Create a new subscription
+  async create(subscription: Omit<Subscription, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      const id = `${subscription.shopId}_${Date.now()}`;
+      const result = await firebaseDb.set(SUBSCRIPTIONS_COLLECTION, id, {
+        ...subscription,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      return { success: !result.error, id, error: result.error };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get subscription by ID
+  async getById(id: string): Promise<Subscription | null> {
+    const result = await firebaseDb.get(SUBSCRIPTIONS_COLLECTION, id);
+    if (result.error || !result.data) return null;
+    const data = result.data as any;
+    return {
+      id: data.id,
+      shopId: data.shopId,
+      tier: data.tier,
+      status: data.status,
+      startDate: data.startDate?.toDate?.() || new Date(data.startDate),
+      endDate: data.endDate?.toDate?.() || new Date(data.endDate),
+      autoRenew: data.autoRenew,
+      monthlyPrice: data.monthlyPrice,
+      features: data.features || [],
+      createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt),
+      updatedAt: data.updatedAt?.toDate?.() || new Date(data.updatedAt)
+    };
+  },
+
+  // Get subscription by shop ID
+  async getByShopId(shopId: string): Promise<Subscription | null> {
+    const result = await firebaseDb.getAll(SUBSCRIPTIONS_COLLECTION, [
+      where('shopId', '==', shopId),
+      orderBy('createdAt', 'desc'),
+      limit(1)
+    ]);
+    if (result.error || !result.data || result.data.length === 0) return null;
+    const data = result.data[0] as any;
+    return {
+      id: data.id,
+      shopId: data.shopId,
+      tier: data.tier,
+      status: data.status,
+      startDate: data.startDate?.toDate?.() || new Date(data.startDate),
+      endDate: data.endDate?.toDate?.() || new Date(data.endDate),
+      autoRenew: data.autoRenew,
+      monthlyPrice: data.monthlyPrice,
+      features: data.features || [],
+      createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt),
+      updatedAt: data.updatedAt?.toDate?.() || new Date(data.updatedAt)
+    };
+  },
+
+  // Update subscription
+  async update(id: string, data: Partial<Subscription>): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.update(SUBSCRIPTIONS_COLLECTION, id, {
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+    return { success: !result.error, error: result.error };
+  },
+
+  // Cancel subscription
+  async cancel(id: string): Promise<{ success: boolean; error?: string }> {
+    return this.update(id, { status: 'cancelled' });
+  },
+
+  // Renew subscription
+  async renew(id: string, newEndDate: Date): Promise<{ success: boolean; error?: string }> {
+    return this.update(id, { 
+      status: 'active',
+      endDate: newEndDate
+    });
+  },
+
+  // Check if subscription is valid (active and not expired)
+  async isValid(shopId: string): Promise<boolean> {
+    const sub = await this.getByShopId(shopId);
+    if (!sub || sub.status !== 'active') return false;
+    return new Date(sub.endDate) > new Date();
   }
 };

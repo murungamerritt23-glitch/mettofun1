@@ -89,6 +89,9 @@ export interface Shop {
   backupEnabled: boolean;
   lastBackup?: Date;
   location?: ShopLocation;
+  subscriptionId?: string;
+  subscriptionTier?: SubscriptionTier;
+  subscriptionStatus?: SubscriptionStatus;
 }
 
 // Item Types
@@ -190,4 +193,33 @@ export interface SyncQueue {
   data: any;
   timestamp: Date;
   status: 'pending' | 'synced' | 'failed';
+}
+
+// Subscription Types
+export type SubscriptionTier = 'free' | 'basic' | 'premium';
+export type SubscriptionStatus = 'active' | 'expired' | 'cancelled' | 'trial';
+
+export interface Subscription {
+  id: string;
+  shopId: string;
+  tier: SubscriptionTier;
+  status: SubscriptionStatus;
+  startDate: Date;
+  endDate: Date;
+  autoRenew: boolean;
+  monthlyPrice: number;
+  features: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  tier: SubscriptionTier;
+  price: number;
+  features: string[];
+  maxShops: number;
+  maxAdmins: number;
+  analyticsEnabled: boolean;
 }
