@@ -7,6 +7,7 @@ import ShopSelector from '@/components/ShopSelector';
 import GameMode from '@/components/GameMode';
 import AdminDashboard from '@/components/AdminDashboard';
 import { useUIStore, useShopStore } from '@/store';
+import type { Shop } from '@/types';
 import { firebaseShops } from '@/lib/firebase';
 import { initDB } from '@/lib/local-db';
 
@@ -22,18 +23,26 @@ export default function Home() {
         // Initialize local DB for offline support
         await initDB();
         
-        // Load shops from Firebase (Firestore)
-        const shops = await firebaseShops.getAllActive();
+        // Load shops from Firebase with timeout
+        const loadShopsPromise = firebaseShops.getAllActive();
+        
+        // Race between Firebase load and timeout
+        const timeoutPromise = new Promise((resolve) => 
+          setTimeout(() => resolve([]), 5000) // 5 second timeout
+        );
+        
+        const shops = await Promise.race([loadShopsPromise, timeoutPromise]) as Shop[];
         console.log('Loaded shops from Firebase:', shops);
-        setShops(shops);
+        setShops(shops || []);
         
         // If no current shop but there are shops, set the first one
         const storedShop = useShopStore.getState().currentShop;
-        if (!storedShop && shops.length > 0) {
+        if (!storedShop && shops && shops.length > 0) {
           setCurrentShop(shops[0]);
         }
       } catch (error) {
         console.error('Failed to initialize:', error);
+        // Still initialize even on error - app can work with empty data
       }
       setIsInitialized(true);
     };
