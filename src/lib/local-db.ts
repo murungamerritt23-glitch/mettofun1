@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import type { Shop, Item, GameAttempt, Admin, SyncQueue, CustomerSession, PendingCustomer } from '@/types';
+import type { Shop, Item, GameAttempt, Admin, SyncQueue, CustomerSession, PendingCustomer, AdminLevel } from '@/types';
 
 interface MetoFunDB extends DBSchema {
   shops: {
@@ -269,6 +269,17 @@ export const localAdmins = {
   async getAll(): Promise<Admin[]> {
     const database = await initDB();
     return database.getAll('admins');
+  },
+
+  async getByLevel(level: AdminLevel): Promise<Admin[]> {
+    const database = await initDB();
+    const all = await database.getAll('admins');
+    return all.filter(admin => admin.level === level);
+  },
+
+  async hasSuperAdmin(): Promise<boolean> {
+    const superAdmins = await this.getByLevel('super_admin');
+    return superAdmins.length > 0;
   },
 
   async save(admin: Admin): Promise<void> {

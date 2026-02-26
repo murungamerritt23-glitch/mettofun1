@@ -92,6 +92,16 @@ export default function AdminDashboard() {
 
   // Admin handlers
   const handleSaveAdmin = async (adminData: Admin) => {
+    // Check if trying to set as super_admin
+    if (adminData.level === 'super_admin') {
+      // Check if there's already a super admin
+      const existingSuperAdmins = admins.filter(a => a.level === 'super_admin' && a.id !== adminData.id);
+      if (existingSuperAdmins.length > 0) {
+        alert('There can only be ONE Super Admin. Please contact the existing Super Admin to change this.');
+        return;
+      }
+    }
+    
     await localAdmins.save(adminData);
     setEditingAdmin(null);
     setIsCreatingAdmin(false);
@@ -1095,6 +1105,7 @@ export default function AdminDashboard() {
                   <AdminForm
                     admin={editingAdmin}
                     shops={shops}
+                    admins={admins}
                     onSave={handleSaveAdmin}
                     onCancel={() => {
                       setIsCreatingAdmin(false);
@@ -1540,14 +1551,19 @@ function ShopForm({
 function AdminForm({
   admin,
   shops,
+  admins,
   onSave,
   onCancel,
 }: {
   admin: Admin | null;
   shops: Shop[];
+  admins: Admin[];
   onSave: (admin: Admin) => void;
   onCancel: () => void;
 }) {
+  // Check if there's already a super admin (excluding the admin being edited)
+  const existingSuperAdmin = admins.find(a => a.level === 'super_admin' && a.id !== admin?.id);
+  const isEditingExistingSuperAdmin = admin?.level === 'super_admin';
   const [formData, setFormData] = useState({
     name: admin?.name || '',
     email: admin?.email || '',
@@ -1564,12 +1580,15 @@ function AdminForm({
     e.preventDefault();
     if (!admin) return;
     
+    // If editing existing super admin, preserve the level
+    const finalLevel = isEditingExistingSuperAdmin ? 'super_admin' : formData.level;
+    
     onSave({
       ...admin,
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
-      level: formData.level,
+      level: finalLevel,
       isActive: formData.isActive,
       assignedShops: formData.assignedShops,
       region: formData.region,
@@ -1625,14 +1644,20 @@ function AdminForm({
         </div>
         <div>
           <label className="block text-sm text-gray-400 mb-1">Admin Level</label>
-          <select
-            value={formData.level}
-            onChange={(e) => setFormData({ ...formData, level: e.target.value as AdminLevel })}
-            className="input"
-          >
-            <option value="agent_admin">Agent Admin</option>
-            <option value="shop_admin">Shop Admin</option>
-          </select>
+          {existingSuperAdmin && !isEditingExistingSuperAdmin ? (
+            <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-400 text-sm">
+              ⚠️ Only one Super Admin allowed. A Super Admin already exists.
+            </div>
+          ) : (
+            <select
+              value={formData.level}
+              onChange={(e) => setFormData({ ...formData, level: e.target.value as AdminLevel })}
+              className="input"
+            >
+              <option value="agent_admin">Agent Admin</option>
+              <option value="shop_admin">Shop Admin</option>
+            </select>
+          )}
         </div>
       </div>
 
