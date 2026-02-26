@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops } from '@/lib/local-db';
-import { firebaseShops, firebaseDb, firebaseSettings } from '@/lib/firebase';
+import { firebaseShops, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier } from '@/types';
@@ -63,6 +63,7 @@ export default function AdminDashboard() {
       canViewAnalytics: false,
       canBackupData: false,
       canManageSettings: false,
+      canAssignShops: false,
     };
 
   // Load shops on mount
@@ -114,7 +115,16 @@ export default function AdminDashboard() {
       }
     }
     
+    // Save to local database
     await localAdmins.save(adminData);
+    
+    // Also sync to Firebase
+    try {
+      await firebaseAdmins.save(adminData);
+    } catch (e) {
+      console.log('Firebase sync skipped (local only mode)');
+    }
+    
     setEditingAdmin(null);
     setIsCreatingAdmin(false);
     localAdmins.getAll().then(setAdmins);
@@ -140,10 +150,15 @@ export default function AdminDashboard() {
     { id: 'settings', label: 'Settings', icon: Settings, requiredPermission: 'canManageSettings' },
   ];
 
-  // Filter tabs based on permissions
-  const tabs = allTabs.filter(tab => 
-    tab.requiredPermission === null || (permissions as any)[tab.requiredPermission]
-  );
+  // Filter tabs based on permissions - show Staff tab if canManageAdmins OR canAssignShops
+  const tabs = allTabs.filter(tab => {
+    if (tab.requiredPermission === null) return true;
+    // Special case: Staff tab visible if canManageAdmins OR canAssignShops
+    if (tab.id === 'staff') {
+      return (permissions as any).canManageAdmins || (permissions as any).canAssignShops;
+    }
+    return (permissions as any)[tab.requiredPermission];
+  });
 
   // Save terms and conditions
   const handleSaveTerms = async () => {
@@ -1197,7 +1212,7 @@ export default function AdminDashboard() {
     );
   }
 
-  // Staff management view (Super Admin only)
+  // Staff management view (Super Admin and Agent Admin with assign shops permission)
   if (activeTab === 'staff') {
     const handleAddStaff = () => {
       setEditingAdmin({

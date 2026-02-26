@@ -27,7 +27,7 @@ import {
   serverTimestamp,
   connectFirestoreEmulator
 } from 'firebase/firestore';
-import type { Shop, Subscription, SubscriptionTier } from '@/types';
+import type { Shop, Subscription, SubscriptionTier, Admin } from '@/types';
 
 // Firebase configuration - Replace with your own config
 const firebaseConfig = {
@@ -354,6 +354,94 @@ export const firebaseShops = {
 
 // Settings collection helper functions for Firestore
 const SETTINGS_COLLECTION = 'settings';
+
+// Admin collection helper functions for Firestore
+const ADMINS_COLLECTION = 'admins';
+
+export const firebaseAdmins = {
+  // Get all admins
+  async getAll(): Promise<Admin[]> {
+    const result = await firebaseDb.getAll(ADMINS_COLLECTION, []);
+    if (result.error) {
+      console.error('Error fetching admins:', result.error);
+      return [];
+    }
+    return (result.data || []).map((doc: any) => ({
+      id: doc.id,
+      email: doc.email,
+      phone: doc.phone,
+      name: doc.name,
+      level: doc.level,
+      createdAt: doc.createdAt?.toDate?.() || new Date(doc.createdAt),
+      lastLogin: doc.lastLogin?.toDate?.() || new Date(doc.lastLogin),
+      isActive: doc.isActive,
+      assignedShops: doc.assignedShops || [],
+      region: doc.region,
+      deviceId: doc.deviceId,
+      deviceLocked: doc.deviceLocked,
+    }));
+  },
+
+  // Get admin by ID
+  async getById(id: string): Promise<Admin | null> {
+    const result = await firebaseDb.get(ADMINS_COLLECTION, id);
+    if (result.error || !result.data) return null;
+    const doc = result.data as any;
+    return {
+      id: doc.id,
+      email: doc.email,
+      phone: doc.phone,
+      name: doc.name,
+      level: doc.level,
+      createdAt: doc.createdAt?.toDate?.() || new Date(doc.createdAt),
+      lastLogin: doc.lastLogin?.toDate?.() || new Date(doc.lastLogin),
+      isActive: doc.isActive,
+      assignedShops: doc.assignedShops || [],
+      region: doc.region,
+      deviceId: doc.deviceId,
+      deviceLocked: doc.deviceLocked,
+    };
+  },
+
+  // Create or update admin
+  async save(admin: Admin): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.set(ADMINS_COLLECTION, admin.id, {
+      email: admin.email,
+      phone: admin.phone,
+      name: admin.name,
+      level: admin.level,
+      createdAt: admin.createdAt,
+      lastLogin: admin.lastLogin,
+      isActive: admin.isActive,
+      assignedShops: admin.assignedShops || [],
+      region: admin.region,
+      deviceId: admin.deviceId,
+      deviceLocked: admin.deviceLocked,
+    });
+    return { success: !result.error, error: result.error };
+  },
+
+  // Update admin (e.g., assigned shops)
+  async update(id: string, data: Partial<Admin>): Promise<{ success: boolean; error?: string }> {
+    const updateData: any = { ...data, updatedAt: new Date() };
+    delete updateData.id;
+    delete updateData.createdAt;
+    
+    const result = await firebaseDb.update(ADMINS_COLLECTION, id, updateData);
+    return { success: !result.error, error: result.error };
+  },
+
+  // Delete admin
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.delete(ADMINS_COLLECTION, id);
+    return { success: !result.error, error: result.error };
+  },
+
+  // Assign shops to an admin
+  async assignShops(adminId: string, shopIds: string[]): Promise<{ success: boolean; error?: string }> {
+    return this.update(adminId, { assignedShops: shopIds });
+  },
+};
 
 export const firebaseSettings = {
   // Get app settings (includes terms and conditions)

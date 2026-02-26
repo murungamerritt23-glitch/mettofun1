@@ -31,6 +31,7 @@ export interface AdminPermissions {
   canViewAnalytics: boolean;      // View analytics
   canBackupData: boolean;         // Backup/restore data
   canManageSettings: boolean;     // App settings
+  canAssignShops: boolean;        // Assign shops to shop admins
 }
 
 // Map admin level to permissions
@@ -44,6 +45,7 @@ export const ADMIN_PERMISSIONS: Record<AdminLevel, AdminPermissions> = {
     canViewAnalytics: true,
     canBackupData: true,
     canManageSettings: true,
+    canAssignShops: true,
   },
   agent_admin: {
     canManageAdmins: false,
@@ -54,6 +56,7 @@ export const ADMIN_PERMISSIONS: Record<AdminLevel, AdminPermissions> = {
     canViewAnalytics: false,
     canBackupData: false,
     canManageSettings: false,
+    canAssignShops: true,  // Can assign shops to shop admins
   },
   shop_admin: {
     canManageAdmins: false,
@@ -64,6 +67,7 @@ export const ADMIN_PERMISSIONS: Record<AdminLevel, AdminPermissions> = {
     canViewAnalytics: false,
     canBackupData: false,
     canManageSettings: false,
+    canAssignShops: false,
   },
 };
 
