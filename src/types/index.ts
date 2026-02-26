@@ -1,8 +1,8 @@
 // User Types
 // Admin Levels:
-// - super_admin: Full access (add/remove admins, onboard shops, activate/deactivate shops, set qualifying purchase, edit items)
+// - super_admin: Full access (add/remove admins, onboard shops, activate/deactivate shops, VIEW qualifying purchase, VIEW items)
 // - agent_admin: Can onboard shops, activate/deactivate shops
-// - shop_admin: Can set qualifying purchase, edit items
+// - shop_admin: Can set qualifying purchase, edit items for their shop only
 
 export type AdminLevel = 'super_admin' | 'agent_admin' | 'shop_admin';
 
@@ -40,8 +40,8 @@ export const ADMIN_PERMISSIONS: Record<AdminLevel, AdminPermissions> = {
     canManageAdmins: true,
     canOnboardShops: true,
     canActivateShops: true,
-    canEditQualifyingPurchase: true,
-    canEditItems: true,
+    canEditQualifyingPurchase: false,  // Super admin can only READ qualifying purchase
+    canEditItems: false,  // Super admin can only READ items (shop admin manages their own)
     canViewAnalytics: true,
     canBackupData: true,
     canManageSettings: true,
