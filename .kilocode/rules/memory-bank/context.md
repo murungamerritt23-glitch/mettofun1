@@ -14,6 +14,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] ESLint configuration
 - [x] Memory bank documentation
 - [x] Recipe system for common features
+- [x] Add customer mode launch from admin dashboard (tap "Play" to switch to customer mode)
 
 ## Current Structure
 
@@ -85,3 +86,4 @@ export async function GET() {
 | Date | Changes |
 |------|---------|
 | Initial | Template created with base setup |
+| Today | Add Play button in admin dashboard to launch customer mode directly |
