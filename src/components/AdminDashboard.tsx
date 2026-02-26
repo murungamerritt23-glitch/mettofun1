@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
-  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Play
+  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Play, Zap
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops } from '@/lib/local-db';
@@ -42,7 +42,7 @@ export default function AdminDashboard() {
   const { currentShop, setCurrentShop } = useShopStore();
   const { items, setItems } = useItemStore();
   const { setCurrentView } = useUIStore();
-  const { setCustomerSession, setSelectedItem, setGameStatus, setCorrectNumber, setThresholdNumber } = useGameStore();
+  const { setCustomerSession, setSelectedItem, setGameStatus, setCorrectNumber, setThresholdNumber, setDemoMode } = useGameStore();
 
   // Load customers data when shop changes
   useEffect(() => {
@@ -493,7 +493,13 @@ export default function AdminDashboard() {
       setPendingCustomers(await localPendingCustomers.getByShop(currentShop!.id));
     };
 
-    const handleLaunchCustomer = async (customer: PendingCustomer) => {
+    const handleLaunchCustomer = async (customer: PendingCustomer, isDemo: boolean = false) => {
+      // For non-shop admins, force demo mode
+      const isDemoMode = isDemo || admin?.level !== 'shop_admin';
+      
+      // Set demo mode in game store
+      setDemoMode(isDemoMode);
+      
       // Get the item for this customer
       const item = itemsList.find(i => i.id === customer.itemId);
       
@@ -523,9 +529,11 @@ export default function AdminDashboard() {
       // Set game to playing state
       setGameStatus('playing');
       
-      // Mark customer as used
-      await localPendingCustomers.markUsed(customer.id);
-      setPendingCustomers(await localPendingCustomers.getByShop(currentShop!.id));
+      // Only mark customer as used in real mode (not demo)
+      if (!isDemoMode) {
+        await localPendingCustomers.markUsed(customer.id);
+        setPendingCustomers(await localPendingCustomers.getByShop(currentShop!.id));
+      }
       
       // Switch to customer view
       setCurrentView('customer');
@@ -650,6 +658,11 @@ export default function AdminDashboard() {
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
+                            {admin?.level !== 'shop_admin' && (
+                              <span className="text-xs bg-yellow-600/20 text-yellow-400 px-2 py-1 rounded flex items-center gap-1">
+                                <Zap size={12} /> Demo
+                              </span>
+                            )}
                             <button 
                               onClick={() => handleLaunchCustomer(c)}
                               className="btn-primary flex items-center gap-1"
