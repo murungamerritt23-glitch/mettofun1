@@ -15,6 +15,12 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Memory bank documentation
 - [x] Recipe system for common features
 - [x] Add customer mode launch from admin dashboard (tap "Play" to switch to customer mode)
+- [x] Add super admin shop management features:
+  - Delete shops (permanent deletion)
+  - Activate/deactivate shops
+  - Assign subscription packages (Basic/Medium/Pro)
+  - View all shops including inactive (super_admin only)
+  - Subscription channels configuration for each tier
 
 ## Current Structure
 
