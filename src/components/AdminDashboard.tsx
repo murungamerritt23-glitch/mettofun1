@@ -12,8 +12,8 @@ import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAll
 import { firebaseShops, firebaseDb, firebaseSettings } from '@/lib/firebase';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
-import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer } from '@/types';
-import { ADMIN_PERMISSIONS } from '@/types';
+import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier } from '@/types';
+import { ADMIN_PERMISSIONS, SUBSCRIPTION_CHANNELS } from '@/types';
 
 type TabType = 'dashboard' | 'shops' | 'items' | 'attempts' | 'analytics' | 'settings' | 'staff' | 'myShop' | 'customers';
 
@@ -67,20 +67,31 @@ export default function AdminDashboard() {
 
   // Load shops on mount
   useEffect(() => {
-    // Load shops from Firebase (primary) and fallback to local
     const loadShops = async () => {
-      const fbShops = await firebaseShops.getAllActive();
-      if (fbShops.length > 0) {
-        setShops(fbShops);
+      // Super admin sees all shops (including inactive)
+      if (admin?.level === 'super_admin') {
+        const allShops = await firebaseShops.getAll();
+        if (allShops.length > 0) {
+          setShops(allShops);
+        } else {
+          const localShopList = await localShops.getAll();
+          setShops(localShopList);
+        }
       } else {
-        // Fallback to local if Firebase has no shops
-        const localShopList = await localShops.getAll();
-        setShops(localShopList);
+        // Other admins see only active shops
+        const fbShops = await firebaseShops.getAllActive();
+        if (fbShops.length > 0) {
+          setShops(fbShops);
+        } else {
+          // Fallback to local if Firebase has no shops
+          const localShopList = await localShops.getAll();
+          setShops(localShopList.filter((s: Shop) => s.isActive));
+        }
       }
     };
     loadShops();
     localAdmins.getAll().then(setAdmins);
-  }, []);
+  }, [admin]);
 
   // Load terms content for super admin
   useEffect(() => {
@@ -175,23 +186,59 @@ export default function AdminDashboard() {
   };
 
   const handleToggleShopActive = async (shop: Shop) => {
-    const updatedShop = { ...shop, isActive: !shop.isActive };
-    await firebaseShops.save(updatedShop);
-    await localShops.save(updatedShop);
-    const fbShops = await firebaseShops.getAllActive();
-    setShops(fbShops);
+    await firebaseShops.update(shop.id, { isActive: !shop.isActive });
+    await localShops.save({ ...shop, isActive: !shop.isActive });
+    // Reload shops
+    if (admin?.level === 'super_admin') {
+      const allShops = await firebaseShops.getAll();
+      setShops(allShops);
+    } else {
+      const fbShops = await firebaseShops.getAllActive();
+      setShops(fbShops);
+    }
+  };
+
+  const handleUpdateSubscription = async (shopId: string, subscriptionTier: 'basic' | 'medium' | 'pro') => {
+    await firebaseShops.update(shopId, { 
+      subscriptionTier, 
+      subscriptionStatus: 'active' as const 
+    });
+    await localShops.save({ 
+      ...shops.find(s => s.id === shopId)!, 
+      subscriptionTier, 
+      subscriptionStatus: 'active' 
+    });
+    // Reload shops
+    if (admin?.level === 'super_admin') {
+      const allShops = await firebaseShops.getAll();
+      setShops(allShops);
+    } else {
+      const fbShops = await firebaseShops.getAllActive();
+      setShops(fbShops);
+    }
   };
 
   const handleDeleteShop = async (shopId: string) => {
-    if (confirm('Are you sure you want to delete this shop?')) {
-      // Delete from Firebase
-      await firebaseDb.delete('shops', shopId);
+    // Only super_admin can delete shops
+    if (admin?.level !== 'super_admin') {
+      alert('Only super admins can delete shops');
+      return;
+    }
+    
+    if (confirm('Are you sure you want to DELETE this shop permanently? This cannot be undone!')) {
+      // Hard delete from Firebase
+      await firebaseShops.hardDelete(shopId);
       // Delete from local
       await localShops.delete(shopId);
       await localItems.deleteByShop(shopId);
       // Refresh
-      const fbShops = await firebaseShops.getAllActive();
-      setShops(fbShops);
+      if (admin?.level === 'super_admin') {
+        const allShops = await firebaseShops.getAll();
+        setShops(allShops);
+      } else {
+        const fbShops = await firebaseShops.getAllActive();
+        setShops(fbShops);
+      }
     }
   };
 
@@ -812,6 +859,35 @@ export default function AdminDashboard() {
                             Device Locked
                           </span>
                         )}
+                        {/* Subscription Tier Badge - only show for super_admin */}
+                        {admin?.level === 'super_admin' && (
+                          <select
+                            value={shop.subscriptionTier || 'basic'}
+                            onChange={(e) => handleUpdateSubscription(shop.id, e.target.value as 'basic' | 'medium' | 'pro')}
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              shop.subscriptionTier === 'pro' 
+                                ? 'bg-purple-900/50 text-purple-400' 
+                                : shop.subscriptionTier === 'medium'
+                                ? 'bg-blue-900/50 text-blue-400'
+                                : 'bg-gray-700 text-gray-400'
+                            }`}
+                          >
+                            <option value="basic">Basic</option>
+                            <option value="medium">Medium</option>
+                            <option value="pro">Pro</option>
+                          </select>
+                        )}
+                        {admin?.level !== 'super_admin' && shop.subscriptionTier && (
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            shop.subscriptionTier === 'pro' 
+                              ? 'bg-purple-900/50 text-purple-400' 
+                              : shop.subscriptionTier === 'medium'
+                              ? 'bg-blue-900/50 text-blue-400'
+                              : 'bg-gray-700 text-gray-400'
+                          }`}>
+                            {shop.subscriptionTier.charAt(0).toUpperCase() + shop.subscriptionTier.slice(1)}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -847,13 +923,17 @@ export default function AdminDashboard() {
                           >
                             <Edit size={20} />
                           </button>
-                          <button
-                            onClick={() => handleDeleteShop(shop.id)}
-                            className="p-2 text-red-500 hover:bg-red-900/30 rounded"
-                          >
-                            <Trash2 size={20} />
-                          </button>
                         </>
+                      )}
+                      {/* Delete button - only for super_admin */}
+                      {admin?.level === 'super_admin' && (
+                        <button
+                          onClick={() => handleDeleteShop(shop.id)}
+                          className="p-2 text-red-500 hover:bg-red-900/30 rounded"
+                          title="Delete Shop (Super Admin Only)"
+                        >
+                          <Trash2 size={20} />
+                        </button>
                       )}
                     </div>
                   </div>

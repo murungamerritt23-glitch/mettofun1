@@ -196,8 +196,57 @@ export interface SyncQueue {
 }
 
 // Subscription Types
-export type SubscriptionTier = 'free' | 'basic' | 'premium';
+export type SubscriptionTier = 'basic' | 'medium' | 'pro';
 export type SubscriptionStatus = 'active' | 'expired' | 'cancelled' | 'trial';
+
+// Subscription channels/features for each tier
+export interface SubscriptionChannels {
+  maxShops: number;
+  maxAdminsPerShop: number;
+  analyticsEnabled: boolean;
+  customBrandingEnabled: boolean;
+  prioritySupport: boolean;
+  apiAccess: boolean;
+  multiLocation: boolean;
+  advancedReporting: boolean;
+  whitelabelMode: boolean;
+}
+
+export const SUBSCRIPTION_CHANNELS: Record<SubscriptionTier, SubscriptionChannels> = {
+  basic: {
+    maxShops: 1,
+    maxAdminsPerShop: 3,
+    analyticsEnabled: false,
+    customBrandingEnabled: false,
+    prioritySupport: false,
+    apiAccess: false,
+    multiLocation: false,
+    advancedReporting: false,
+    whitelabelMode: false,
+  },
+  medium: {
+    maxShops: 3,
+    maxAdminsPerShop: 5,
+    analyticsEnabled: true,
+    customBrandingEnabled: false,
+    prioritySupport: false,
+    apiAccess: false,
+    multiLocation: false,
+    advancedReporting: false,
+    whitelabelMode: false,
+  },
+  pro: {
+    maxShops: 10,
+    maxAdminsPerShop: 10,
+    analyticsEnabled: true,
+    customBrandingEnabled: true,
+    prioritySupport: true,
+    apiAccess: true,
+    multiLocation: true,
+    advancedReporting: true,
+    whitelabelMode: true,
+  },
+};
 
 export interface Subscription {
   id: string;

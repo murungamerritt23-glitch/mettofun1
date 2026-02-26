@@ -289,12 +289,67 @@ export const firebaseShops = {
           createdAt: doc.createdAt?.toDate?.() || new Date(doc.createdAt),
           updatedAt: doc.updatedAt?.toDate?.() || new Date(doc.updatedAt),
           createdBy: doc.createdBy,
-          backupEnabled: doc.backupEnabled
+          backupEnabled: doc.backupEnabled,
+          location: doc.location,
+          subscriptionTier: doc.subscriptionTier,
+          subscriptionStatus: doc.subscriptionStatus,
+          subscriptionId: doc.subscriptionId,
         }));
         callback(shops);
       }
     );
-  }
+  },
+
+  // Get ALL shops (including inactive) - for super admin
+  async getAll(): Promise<Shop[]> {
+    const result = await firebaseDb.getAll(SHOPS_COLLECTION, []);
+    if (result.error) {
+      console.error('Error fetching all shops:', result.error);
+      return [];
+    }
+    return (result.data || []).map((doc: any) => ({
+      id: doc.id,
+      shopName: doc.shopName,
+      shopCode: doc.shopCode,
+      deviceId: doc.deviceId,
+      deviceLocked: doc.deviceLocked,
+      qualifyingPurchase: doc.qualifyingPurchase,
+      promoMessage: doc.promoMessage,
+      isActive: doc.isActive,
+      createdAt: doc.createdAt?.toDate?.() || new Date(doc.createdAt),
+      updatedAt: doc.updatedAt?.toDate?.() || new Date(doc.updatedAt),
+      createdBy: doc.createdBy,
+      backupEnabled: doc.backupEnabled,
+      location: doc.location,
+      subscriptionTier: doc.subscriptionTier,
+      subscriptionStatus: doc.subscriptionStatus,
+      subscriptionId: doc.subscriptionId,
+    }));
+  },
+
+  // Delete a shop (soft delete - just mark inactive)
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.update(SHOPS_COLLECTION, id, {
+      isActive: false,
+      updatedAt: new Date(),
+    });
+    return { success: !result.error, error: result.error };
+  },
+
+  // Hard delete a shop (permanent)
+  async hardDelete(id: string): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.delete(SHOPS_COLLECTION, id);
+    return { success: !result.error, error: result.error };
+  },
+
+  // Update shop (activate/deactivate, update subscription)
+  async update(id: string, data: Partial<Shop>): Promise<{ success: boolean; error?: string }> {
+    const updateData: any = { ...data, updatedAt: new Date() };
+    delete updateData.id;
+    
+    const result = await firebaseDb.update(SHOPS_COLLECTION, id, updateData);
+    return { success: !result.error, error: result.error };
+  },
 };
 
 // Settings collection helper functions for Firestore
