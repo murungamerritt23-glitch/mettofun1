@@ -572,21 +572,45 @@ export default function GameMode() {
       {/* Box Grid */}
       <div className="max-w-2xl mx-auto">
         <div className={`game-grid-${config.boxCount}`}>
-          {Array.from({ length: config.boxCount }, (_, i) => i + 1).map((boxNum, index) => (
-            <motion.button
-              key={boxNum}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.05 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`game-box ${selectedBox === boxNum ? 'selected' : ''}`}
-              onClick={() => handleBoxSelect(boxNum)}
-            >
-              <Gift className="w-8 h-8" />
-              <span className="text-sm mt-1">{t.box} {boxNum}</span>
-            </motion.button>
-          ))}
+          {Array.from({ length: config.boxCount }, (_, i) => i + 1).map((boxNum, index) => {
+            // Get corresponding item from items array based on box number (boxNum 1 = index 0)
+            const item = items.find(item => item.order === boxNum - 1);
+            return (
+              <motion.button
+                key={boxNum}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`game-box ${selectedBox === boxNum ? 'selected' : ''}`}
+                onClick={() => handleBoxSelect(boxNum)}
+              >
+                {/* Item Image or Placeholder */}
+                <div className="w-full flex flex-col items-center justify-center gap-1 px-1">
+                  {item?.imageUrl ? (
+                    <img 
+                      src={item.imageUrl} 
+                      alt={item.name}
+                      className="w-8 h-8 object-cover rounded"
+                    />
+                  ) : (
+                    <Gift className="w-6 h-6" />
+                  )}
+                  {/* Item Name */}
+                  <span className="text-xs font-semibold text-center leading-tight line-clamp-2">
+                    {item?.name || `${t.box} ${boxNum}`}
+                  </span>
+                  {/* Item Price */}
+                  {item?.value && (
+                    <span className="text-[10px] text-gold-400">
+                      KSh {item.value.toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              </motion.button>
+            );
+          })}
         </div>
       </div>
 
