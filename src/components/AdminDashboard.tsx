@@ -5,12 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
-  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus
+  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Play
 } from 'lucide-react';
-import { useAuthStore, useShopStore, useItemStore, useUIStore } from '@/store';
+import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops } from '@/lib/local-db';
 import { firebaseShops, firebaseDb, firebaseSettings } from '@/lib/firebase';
-import { generateDefaultItems, calculateShopAnalytics, validateItemPrice } from '@/lib/game-utils';
+import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer } from '@/types';
 import { ADMIN_PERMISSIONS } from '@/types';
@@ -42,6 +42,7 @@ export default function AdminDashboard() {
   const { currentShop, setCurrentShop } = useShopStore();
   const { items, setItems } = useItemStore();
   const { setCurrentView } = useUIStore();
+  const { setCustomerSession, setSelectedItem, setGameStatus, setCorrectNumber, setThresholdNumber } = useGameStore();
 
   // Load customers data when shop changes
   useEffect(() => {
@@ -492,6 +493,44 @@ export default function AdminDashboard() {
       setPendingCustomers(await localPendingCustomers.getByShop(currentShop!.id));
     };
 
+    const handleLaunchCustomer = async (customer: PendingCustomer) => {
+      // Get the item for this customer
+      const item = itemsList.find(i => i.id === customer.itemId);
+      
+      // Calculate box configuration based on purchase amount
+      const config = calculateBoxConfiguration(customer.purchaseAmount, currentShop?.qualifyingPurchase || 100);
+      
+      // Generate winning number from the displayed range (1 to 18-threshold)
+      const winningNum = generateSecureRandomNumber(18 - config.threshold);
+      const threshold = config.threshold;
+      
+      // Set up the customer session
+      setCustomerSession({
+        phoneNumber: customer.phoneNumber,
+        attemptsToday: 0,
+        lastAttemptDate: new Date().toISOString().split('T')[0],
+        authorized: true,
+        purchaseAmount: customer.purchaseAmount
+      });
+      
+      // Set the selected item and game parameters
+      if (item) {
+        setSelectedItem(item);
+      }
+      setCorrectNumber(winningNum);
+      setThresholdNumber(threshold);
+      
+      // Set game to playing state
+      setGameStatus('playing');
+      
+      // Mark customer as used
+      await localPendingCustomers.markUsed(customer.id);
+      setPendingCustomers(await localPendingCustomers.getByShop(currentShop!.id));
+      
+      // Switch to customer view
+      setCurrentView('customer');
+    };
+
     const handleDelete = async (id: string) => {
       if (confirm('Remove this customer record?')) {
         await localPendingCustomers.delete(id);
@@ -604,18 +643,26 @@ export default function AdminDashboard() {
                     <div className="space-y-2">
                       {authorized.map(c => (
                         <div key={c.id} className="card p-4 flex justify-between items-center border-green-500/30">
-                          <div>
+                          <div className="flex-1">
                             <p className="text-white font-medium">{c.phoneNumber}</p>
                             <p className="text-gray-400 text-sm">
                               {c.itemName} - KSh {c.purchaseAmount.toLocaleString()}
                             </p>
                           </div>
-                          <button 
-                            onClick={() => handleDelete(c.id)}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleLaunchCustomer(c)}
+                              className="btn-primary flex items-center gap-1"
+                            >
+                              <Smartphone size={16} /> Play
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(c.id)}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
