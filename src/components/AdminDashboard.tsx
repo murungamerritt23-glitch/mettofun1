@@ -31,11 +31,25 @@ export default function AdminDashboard() {
   const [termsContent, setTermsContent] = useState('');
   const [isEditingTerms, setIsEditingTerms] = useState(false);
   const [termsSaved, setTermsSaved] = useState(false);
-  
+
+  // Customer management state (for 'customers' tab)
+  const [pendingCustomers, setPendingCustomers] = useState<any[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({ phoneNumber: '', purchaseAmount: '', itemId: '' });
+  const [itemsList, setItemsList] = useState<Item[]>([]);
+
   const { admin, logout } = useAuthStore();
   const { currentShop, setCurrentShop } = useShopStore();
   const { items, setItems } = useItemStore();
   const { setCurrentView } = useUIStore();
+
+  // Load customers data when shop changes
+  useEffect(() => {
+    if (activeTab === 'customers' && currentShop) {
+      localPendingCustomers.getByShop(currentShop.id).then(setPendingCustomers);
+      localItems.getByShop(currentShop.id).then(setItemsList);
+    }
+  }, [activeTab, currentShop]);
 
   // Get permissions based on admin level
   const permissions: AdminPermissions = admin?.level ? 
@@ -433,18 +447,6 @@ export default function AdminDashboard() {
 
   // Customers view - for shop staff to record purchases and authorize customers
   if (activeTab === 'customers') {
-    const [pendingCustomers, setPendingCustomers] = useState<any[]>([]);
-    const [showAddForm, setShowAddForm] = useState(false);
-    const [newCustomer, setNewCustomer] = useState({ phoneNumber: '', purchaseAmount: '', itemId: '' });
-    const [itemsList, setItemsList] = useState<Item[]>([]);
-
-    useEffect(() => {
-      if (currentShop) {
-        localPendingCustomers.getByShop(currentShop.id).then(setPendingCustomers);
-        localItems.getByShop(currentShop.id).then(setItemsList);
-      }
-    }, [currentShop]);
-
     const handleAddCustomer = async () => {
       if (!newCustomer.phoneNumber || !newCustomer.purchaseAmount || !newCustomer.itemId) {
         alert('Please fill in all fields');
@@ -516,7 +518,7 @@ export default function AdminDashboard() {
 
             {!currentShop ? (
               <div className="card p-8 text-center">
-                <p className="text-gray-400">Please select a shop from "My Shop" first.</p>
+                <p className="text-gray-400">Please select a shop from &quot;My Shop&quot; first.</p>
               </div>
             ) : (
               <>
@@ -617,7 +619,7 @@ export default function AdminDashboard() {
                   </h2>
                   {pending.length === 0 ? (
                     <div className="card p-8 text-center text-gray-500">
-                      No customers waiting. Click "Record Purchase" to add one.
+                      No customers waiting. Click &quot;Record Purchase&quot; to add one.
                     </div>
                   ) : (
                     <div className="space-y-2">
