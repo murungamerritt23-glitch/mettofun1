@@ -48,40 +48,54 @@ export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
 
   db = await openDB<MetoFunDB>('metofun-db', 2, {
     upgrade(database, oldVersion) {
-      // Shops store
-      const shopStore = database.createObjectStore('shops', { keyPath: 'id' });
-      shopStore.createIndex('by-code', 'shopCode');
+      // Shops store - only create if it doesn't exist
+      if (!database.objectStoreNames.contains('shops')) {
+        const shopStore = database.createObjectStore('shops', { keyPath: 'id' });
+        shopStore.createIndex('by-code', 'shopCode');
+      }
 
-      // Items store
-      const itemStore = database.createObjectStore('items', { keyPath: 'id' });
-      itemStore.createIndex('by-shop', 'shopId');
+      // Items store - only create if it doesn't exist
+      if (!database.objectStoreNames.contains('items')) {
+        const itemStore = database.createObjectStore('items', { keyPath: 'id' });
+        itemStore.createIndex('by-shop', 'shopId');
+      }
 
-      // Attempts store
-      const attemptStore = database.createObjectStore('attempts', { keyPath: 'id' });
-      attemptStore.createIndex('by-shop', 'shopId');
-      attemptStore.createIndex('by-phone', 'phoneNumber');
-      attemptStore.createIndex('by-date', 'timestamp');
+      // Attempts store - only create if it doesn't exist
+      if (!database.objectStoreNames.contains('attempts')) {
+        const attemptStore = database.createObjectStore('attempts', { keyPath: 'id' });
+        attemptStore.createIndex('by-shop', 'shopId');
+        attemptStore.createIndex('by-phone', 'phoneNumber');
+        attemptStore.createIndex('by-date', 'timestamp');
+      }
 
-      // Admins store
-      database.createObjectStore('admins', { keyPath: 'id' });
+      // Admins store - only create if it doesn't exist
+      if (!database.objectStoreNames.contains('admins')) {
+        database.createObjectStore('admins', { keyPath: 'id' });
+      }
 
-      // Sync queue store
-      const syncStore = database.createObjectStore('syncQueue', { keyPath: 'id' });
-      syncStore.createIndex('by-status', 'status');
+      // Sync queue store - only create if it doesn't exist
+      if (!database.objectStoreNames.contains('syncQueue')) {
+        const syncStore = database.createObjectStore('syncQueue', { keyPath: 'id' });
+        syncStore.createIndex('by-status', 'status');
+      }
 
-      // Sessions store
-      database.createObjectStore('sessions', { keyPath: 'phoneNumber' });
+      // Sessions store - only create if it doesn't exist
+      if (!database.objectStoreNames.contains('sessions')) {
+        database.createObjectStore('sessions', { keyPath: 'phoneNumber' });
+      }
 
-      // Pending customers store (v2)
-      if (oldVersion < 2) {
+      // Pending customers store (v2) - only create if it doesn't exist
+      if (!database.objectStoreNames.contains('pendingCustomers')) {
         const pendingStore = database.createObjectStore('pendingCustomers', { keyPath: 'id' });
         pendingStore.createIndex('by-shop', 'shopId');
         pendingStore.createIndex('by-phone', 'phoneNumber');
         pendingStore.createIndex('by-authorized', 'authorized');
       }
 
-      // Settings store
-      database.createObjectStore('settings', { keyPath: 'key' });
+      // Settings store - only create if it doesn't exist
+      if (!database.objectStoreNames.contains('settings')) {
+        database.createObjectStore('settings', { keyPath: 'key' });
+      }
     }
   });
 
