@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedRole, setSelectedRole] = useState<AdminLevel>('super_admin');
+  const [selectedRole, setSelectedRole] = useState<AdminLevel>('admin');
   
   const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
   const { setCurrentView } = useUIStore();
@@ -127,7 +127,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = (role: AdminLevel = 'super_admin') => {
+  const handleDemoLogin = (role: AdminLevel = 'admin') => {
     // Quick demo login for testing
     const demoAdmin = {
       id: 'demo-admin',
@@ -267,25 +267,14 @@ export default function LoginPage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedRole('super_admin')}
+                  onClick={() => setSelectedRole('admin')}
                   className={`flex-1 py-2 px-3 rounded text-xs font-medium transition-colors ${
-                    selectedRole === 'super_admin'
+                    selectedRole === 'admin'
                       ? 'bg-gold-600 text-white'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
-                  Super Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole('agent_admin')}
-                  className={`flex-1 py-2 px-3 rounded text-xs font-medium transition-colors ${
-                    selectedRole === 'agent_admin'
-                      ? 'bg-gold-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Agent
+                  Admin
                 </button>
                 <button
                   type="button"

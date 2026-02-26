@@ -1,10 +1,9 @@
 // User Types
 // Admin Levels:
-// - super_admin: Full access (add/remove admins, onboard shops, activate/deactivate shops, VIEW qualifying purchase, VIEW items)
-// - agent_admin: Can onboard shops, activate/deactivate shops
-// - shop_admin: Can set qualifying purchase, edit items for their shop only
+// - admin: Full access (onboard shops, activate/deactivate, view analytics)
+// - shop_admin: Can set qualifying purchase, edit items for their own shop only
 
-export type AdminLevel = 'super_admin' | 'agent_admin' | 'shop_admin';
+export type AdminLevel = 'admin' | 'shop_admin';
 
 export interface Admin {
   id: string;
@@ -23,51 +22,25 @@ export interface Admin {
 
 // Permission types for role-based access control
 export interface AdminPermissions {
-  canManageAdmins: boolean;      // Add/remove other admins
-  canOnboardShops: boolean;      // Create new shops
-  canActivateShops: boolean;     // Activate/deactivate shops
+  canManageShops: boolean;      // Onboard, activate/deactivate shops
   canEditQualifyingPurchase: boolean; // Set qualifying purchase amount
   canEditItems: boolean;          // Edit the 17 items
   canViewAnalytics: boolean;      // View analytics
-  canBackupData: boolean;         // Backup/restore data
-  canManageSettings: boolean;     // App settings
-  canAssignShops: boolean;        // Assign shops to shop admins
 }
 
 // Map admin level to permissions
 export const ADMIN_PERMISSIONS: Record<AdminLevel, AdminPermissions> = {
-  super_admin: {
-    canManageAdmins: true,
-    canOnboardShops: true,
-    canActivateShops: true,
-    canEditQualifyingPurchase: false,  // Super admin can only READ qualifying purchase
-    canEditItems: false,  // Super admin can only READ items (shop admin manages their own)
+  admin: {
+    canManageShops: true,
+    canEditQualifyingPurchase: false,  // admin can only READ
+    canEditItems: false,  // admin can only READ
     canViewAnalytics: true,
-    canBackupData: true,
-    canManageSettings: true,
-    canAssignShops: true,
-  },
-  agent_admin: {
-    canManageAdmins: false,
-    canOnboardShops: true,
-    canActivateShops: true,
-    canEditQualifyingPurchase: false,
-    canEditItems: false,
-    canViewAnalytics: false,
-    canBackupData: false,
-    canManageSettings: false,
-    canAssignShops: true,  // Can assign shops to shop admins
   },
   shop_admin: {
-    canManageAdmins: false,
-    canOnboardShops: false,
-    canActivateShops: false,
+    canManageShops: false,
     canEditQualifyingPurchase: true,
     canEditItems: true,
     canViewAnalytics: false,
-    canBackupData: false,
-    canManageSettings: false,
-    canAssignShops: false,
   },
 };
 

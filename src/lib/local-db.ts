@@ -277,9 +277,9 @@ export const localAdmins = {
     return all.filter(admin => admin.level === level);
   },
 
-  async hasSuperAdmin(): Promise<boolean> {
-    const superAdmins = await this.getByLevel('super_admin');
-    return superAdmins.length > 0;
+  async hasAdmin(): Promise<boolean> {
+    const admins = await this.getByLevel('admin');
+    return admins.length > 0;
   },
 
   async save(admin: Admin): Promise<void> {
