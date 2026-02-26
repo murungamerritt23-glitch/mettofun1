@@ -49,19 +49,24 @@ if (typeof window !== 'undefined') {
   auth = getAuth(app);
   db = getFirestore(app);
   
-  // Connect to emulators in development (only if USE_EMULATORS is not set to 'false')
-  const useEmulators = process.env.NEXT_PUBLIC_USE_EMULATORS !== 'false';
-  if (process.env.NODE_ENV === 'development' && useEmulators) {
-    connectAuthEmulator(auth, "http://localhost:9099");
-    connectFirestoreEmulator(db, 'localhost', 8080);
-    console.log('🔧 Using Firebase emulators (development mode)');
-  } else if (!useEmulators) {
-    console.log('🔗 Using production Firebase project:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+  // Connect to emulators only if explicitly set to 'true'
+  // Default is production (safer default)
+  const useEmulators = process.env.NEXT_PUBLIC_USE_EMULATORS === 'true';
+  
+  if (useEmulators) {
+    // Only use emulators if explicitly enabled
+    if (process.env.NODE_ENV === 'development') {
+      connectAuthEmulator(auth, "http://localhost:9099");
+      connectFirestoreEmulator(db, 'localhost', 8080);
+      console.log('🔧 Using Firebase emulators (explicitly enabled)');
+    } else {
+      console.warn('⚠️ Cannot use emulators in production! Set NEXT_PUBLIC_USE_EMULATORS=false');
+    }
   } else {
-    // In production (not development), verify Firebase is configured
+    // Production mode - verify Firebase is configured
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
     if (!projectId || projectId === 'demo-project') {
-      console.warn('⚠️ Firebase not configured! Set NEXT_PUBLIC_FIREBASE_* env vars in your hosting platform.');
+      console.warn('⚠️ Firebase not configured! Set NEXT_PUBLIC_FIREBASE_* env vars.');
     } else {
       console.log('🔗 Using production Firebase project:', projectId);
     }
