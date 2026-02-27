@@ -16,10 +16,13 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedRole, setSelectedRole] = useState<AdminLevel>('admin');
+  const [isDemoMode, setIsDemoMode] = useState(false);
   
   const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
   const { setCurrentView } = useUIStore();
   const { currentShop, setCurrentShop } = useShopStore();
+
+  // Simple demo login - auto-detects admin type
 
   // Check if device is authorized for admin
   const checkDeviceAuthorization = (admin: { deviceId?: string; deviceLocked?: boolean }): string | null => {
@@ -148,27 +151,19 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = (role: AdminLevel = 'admin') => {
-    // Quick demo login for testing
+  const handleDemoLogin = (asShopAdmin: boolean = false) => {
     const demoAdmin = {
       id: 'demo-admin',
       email: 'demo@metofun.com',
       phone: '+255123456789',
       name: 'Demo Admin',
-      level: role,
+      level: asShopAdmin ? 'shop_admin' as AdminLevel : 'admin' as AdminLevel,
       createdAt: new Date(),
       lastLogin: new Date(),
       isActive: true,
       region: 'Demo Region',
       deviceLocked: false
     };
-    
-    // Check device authorization for demo login
-    const deviceError = checkDeviceAuthorization(demoAdmin);
-    if (deviceError) {
-      setError(deviceError);
-      return;
-    }
     
     setAdmin(demoAdmin);
     setCurrentView('admin');
@@ -302,45 +297,23 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-700">
-            {/* Role selector for testing */}
-            <div className="mb-4">
-              <label className="text-gray-400 text-xs mb-2 block">Select Role (Demo):</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole('admin')}
-                  className={`flex-1 py-2 px-3 rounded text-xs font-medium transition-colors ${
-                    selectedRole === 'admin'
-                      ? 'bg-gold-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole('shop_admin')}
-                  className={`flex-1 py-2 px-3 rounded text-xs font-medium transition-colors ${
-                    selectedRole === 'shop_admin'
-                      ? 'bg-gold-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Shop Admin
-                </button>
-              </div>
-            </div>
             <button
-              onClick={() => handleDemoLogin(selectedRole)}
+              onClick={() => handleDemoLogin(false)}
               className="btn-gold-outline w-full mb-3"
             >
-              Demo Login ({selectedRole.replace('_', ' ')})
+              Demo Login (Admin)
+            </button>
+            <button
+              onClick={() => handleDemoLogin(true)}
+              className="text-gray-400 text-sm hover:text-gold-400 w-full text-center mb-3"
+            >
+              Demo Login (Shop Admin)
             </button>
             <button
               onClick={handleCustomerMode}
               className="text-gray-400 text-sm hover:text-gold-400 w-full text-center"
             >
-              Continue as Customer →
+              Customer Mode →
             </button>
           </div>
         </div>

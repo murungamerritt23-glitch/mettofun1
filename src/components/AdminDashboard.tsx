@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
-  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Play, Zap
+  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops } from '@/lib/local-db';
@@ -15,7 +15,7 @@ import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier } from '@/types';
 import { ADMIN_PERMISSIONS, SUBSCRIPTION_CHANNELS } from '@/types';
 
-type TabType = 'dashboard' | 'shops' | 'items' | 'qualifyingPurchase' | 'attempts' | 'analytics' | 'settings' | 'staff' | 'myShop' | 'customers';
+type TabType = 'dashboard' | 'shops' | 'items' | 'qualifyingPurchase' | 'attempts' | 'analytics' | 'settings' | 'customers' | 'myShop' | 'staff';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -139,12 +139,12 @@ export default function AdminDashboard() {
   // Define available tabs based on permissions
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
-    { id: 'customers', label: 'Customers', icon: UserCheck, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageShops' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
     { id: 'qualifyingPurchase', label: 'Qualifying Purchase', icon: Zap, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'attempts', label: 'Attempts', icon: Users, requiredPermission: 'canViewAnalytics' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, requiredPermission: 'canViewAnalytics' },
+    { id: 'settings', label: 'Settings', icon: Settings, requiredPermission: null },
   ];
 
   // Filter tabs based on permissions
@@ -384,44 +384,6 @@ export default function AdminDashboard() {
                 </button>
               )}
             </div>
-
-            {/* Qualifying Purchase Section for Shop Admins - shown directly in dashboard */}
-            {isShopAdmin && currentShop && (
-              <div className="mt-8 p-6 bg-gold-900/20 border-2 border-gold-500 rounded-lg">
-                <div className="flex items-center gap-3 mb-4">
-                  <Zap className="text-gold-400" size={28} />
-                  <div>
-                    <h2 className="text-xl font-bold text-white">Qualifying Purchase</h2>
-                    <p className="text-gray-400 text-sm">Minimum purchase amount required to play</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="text-gray-300 text-lg font-semibold">KSh</span>
-                  <input
-                    type="number"
-                    value={currentShop.qualifyingPurchase}
-                    onChange={async (e) => {
-                      if (!currentShop) return;
-                      const newValue = parseInt(e.target.value) || 0;
-                      const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                      await firebaseShops.save(updatedShop);
-                      await localShops.save(updatedShop);
-                      setCurrentShop(updatedShop);
-                      // Also update in shops array
-                      setShops(shops.map(s => s.id === updatedShop.id ? updatedShop : s));
-                    }}
-                    className="input w-full max-w-xs text-2xl font-bold border-2 border-gold-500 focus:border-gold-400"
-                    min={0}
-                    step={100}
-                  />
-                </div>
-                
-                <p className="text-gray-500 text-sm">
-                  💡 Customers must spend at least this amount to qualify for the game
-                </p>
-              </div>
-            )}
           </div>
         </main>
       </div>
