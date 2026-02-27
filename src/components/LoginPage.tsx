@@ -86,6 +86,15 @@ export default function LoginPage() {
           }
           
           setAdmin(demoAdmin);
+          
+          // Auto-select shop for shop admins if they have assigned shops
+          if (demoAdmin.level === 'shop_admin' && demoAdmin.assignedShops && demoAdmin.assignedShops.length > 0) {
+            const shop = await localShops.get(demoAdmin.assignedShops[0]);
+            if (shop) {
+              setCurrentShop(shop);
+            }
+          }
+          
           setCurrentView('admin');
         } else {
           setError(result.error);
@@ -118,6 +127,15 @@ export default function LoginPage() {
         }
         
         setAdmin(admin);
+        
+        // Auto-select shop for shop admins if they have assigned shops
+        if (admin.level === 'shop_admin' && admin.assignedShops && admin.assignedShops.length > 0) {
+          const shop = await localShops.get(admin.assignedShops[0]);
+          if (shop) {
+            setCurrentShop(shop);
+          }
+        }
+        
         setCurrentView('admin');
       }
     } catch (err: any) {

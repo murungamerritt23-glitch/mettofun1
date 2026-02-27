@@ -384,6 +384,64 @@ export default function AdminDashboard() {
                 </button>
               )}
             </div>
+
+            {/* Qualifying Purchase Section for Shop Admins - shown directly in dashboard */}
+            {isShopAdmin && currentShop && (
+              <div className="mt-8 p-6 bg-gold-900/20 border-2 border-gold-500 rounded-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <Zap className="text-gold-400" size={28} />
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Qualifying Purchase</h2>
+                    <p className="text-gray-400 text-sm">Minimum purchase amount required to play</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4 mb-4">
+                  <span className="text-gray-300 text-lg font-semibold">KSh</span>
+                  <input
+                    type="number"
+                    value={currentShop.qualifyingPurchase}
+                    onChange={async (e) => {
+                      if (!currentShop) return;
+                      const newValue = parseInt(e.target.value) || 0;
+                      const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                      await firebaseShops.save(updatedShop);
+                      await localShops.save(updatedShop);
+                      setCurrentShop(updatedShop);
+                      // Also update in shops array
+                      setShops(shops.map(s => s.id === updatedShop.id ? updatedShop : s));
+                    }}
+                    className="input w-full max-w-xs text-2xl font-bold border-2 border-gold-500 focus:border-gold-400"
+                    min={0}
+                    step={100}
+                  />
+                </div>
+                
+                <p className="text-gray-500 text-sm">
+                  💡 Customers must spend at least this amount to qualify for the game
+                </p>
+              </div>
+            )}
+
+            {/* If shop admin but no shop selected, show prompt */}
+            {isShopAdmin && !currentShop && (
+              <div className="mt-8 p-6 bg-blue-900/20 border-2 border-blue-500 rounded-lg">
+                <div className="flex items-center gap-3 mb-4">
+                  <Store className="text-blue-400" size={28} />
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Set Up Your Shop</h2>
+                    <p className="text-gray-400 text-sm">Select your shop to get started</p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => setActiveTab('myShop')}
+                  className="btn btn-primary"
+                >
+                  Go to My Shop
+                </button>
+              </div>
+            )}
           </div>
         </main>
       </div>
