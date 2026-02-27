@@ -373,7 +373,7 @@ export default function LoginPage() {
                   <p>1. Use of this application is subject to these terms.</p>
                   <p>2. Shop administrators must maintain accurate records.</p>
                   <p>3. Game outcomes are final and cannot be disputed.</p>
-                  <p>4. The system is provided "as is" without warranties.</p>
+                  <p>4. The system is provided as-is without warranties.</p>
                   <p>5. Administrators are responsible for device security.</p>
                 </>
               )}
