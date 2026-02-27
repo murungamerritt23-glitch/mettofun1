@@ -139,7 +139,6 @@ export default function AdminDashboard() {
   // Define available tabs based on permissions
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
-    { id: 'myShop', label: 'My Shop', icon: Store, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'customers', label: 'Customers', icon: UserCheck, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageShops' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
@@ -420,26 +419,6 @@ export default function AdminDashboard() {
                 <p className="text-gray-500 text-sm">
                   💡 Customers must spend at least this amount to qualify for the game
                 </p>
-              </div>
-            )}
-
-            {/* If shop admin but no shop selected, show prompt */}
-            {isShopAdmin && !currentShop && (
-              <div className="mt-8 p-6 bg-blue-900/20 border-2 border-blue-500 rounded-lg">
-                <div className="flex items-center gap-3 mb-4">
-                  <Store className="text-blue-400" size={28} />
-                  <div>
-                    <h2 className="text-xl font-bold text-white">Set Up Your Shop</h2>
-                    <p className="text-gray-400 text-sm">Select your shop to get started</p>
-                  </div>
-                </div>
-                
-                <button
-                  onClick={() => setActiveTab('myShop')}
-                  className="btn btn-primary"
-                >
-                  Go to My Shop
-                </button>
               </div>
             )}
           </div>

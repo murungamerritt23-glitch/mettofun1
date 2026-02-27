@@ -87,9 +87,10 @@ export default function LoginPage() {
           
           setAdmin(demoAdmin);
           
-          // Auto-select shop for shop admins if they have assigned shops
-          if (demoAdmin.level === 'shop_admin' && demoAdmin.assignedShops && demoAdmin.assignedShops.length > 0) {
-            const shop = await localShops.get(demoAdmin.assignedShops[0]);
+          // Auto-select shop for shop admins based on device ID (one shop = one device)
+          if (demoAdmin.level === 'shop_admin') {
+            const currentDeviceId = getDeviceId();
+            const shop = await localShops.getByDeviceId(currentDeviceId);
             if (shop) {
               setCurrentShop(shop);
             }
@@ -128,9 +129,10 @@ export default function LoginPage() {
         
         setAdmin(admin);
         
-        // Auto-select shop for shop admins if they have assigned shops
-        if (admin.level === 'shop_admin' && admin.assignedShops && admin.assignedShops.length > 0) {
-          const shop = await localShops.get(admin.assignedShops[0]);
+        // Auto-select shop for shop admins based on device ID (one shop = one device)
+        if (admin.level === 'shop_admin') {
+          const currentDeviceId = getDeviceId();
+          const shop = await localShops.getByDeviceId(currentDeviceId);
           if (shop) {
             setCurrentShop(shop);
           }
@@ -173,20 +175,27 @@ export default function LoginPage() {
   };
 
   const handleCustomerMode = () => {
-    // Go directly to customer mode
-    // If no shop is selected, we'll use the first available shop or show a message
-    const shops = useShopStore.getState().shops;
-    const currentShop = useShopStore.getState().currentShop;
+    // Go directly to customer mode using device's pre-configured shop
+    // One shop = one device - the device determines which shop
+    const currentDeviceId = getDeviceId();
     
-    if (!currentShop && shops.length > 0) {
-      // Auto-select first shop
-      setCurrentShop(shops[0]);
-    } else if (!currentShop) {
-      setError('No shop configured. Please contact the shop admin.');
-      return;
-    }
-    
-    setCurrentView('customer');
+    localShops.getByDeviceId(currentDeviceId).then(shop => {
+      if (shop) {
+        setCurrentShop(shop);
+        setCurrentView('customer');
+      } else {
+        // Fallback: try to find any active shop
+        localShops.getAll().then(shops => {
+          const activeShop = shops.find(s => s.isActive);
+          if (activeShop) {
+            setCurrentShop(activeShop);
+            setCurrentView('customer');
+          } else {
+            setError('No shop configured for this device. Please contact the shop admin.');
+          }
+        });
+      }
+    });
   };
 
   return (

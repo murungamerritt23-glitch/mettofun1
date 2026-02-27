@@ -125,6 +125,12 @@ export const localShops = {
     return all.filter(shop => shop.createdBy === createdBy);
   },
 
+  async getByDeviceId(deviceId: string): Promise<Shop | undefined> {
+    const database = await initDB();
+    const all = await database.getAll('shops');
+    return all.find(shop => shop.deviceId === deviceId);
+  },
+
   async save(shop: Shop): Promise<void> {
     const database = await initDB();
     await database.put('shops', shop);
