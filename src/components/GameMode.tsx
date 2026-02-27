@@ -34,6 +34,8 @@ export default function GameMode() {
   const [winningItem, setWinningItem] = useState<Item | null>(null);
   const [todayAttempts, setTodayAttempts] = useState(0);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [selectedItemIndex, setSelectedItemIndex] = useState(0); // For DPAD navigation
+  const [selectedNumberIndex, setSelectedNumberIndex] = useState(0); // For DPAD number navigation
 
   const { 
     gameStatus, setGameStatus, 

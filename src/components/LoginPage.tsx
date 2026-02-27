@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, Lock, Eye, EyeOff, ShoppingCart, Loader2 } from 'lucide-react';
+import { Mail, Phone, Lock, Eye, EyeOff, ShoppingCart, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { useAuthStore, useUIStore, useShopStore } from '@/store';
-import { firebaseAuth } from '@/lib/firebase';
+import { firebaseAuth, firebaseSettings } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
 import type { AdminLevel, Admin } from '@/types';
@@ -17,6 +17,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [selectedRole, setSelectedRole] = useState<AdminLevel>('super_admin');
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [termsContent, setTermsContent] = useState('');
+  const [showTerms, setShowTerms] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   
   const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
   const { setCurrentView } = useUIStore();
@@ -337,8 +340,75 @@ export default function LoginPage() {
             <div className="w-2 h-2 rounded-full status-online" />
             Online Mode
           </div>
+          <button
+            onClick={() => setShowTerms(true)}
+            className="text-gray-500 text-sm hover:text-gold-400 mt-3 flex items-center justify-center gap-1"
+          >
+            <FileText size={14} />
+            Terms & Conditions
+          </button>
         </div>
       </motion.div>
+
+      {/* Terms Modal */}
+      {showTerms && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowTerms(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            className="bg-gray-900 rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="gold-gradient-text text-2xl font-bold mb-4">Terms & Conditions</h2>
+            <div className="text-gray-400 text-sm mb-6 space-y-2">
+              {termsContent ? (
+                <p className="whitespace-pre-wrap">{termsContent}</p>
+              ) : (
+                <>
+                  <p>1. Use of this application is subject to these terms.</p>
+                  <p>2. Shop administrators must maintain accurate records.</p>
+                  <p>3. Game outcomes are final and cannot be disputed.</p>
+                  <p>4. The system is provided "as is" without warranties.</p>
+                  <p>5. Administrators are responsible for device security.</p>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mb-4">
+              <input
+                type="checkbox"
+                id="agreeTerms"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="w-4 h-4 accent-gold-500"
+              />
+              <label htmlFor="agreeTerms" className="text-gray-300 text-sm">
+                I agree to these terms and conditions
+              </label>
+            </div>
+            <button
+              onClick={() => {
+                setAgreedToTerms(true);
+                setShowTerms(false);
+              }}
+              disabled={!agreedToTerms}
+              className="btn-gold w-full disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Accept
+            </button>
+            <button
+              onClick={() => setShowTerms(false)}
+              className="w-full text-center text-gray-400 text-sm mt-3 hover:text-white"
+            >
+              Cancel
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }
