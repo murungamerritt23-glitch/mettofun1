@@ -496,13 +496,18 @@ export default function AdminDashboard() {
                           value={currentShop?.qualifyingPurchase || 0}
                           onChange={async (e) => {
                             if (!currentShop) return;
-                            const newValue = Number(e.target.value) || 0;
-                            const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                            await firebaseShops.save(updatedShop);
-                            await localShops.save(updatedShop);
-                            setCurrentShop(updatedShop);
-                            const fbShops = await firebaseShops.getAllActive();
-                            setShops(fbShops);
+                            try {
+                              const newValue = Number(e.target.value) || 0;
+                              const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                              await firebaseShops.save(updatedShop);
+                              await localShops.save(updatedShop);
+                              setCurrentShop(updatedShop);
+                              const fbShops = await firebaseShops.getAllActive();
+                              setShops(fbShops);
+                            } catch (err) {
+                              console.error('Error saving qualifying purchase:', err);
+                              alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                            }
                           }}
                           className="input w-full max-w-xs text-xl font-bold border-2 border-gold-500 focus:border-gold-400"
                           min={0}
@@ -1201,13 +1206,18 @@ export default function AdminDashboard() {
                       value={currentShop?.qualifyingPurchase || 0}
                       onChange={async (e) => {
                         if (!currentShop) return;
-                        const newValue = Number(e.target.value) || 0;
-                        const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                        await firebaseShops.save(updatedShop);
-                        await localShops.save(updatedShop);
-                        setCurrentShop(updatedShop);
-                        const fbShops = await firebaseShops.getAllActive();
-                        setShops(fbShops);
+                        try {
+                          const newValue = Number(e.target.value) || 0;
+                          const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                          await firebaseShops.save(updatedShop);
+                          await localShops.save(updatedShop);
+                          setCurrentShop(updatedShop);
+                          const fbShops = await firebaseShops.getAllActive();
+                          setShops(fbShops);
+                        } catch (err) {
+                          console.error('Error saving qualifying purchase:', err);
+                          alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                        }
                       }}
                       className="input w-full max-w-xs text-xl font-bold border-2 border-gold-500 focus:border-gold-400"
                       min={0}
@@ -1772,7 +1782,7 @@ function ShopForm({
         <input
           type="number"
           value={formData.qualifyingPurchase}
-          onChange={(e) => setFormData({ ...formData, qualifyingPurchase: parseInt(e.target.value) })}
+          onChange={(e) => setFormData({ ...formData, qualifyingPurchase: Number(e.target.value) || 0 })}
           className="input"
           required
         />
