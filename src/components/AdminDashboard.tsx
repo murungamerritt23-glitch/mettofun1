@@ -55,28 +55,29 @@ export default function AdminDashboard() {
   // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
   const isShopAdmin = admin?.level === 'shop_admin';
   const isAdmin = admin?.level === 'super_admin' || admin?.level === 'agent_admin';
+  const defaultPermissions: AdminPermissions = {
+    canManageAllShops: false,
+    canManageAssignedShops: false,
+    canOnboardShops: false,
+    canDeleteShops: false,
+    canActivateShops: false,
+    canAssignSubscription: false,
+    canManageAdmins: false,
+    canAssignShops: false,
+    canEditQualifyingPurchase: false,
+    canEditItems: false,
+    canViewAnalytics: false,
+    canViewGlobalAnalytics: false,
+    canEditTermsHelp: false,
+    canManageVersions: false,
+    canBackupRestore: false,
+    canResetDevices: false,
+    canViewAllShops: false,
+  };
   const permissions: AdminPermissions = admin?.level ? 
-    (ADMIN_PERMISSIONS as any)[admin.level] : {
-      canManageAllShops: false,
-      canManageAssignedShops: false,
-      canOnboardShops: false,
-      canDeleteShops: false,
-      canActivateShops: false,
-      canAssignSubscription: false,
-      canManageAdmins: false,
-      canAssignShops: false,
-      canEditQualifyingPurchase: false,
-      canEditItems: false,
-      canViewAnalytics: false,
-      canViewGlobalAnalytics: false,
-      canEditTermsHelp: false,
-      canManageVersions: false,
-      canBackupRestore: false,
-      canResetDevices: false,
-      canViewAllShops: false,
-    };
+    ((ADMIN_PERMISSIONS as any)[admin.level] || defaultPermissions) : defaultPermissions;
   // Override canEditQualifyingPurchase for shop_admin
-  const canEditQualifyingPurchase = isShopAdmin || permissions.canEditQualifyingPurchase;
+  const canEditQualifyingPurchase = isShopAdmin || permissions?.canEditQualifyingPurchase;
 
   // Load shops on mount
   useEffect(() => {
