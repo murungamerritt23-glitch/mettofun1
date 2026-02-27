@@ -372,7 +372,9 @@ export default function GameMode() {
                   {t.enterAmount}
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={purchaseAmount}
                   onChange={(e) => setPurchaseAmount(e.target.value)}
                   className="input"

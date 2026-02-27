@@ -492,7 +492,9 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-3">
                         <span className="text-gray-400 text-lg">KSh</span>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           value={currentShop?.qualifyingPurchase || 0}
                           onChange={async (e) => {
                             if (!currentShop) return;
@@ -525,7 +527,9 @@ export default function AdminDashboard() {
                         Qualifying Purchase Amount (KSh)
                       </label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={currentShop.qualifyingPurchase}
                         disabled
                         className="input w-full bg-gray-800 cursor-not-allowed opacity-60"
@@ -1202,7 +1206,9 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-3">
                     <span className="text-gray-400 text-lg">KSh</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={currentShop?.qualifyingPurchase || 0}
                       onChange={async (e) => {
                         if (!currentShop) return;
@@ -1235,7 +1241,9 @@ export default function AdminDashboard() {
                     Qualifying Purchase Amount (KSh)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={currentShop.qualifyingPurchase}
                     disabled
                     className="input w-full bg-gray-800 cursor-not-allowed opacity-60"
@@ -1780,7 +1788,9 @@ function ShopForm({
       <div>
         <label className="block text-sm text-gray-400 mb-1">Qualifying Purchase (KSh)</label>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
           value={formData.qualifyingPurchase}
           onChange={(e) => setFormData({ ...formData, qualifyingPurchase: Number(e.target.value) || 0 })}
           className="input"
