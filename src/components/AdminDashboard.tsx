@@ -52,7 +52,9 @@ export default function AdminDashboard() {
     }
   }, [activeTab, currentShop]);
 
-  // Get permissions based on admin level
+  // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
+  const isShopAdmin = admin?.level === 'shop_admin';
+  const isAdmin = admin?.level === 'admin';
   const permissions: AdminPermissions = admin?.level ? 
     (ADMIN_PERMISSIONS as any)[admin.level] : {
       canManageShops: false,
@@ -60,6 +62,8 @@ export default function AdminDashboard() {
       canEditItems: false,
       canViewAnalytics: false,
     };
+  // Override canEditQualifyingPurchase for shop_admin
+  const canEditQualifyingPurchase = isShopAdmin || permissions.canEditQualifyingPurchase;
 
   // Load shops on mount
   useEffect(() => {
@@ -461,40 +465,43 @@ export default function AdminDashboard() {
                   
                   {/* Debug info - remove in production */}
                   <div className="mb-4 p-2 bg-gray-800 rounded text-xs">
-                    <p className="text-gray-400">Debug: Admin Level = <span className="text-white">{admin?.level || 'undefined'}</span></p>
-                    <p className="text-gray-400">canEditQualifyingPurchase = <span className={(permissions.canEditQualifyingPurchase || admin?.level === 'shop_admin') ? 'text-green-400' : 'text-red-400'}>{String(permissions.canEditQualifyingPurchase || admin?.level === 'shop_admin')}</span></p>
+                    <p className="text-gray-400">Admin Level: <span className="text-white">{admin?.level || 'undefined'}</span></p>
+                    <p className="text-gray-400">canEditQualifyingPurchase: <span className={canEditQualifyingPurchase ? 'text-green-400' : 'text-red-400'}>{String(canEditQualifyingPurchase)}</span></p>
                   </div>
 
-                  {(permissions.canEditQualifyingPurchase || admin?.level === 'shop_admin') && (
-                    <div className="mb-4">
-                      <label className="block text-gray-400 text-sm mb-2 flex items-center gap-2">
-                        Qualifying Purchase Amount (KSh)
-                        <span className="text-xs text-green-400 bg-green-900/20 px-2 py-0.5 rounded">Editable</span>
+                  {(canEditQualifyingPurchase) && (
+                    <div className="mb-6 p-4 bg-gold-900/20 border-2 border-gold-500 rounded-lg">
+                      <label className="block text-white font-semibold text-lg mb-2 flex items-center gap-2">
+                        <Edit size={20} className="text-gold-400" />
+                        Edit Qualifying Purchase Amount
                       </label>
-                      <input
-                        type="number"
-                        value={currentShop?.qualifyingPurchase || 0}
-                        onChange={async (e) => {
-                          if (!currentShop) return;
-                          const newValue = parseInt(e.target.value) || 0;
-                          const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                          await firebaseShops.save(updatedShop);
-                          await localShops.save(updatedShop);
-                          setCurrentShop(updatedShop);
-                          const fbShops = await firebaseShops.getAllActive();
-                          setShops(fbShops);
-                        }}
-                        className="input w-full border-2 border-gold-500/50 focus:border-gold-400"
-                        min={0}
-                        step={100}
-                      />
-                      <p className="text-gray-500 text-xs mt-1">
-                        Click to edit • Minimum purchase amount required to play
+                      <div className="flex items-center gap-3">
+                        <span className="text-gray-400 text-lg">KSh</span>
+                        <input
+                          type="number"
+                          value={currentShop?.qualifyingPurchase || 0}
+                          onChange={async (e) => {
+                            if (!currentShop) return;
+                            const newValue = parseInt(e.target.value) || 0;
+                            const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                            await firebaseShops.save(updatedShop);
+                            await localShops.save(updatedShop);
+                            setCurrentShop(updatedShop);
+                            const fbShops = await firebaseShops.getAllActive();
+                            setShops(fbShops);
+                          }}
+                          className="input w-full max-w-xs text-xl font-bold border-2 border-gold-500 focus:border-gold-400"
+                          min={0}
+                          step={100}
+                        />
+                      </div>
+                      <p className="text-gray-500 text-sm mt-2">
+                        💡 Minimum purchase amount required to play the game
                       </p>
                     </div>
                   )}
 
-                  {(!permissions.canEditQualifyingPurchase && admin?.level !== 'shop_admin') && currentShop && (
+                  {(!canEditQualifyingPurchase) && currentShop && (
                     <div className="mb-4">
                       <label className="block text-gray-400 text-sm mb-2">
                         Qualifying Purchase Amount (KSh)
