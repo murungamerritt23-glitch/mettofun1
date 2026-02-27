@@ -1,9 +1,10 @@
 // User Types
 // Admin Levels:
-// - admin: Full access (onboard shops, activate/deactivate, view analytics)
-// - shop_admin: Can set qualifying purchase, edit items for their own shop only
+// - super_admin: Full system control, create/manage shops, global analytics
+// - agent_admin (Middle Admin): Onboard/support assigned shops, limited analytics
+// - shop_admin: Manage their own shop only
 
-export type AdminLevel = 'admin' | 'shop_admin';
+export type AdminLevel = 'super_admin' | 'agent_admin' | 'shop_admin';
 
 export interface Admin {
   id: string;
@@ -22,25 +23,83 @@ export interface Admin {
 
 // Permission types for role-based access control
 export interface AdminPermissions {
-  canManageShops: boolean;      // Onboard, activate/deactivate shops
+  canManageAllShops: boolean;      // super_admin: Create/manage all shops
+  canManageAssignedShops: boolean; // agent_admin: Manage assigned shops only
+  canOnboardShops: boolean;        // Create new shops
+  canDeleteShops: boolean;         // Delete shops permanently
+  canActivateShops: boolean;       // Activate/deactivate shops
+  canAssignSubscription: boolean;  // Assign subscription tiers
+  canManageAdmins: boolean;        // Create/manage other admins
+  canAssignShops: boolean;         // Assign shops to agent_admins
   canEditQualifyingPurchase: boolean; // Set qualifying purchase amount
-  canEditItems: boolean;          // Edit the 17 items
-  canViewAnalytics: boolean;      // View analytics
+  canEditItems: boolean;           // Edit the 17 items
+  canViewAnalytics: boolean;        // View analytics
+  canViewGlobalAnalytics: boolean;  // super_admin: View global analytics
+  canEditTermsHelp: boolean;        // super_admin: Edit terms & help
+  canManageVersions: boolean;       // super_admin: Manage app versions
+  canBackupRestore: boolean;        // Backup/restore functionality
+  canResetDevices: boolean;         // Reset device locks
+  canViewAllShops: boolean;         // super_admin: View all shops including inactive
 }
 
 // Map admin level to permissions
 export const ADMIN_PERMISSIONS: Record<AdminLevel, AdminPermissions> = {
-  admin: {
-    canManageShops: true,
-    canEditQualifyingPurchase: false,  // admin can only READ
-    canEditItems: false,  // admin can only READ
+  super_admin: {
+    canManageAllShops: true,
+    canManageAssignedShops: false,
+    canOnboardShops: true,
+    canDeleteShops: true,
+    canActivateShops: true,
+    canAssignSubscription: true,
+    canManageAdmins: true,
+    canAssignShops: true,
+    canEditQualifyingPurchase: false,
+    canEditItems: false,
     canViewAnalytics: true,
+    canViewGlobalAnalytics: true,
+    canEditTermsHelp: true,
+    canManageVersions: true,
+    canBackupRestore: true,
+    canResetDevices: true,
+    canViewAllShops: true,
+  },
+  agent_admin: {
+    canManageAllShops: false,
+    canManageAssignedShops: true,
+    canOnboardShops: true,
+    canDeleteShops: false,
+    canActivateShops: true,
+    canAssignSubscription: false,
+    canManageAdmins: false,
+    canAssignShops: true,
+    canEditQualifyingPurchase: false,
+    canEditItems: false,
+    canViewAnalytics: true,
+    canViewGlobalAnalytics: false,
+    canEditTermsHelp: false,
+    canManageVersions: false,
+    canBackupRestore: false,
+    canResetDevices: false,
+    canViewAllShops: false,
   },
   shop_admin: {
-    canManageShops: false,
+    canManageAllShops: false,
+    canManageAssignedShops: false,
+    canOnboardShops: false,
+    canDeleteShops: false,
+    canActivateShops: false,
+    canAssignSubscription: false,
+    canManageAdmins: false,
+    canAssignShops: false,
     canEditQualifyingPurchase: true,
     canEditItems: true,
     canViewAnalytics: false,
+    canViewGlobalAnalytics: false,
+    canEditTermsHelp: false,
+    canManageVersions: false,
+    canBackupRestore: false,
+    canResetDevices: false,
+    canViewAllShops: false,
   },
 };
 

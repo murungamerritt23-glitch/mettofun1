@@ -54,13 +54,26 @@ export default function AdminDashboard() {
 
   // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
   const isShopAdmin = admin?.level === 'shop_admin';
-  const isAdmin = admin?.level === 'admin';
+  const isAdmin = admin?.level === 'super_admin' || admin?.level === 'agent_admin';
   const permissions: AdminPermissions = admin?.level ? 
     (ADMIN_PERMISSIONS as any)[admin.level] : {
-      canManageShops: false,
+      canManageAllShops: false,
+      canManageAssignedShops: false,
+      canOnboardShops: false,
+      canDeleteShops: false,
+      canActivateShops: false,
+      canAssignSubscription: false,
+      canManageAdmins: false,
+      canAssignShops: false,
       canEditQualifyingPurchase: false,
       canEditItems: false,
       canViewAnalytics: false,
+      canViewGlobalAnalytics: false,
+      canEditTermsHelp: false,
+      canManageVersions: false,
+      canBackupRestore: false,
+      canResetDevices: false,
+      canViewAllShops: false,
     };
   // Override canEditQualifyingPurchase for shop_admin
   const canEditQualifyingPurchase = isShopAdmin || permissions.canEditQualifyingPurchase;
@@ -69,7 +82,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const loadShops = async () => {
       // admin sees all shops (including inactive)
-      if (admin?.level === 'admin') {
+      if (admin?.level === 'super_admin') {
         const allShops = await firebaseShops.getAll();
         if (allShops.length > 0) {
           setShops(allShops);
@@ -95,7 +108,7 @@ export default function AdminDashboard() {
 
   // Load terms content for admin
   useEffect(() => {
-    if (admin?.level === 'admin') {
+    if (admin?.level === 'super_admin') {
       firebaseSettings.getSettings().then(settings => {
         setTermsContent(settings.termsContent);
       });
@@ -105,9 +118,9 @@ export default function AdminDashboard() {
   // Admin handlers
   const handleSaveAdmin = async (adminData: Admin) => {
     // Check if trying to set as admin
-    if (adminData.level === 'admin') {
+    if (adminData.level === 'super_admin') {
       // Check if there's already a admin
-      const existingAdmins = admins.filter(a => a.level === 'admin' && a.id !== adminData.id);
+      const existingAdmins = admins.filter(a => a.level === 'super_admin' && a.id !== adminData.id);
       if (existingAdmins.length > 0) {
         alert('There can only be ONE Admin. Please contact the existing Admin to change this.');
         return;
@@ -139,7 +152,7 @@ export default function AdminDashboard() {
   // Define available tabs based on permissions
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
-    { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageShops' },
+    { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageAllShops' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
     { id: 'qualifyingPurchase', label: 'Qualifying Purchase', icon: Zap, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'attempts', label: 'Attempts', icon: Users, requiredPermission: 'canViewAnalytics' },
@@ -201,7 +214,7 @@ export default function AdminDashboard() {
     await firebaseShops.update(shop.id, { isActive: !shop.isActive });
     await localShops.save({ ...shop, isActive: !shop.isActive });
     // Reload shops
-    if (admin?.level === 'admin') {
+    if (admin?.level === 'super_admin') {
       const allShops = await firebaseShops.getAll();
       setShops(allShops);
     } else {
@@ -221,7 +234,7 @@ export default function AdminDashboard() {
       subscriptionStatus: 'active' 
     });
     // Reload shops
-    if (admin?.level === 'admin') {
+    if (admin?.level === 'super_admin') {
       const allShops = await firebaseShops.getAll();
       setShops(allShops);
     } else {
@@ -232,7 +245,7 @@ export default function AdminDashboard() {
 
   const handleDeleteShop = async (shopId: string) => {
     // Only admin can delete shops
-    if (admin?.level !== 'admin') {
+    if (admin?.level !== 'super_admin') {
       alert('Only admins can delete shops');
       return;
     }
@@ -244,7 +257,7 @@ export default function AdminDashboard() {
       await localShops.delete(shopId);
       await localItems.deleteByShop(shopId);
       // Refresh
-      if (admin?.level === 'admin') {
+      if (admin?.level === 'super_admin') {
         const allShops = await firebaseShops.getAll();
         setShops(allShops);
       } else {
@@ -373,7 +386,7 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 text-sm">Update prizes & values</p>
               </button>
               
-              {permissions.canManageShops && (
+              {(permissions.canManageAllShops || permissions.canManageAssignedShops) && (
                 <button
                   onClick={handleBackup}
                   className="card hover:border-gold-500 transition-all text-left"
@@ -836,7 +849,7 @@ export default function AdminDashboard() {
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-6">
               <h1 className="gold-gradient-text text-3xl font-bold">Shops</h1>
-              {permissions.canManageShops && (
+              {(permissions.canManageAllShops || permissions.canManageAssignedShops) && (
                 <button
                   onClick={() => setIsCreatingShop(true)}
                   className="btn-gold flex items-center gap-2"
@@ -900,7 +913,7 @@ export default function AdminDashboard() {
                           </span>
                         )}
                         {/* Subscription Tier Badge - only show for admin */}
-                        {admin?.level === 'admin' && (
+                        {admin?.level === 'super_admin' && (
                           <select
                             value={shop.subscriptionTier || 'basic'}
                             onChange={(e) => handleUpdateSubscription(shop.id, e.target.value as 'basic' | 'medium' | 'pro')}
@@ -917,7 +930,7 @@ export default function AdminDashboard() {
                             <option value="pro">Pro</option>
                           </select>
                         )}
-                        {admin?.level !== 'admin' && shop.subscriptionTier && (
+                        {admin?.level !== 'super_admin' && shop.subscriptionTier && (
                           <span className={`px-2 py-1 rounded text-xs ${
                             shop.subscriptionTier === 'pro' 
                               ? 'bg-purple-900/50 text-purple-400' 
@@ -942,7 +955,7 @@ export default function AdminDashboard() {
                       >
                         <Package size={20} />
                       </button>
-                      {permissions.canManageShops && (
+                      {(permissions.canManageAllShops || permissions.canManageAssignedShops) && (
                         <button
                           onClick={() => handleToggleShopActive(shop)}
                           className={`p-2 rounded ${
@@ -955,7 +968,7 @@ export default function AdminDashboard() {
                           {shop.isActive ? <PowerOff size={20} /> : <Power size={20} />}
                         </button>
                       )}
-                      {permissions.canManageShops && (
+                      {(permissions.canManageAllShops || permissions.canManageAssignedShops) && (
                         <>
                           <button
                             onClick={() => setEditingShop(shop)}
@@ -966,7 +979,7 @@ export default function AdminDashboard() {
                         </>
                       )}
                       {/* Delete button - only for admin */}
-                      {admin?.level === 'admin' && (
+                      {admin?.level === 'super_admin' && (
                         <button
                           onClick={() => handleDeleteShop(shop.id)}
                           className="p-2 text-red-500 hover:bg-red-900/30 rounded"
@@ -1435,11 +1448,11 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`px-3 py-1 rounded text-sm ${
-                          staff.level === 'admin' 
+                          staff.level === 'super_admin' 
                             ? 'bg-gold-900/50 text-gold-400' 
                             : 'bg-green-900/50 text-green-400'
                         }`}>
-                          {staff.level === 'admin' ? 'Admin' : 'Shop Admin'}
+                          {staff.level === 'super_admin' ? 'Admin' : 'Shop Admin'}
                         </span>
                         {staff.id !== admin?.id && (
                           <>
@@ -1528,7 +1541,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Terms and Conditions - Admin Only */}
-              {admin?.level === 'admin' && (
+              {admin?.level === 'super_admin' && (
                 <div className="card">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -1728,7 +1741,7 @@ function ShopForm({
       deviceLocked: formData.deviceLocked || false,
       createdAt: shop?.createdAt || new Date(),
       updatedAt: new Date(),
-      createdBy: shop?.createdBy || 'admin',
+      createdBy: shop?.createdBy || 'super_admin',
       backupEnabled: shop?.backupEnabled || false,
     });
   };
@@ -1864,8 +1877,8 @@ function AdminForm({
   onCancel: () => void;
 }) {
   // Check if there's already a admin (excluding the admin being edited)
-  const existingAdmin = admins.find(a => a.level === 'admin' && a.id !== admin?.id);
-  const isEditingExistingAdmin = admin?.level === 'admin';
+  const existingAdmin = admins.find(a => a.level === 'super_admin' && a.id !== admin?.id);
+  const isEditingExistingAdmin = admin?.level === 'super_admin';
   const [formData, setFormData] = useState({
     name: admin?.name || '',
     email: admin?.email || '',
@@ -1883,7 +1896,7 @@ function AdminForm({
     if (!admin) return;
     
     // If editing existing admin, preserve the level
-    const finalLevel = isEditingExistingAdmin ? 'admin' : formData.level;
+    const finalLevel = isEditingExistingAdmin ? 'super_admin' : formData.level;
     
     onSave({
       ...admin,

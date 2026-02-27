@@ -26,6 +26,7 @@ export default function GameMode() {
   const [purchaseAmount, setPurchaseAmount] = useState('');
   const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [showNumberPicker, setShowNumberPicker] = useState(false);
+  const [showItemPicker, setShowItemPicker] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -151,6 +152,7 @@ export default function GameMode() {
     setThresholdNumber(threshold);
     
     setGameStatus('playing');
+    setShowItemPicker(true); // Show item selection first
     setIsAuthorizing(false);
   };
 
@@ -158,6 +160,14 @@ export default function GameMode() {
     if (gameStatus !== 'playing' || selectedBox !== null) return;
     
     setSelectedBox(boxIndex);
+    setShowNumberPicker(true);
+  };
+
+  const handleItemSelect = (item: Item) => {
+    if (!item || !item.isActive) return;
+    
+    setSelectedItem(item);
+    setShowItemPicker(false);
     setShowNumberPicker(true);
   };
 
@@ -226,13 +236,17 @@ export default function GameMode() {
     setSelectedNumber(null);
     setShowResult(false);
     setShowNumberPicker(false);
+    setShowItemPicker(false);
     setGameStatus('playing');
     setWinningItem(null);
+    setSelectedItem(null);
     setSelectedItem(null);
   };
 
   const handleExit = () => {
     resetGame();
+    setShowItemPicker(false);
+    setSelectedItem(null);
     setCurrentView('shop-select');
   };
 
@@ -452,6 +466,72 @@ export default function GameMode() {
               </motion.button>
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Item picker - customer selects an item before picking number
+  if (showItemPicker && !showResult && gameStatus === 'playing') {
+    const activeItems = items.filter(i => i.isActive);
+    
+    return (
+      <div className="min-h-screen p-4 flex flex-col">
+        <div className="max-w-md mx-auto w-full">
+          <h2 className="gold-gradient-text text-2xl font-bold text-center mb-2">
+            {language === 'sw' ? 'Chagua Ombi lako' : 'Select Your Prize'}
+          </h2>
+          <p className="text-gray-400 text-center mb-4">
+            {language === 'sw' 
+              ? 'Chagua moja kati ya vilivyopo chini' 
+              : 'Pick one of the prizes below'}
+          </p>
+          
+          {/* Selected item preview if any */}
+          {selectedItem && (
+            <div className="text-center mb-4 p-3 bg-gold-900/30 rounded-lg">
+              <p className="text-gray-400 text-sm">{language === 'sw' ? 'Umechagua:' : 'You selected:'}</p>
+              <p className="gold-gradient-text text-xl font-bold">{selectedItem.name}</p>
+              <p className="text-gold-400">KSh {selectedItem.value.toLocaleString()}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
+            {activeItems.map((item, index) => (
+              <motion.button
+                key={item.id}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleItemSelect(item)}
+                className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center ${
+                  selectedItem?.id === item.id 
+                    ? 'ring-2 ring-gold-500 bg-gold-900/50' 
+                    : ''
+                }`}
+              >
+                <Gift className="w-6 h-6 sm:w-8 sm:h-8 mb-1 text-gold-400" />
+                <span className="text-xs sm:text-sm font-medium truncate w-full text-center">
+                  {item.name}
+                </span>
+                <span className="text-gold-400 text-xs sm:text-sm">
+                  KSh {item.value.toLocaleString()}
+                </span>
+              </motion.button>
+            ))}
+          </div>
+          
+          {/* Confirm button when item selected */}
+          {selectedItem && (
+            <button
+              onClick={() => {
+                setShowItemPicker(false);
+                setShowNumberPicker(true);
+              }}
+              className="btn-gold w-full mt-4"
+            >
+              {language === 'sw' ? 'Endelea kuchagua nambari' : 'Continue to Pick Number'}
+            </button>
+          )}
         </div>
       </div>
     );

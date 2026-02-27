@@ -283,8 +283,19 @@ export const localAdmins = {
     return all.filter(admin => admin.level === level);
   },
 
+  async getByLevels(levels: AdminLevel[]): Promise<Admin[]> {
+    const database = await initDB();
+    const all = await database.getAll('admins');
+    return all.filter(admin => levels.includes(admin.level));
+  },
+
+  async getAssignedShops(adminId: string): Promise<string[]> {
+    const admin = await this.get(adminId);
+    return admin?.assignedShops || [];
+  },
+
   async hasAdmin(): Promise<boolean> {
-    const admins = await this.getByLevel('admin');
+    const admins = await this.getByLevel('super_admin');
     return admins.length > 0;
   },
 
