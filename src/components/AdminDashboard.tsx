@@ -496,6 +496,7 @@ export default function AdminDashboard() {
                           inputMode="numeric"
                           pattern="[0-9]*"
                           value={currentShop?.qualifyingPurchase || 0}
+                          onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
                           onChange={async (e) => {
                             if (!currentShop) return;
                             try {
@@ -1210,6 +1211,7 @@ export default function AdminDashboard() {
                       inputMode="numeric"
                       pattern="[0-9]*"
                       value={currentShop?.qualifyingPurchase || 0}
+                      onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
                       onChange={async (e) => {
                         if (!currentShop) return;
                         try {
@@ -1792,6 +1794,7 @@ function ShopForm({
           inputMode="numeric"
           pattern="[0-9]*"
           value={formData.qualifyingPurchase}
+          onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
           onChange={(e) => setFormData({ ...formData, qualifyingPurchase: Number(e.target.value) || 0 })}
           className="input"
           required

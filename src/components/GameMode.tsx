@@ -375,6 +375,7 @@ export default function GameMode() {
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
+                  onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
                   value={purchaseAmount}
                   onChange={(e) => setPurchaseAmount(e.target.value)}
                   className="input"
