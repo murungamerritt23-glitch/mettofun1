@@ -27,7 +27,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
   - Firebase admin functions for syncing assigned shops
 - [x] Add Android APK build support with Capacitor
   - Built METOFUN-debug.apk for Android installation
-- [x] Fix qualifying purchase input - remove step constraint allowing any value
+- [x] Fix qualifying purchase input - ensure number type conversion for proper comparison
 
 ## Current Structure
 
