@@ -102,7 +102,8 @@ export default function GameMode() {
     }
     
     const amount = parseFloat(purchaseAmount);
-    if (isNaN(amount) || amount < (currentShop?.qualifyingPurchase || 0)) {
+    const qualifyingPurchase = Number(currentShop?.qualifyingPurchase) || 0;
+    if (isNaN(amount) || amount < qualifyingPurchase) {
       alert(language === 'sw' 
         ? `Kiwango cha chini ni KSh ${currentShop?.qualifyingPurchase || 0}`
         : `Minimum amount is KSh ${currentShop?.qualifyingPurchase || 0}`);

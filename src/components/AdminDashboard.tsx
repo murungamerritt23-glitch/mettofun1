@@ -496,7 +496,7 @@ export default function AdminDashboard() {
                           value={currentShop?.qualifyingPurchase || 0}
                           onChange={async (e) => {
                             if (!currentShop) return;
-                            const newValue = parseInt(e.target.value) || 0;
+                            const newValue = Number(e.target.value) || 0;
                             const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
                             await firebaseShops.save(updatedShop);
                             await localShops.save(updatedShop);
@@ -1201,7 +1201,7 @@ export default function AdminDashboard() {
                       value={currentShop?.qualifyingPurchase || 0}
                       onChange={async (e) => {
                         if (!currentShop) return;
-                        const newValue = parseInt(e.target.value) || 0;
+                        const newValue = Number(e.target.value) || 0;
                         const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
                         await firebaseShops.save(updatedShop);
                         await localShops.save(updatedShop);
