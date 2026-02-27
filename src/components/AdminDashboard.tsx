@@ -506,7 +506,6 @@ export default function AdminDashboard() {
                           }}
                           className="input w-full max-w-xs text-xl font-bold border-2 border-gold-500 focus:border-gold-400"
                           min={0}
-                          step={100}
                         />
                       </div>
                       <p className="text-gray-500 text-sm mt-2">
@@ -1212,7 +1211,6 @@ export default function AdminDashboard() {
                       }}
                       className="input w-full max-w-xs text-xl font-bold border-2 border-gold-500 focus:border-gold-400"
                       min={0}
-                      step={100}
                     />
                   </div>
                   <p className="text-gray-500 text-sm mt-2">
