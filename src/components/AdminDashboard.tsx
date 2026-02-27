@@ -15,7 +15,7 @@ import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier } from '@/types';
 import { ADMIN_PERMISSIONS, SUBSCRIPTION_CHANNELS } from '@/types';
 
-type TabType = 'dashboard' | 'shops' | 'items' | 'attempts' | 'analytics' | 'settings' | 'staff' | 'myShop' | 'customers';
+type TabType = 'dashboard' | 'shops' | 'items' | 'qualifyingPurchase' | 'attempts' | 'analytics' | 'settings' | 'staff' | 'myShop' | 'customers';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -142,6 +142,7 @@ export default function AdminDashboard() {
     { id: 'customers', label: 'Customers', icon: UserCheck, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageShops' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
+    { id: 'qualifyingPurchase', label: 'Qualifying Purchase', icon: Zap, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'attempts', label: 'Attempts', icon: Users, requiredPermission: 'canViewAnalytics' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, requiredPermission: 'canViewAnalytics' },
   ];
@@ -1146,6 +1147,130 @@ export default function AdminDashboard() {
                 </button>
               </div>
             )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Qualifying Purchase view - for shop admins to edit qualifying purchase amount
+  if (activeTab === 'qualifyingPurchase') {
+    if (!currentShop) {
+      return (
+        <div className="min-h-screen flex">
+          <AdminSidebar 
+            tabs={tabs} 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab}
+            isMobileMenuOpen={isMobileMenuOpen}
+            setIsMobileMenuOpen={setIsMobileMenuOpen}
+            onLogout={handleLogout}
+            admin={admin}
+          />
+          
+          <main className="flex-1 p-6">
+            <div className="max-w-2xl mx-auto text-center py-12">
+              <Zap size={48} className="mx-auto text-gray-600 mb-4" />
+              <p className="text-gray-500">Select a shop to manage qualifying purchase amount</p>
+              <button
+                onClick={() => setActiveTab('shops')}
+                className="btn-gold-outline mt-4"
+              >
+                Go to Shops
+              </button>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen flex">
+        <AdminSidebar 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          onLogout={handleLogout}
+          admin={admin}
+        />
+        
+        <main className="flex-1 p-6">
+          <div className="max-w-2xl mx-auto">
+            <h1 className="gold-gradient-text text-3xl font-bold mb-2">
+              Qualifying Purchase
+            </h1>
+            <p className="text-gray-400 mb-6">
+              Set the minimum purchase amount required to play the game
+            </p>
+            
+            <div className="card mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-white text-lg">{currentShop.shopName}</h3>
+                  <p className="text-gray-400 text-sm">Code: {currentShop.shopCode}</p>
+                </div>
+              </div>
+              
+              {(canEditQualifyingPurchase) && (
+                <div className="p-4 bg-gold-900/20 border-2 border-gold-500 rounded-lg">
+                  <label className="block text-white font-semibold text-lg mb-2 flex items-center gap-2">
+                    <Zap size={20} className="text-gold-400" />
+                    Minimum Purchase Amount
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-400 text-lg">KSh</span>
+                    <input
+                      type="number"
+                      value={currentShop?.qualifyingPurchase || 0}
+                      onChange={async (e) => {
+                        if (!currentShop) return;
+                        const newValue = parseInt(e.target.value) || 0;
+                        const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                        await firebaseShops.save(updatedShop);
+                        await localShops.save(updatedShop);
+                        setCurrentShop(updatedShop);
+                        const fbShops = await firebaseShops.getAllActive();
+                        setShops(fbShops);
+                      }}
+                      className="input w-full max-w-xs text-xl font-bold border-2 border-gold-500 focus:border-gold-400"
+                      min={0}
+                      step={100}
+                    />
+                  </div>
+                  <p className="text-gray-500 text-sm mt-2">
+                    💡 Minimum purchase amount required to play the game
+                  </p>
+                </div>
+              )}
+
+              {(!canEditQualifyingPurchase) && currentShop && (
+                <div className="mb-4">
+                  <label className="block text-gray-400 text-sm mb-2">
+                    Qualifying Purchase Amount (KSh)
+                  </label>
+                  <input
+                    type="number"
+                    value={currentShop.qualifyingPurchase}
+                    disabled
+                    className="input w-full bg-gray-800 cursor-not-allowed opacity-60"
+                  />
+                  <p className="text-gray-500 text-sm mt-2">
+                    You do not have permission to edit this value
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div className="card">
+              <h3 className="font-semibold text-white mb-3">Important Notes</h3>
+              <ul className="text-gray-400 text-sm space-y-2">
+                <li>• Item values must be ≤ 80% of qualifying purchase</li>
+                <li>• Current limit: KSh {(currentShop.qualifyingPurchase * 0.8).toLocaleString()} per item</li>
+                <li>• Go to Items tab to edit prize values</li>
+              </ul>
+            </div>
           </div>
         </main>
       </div>
