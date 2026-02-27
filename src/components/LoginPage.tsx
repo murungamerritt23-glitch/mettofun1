@@ -19,6 +19,7 @@ export default function LoginPage() {
   
   const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
   const { setCurrentView } = useUIStore();
+  const { currentShop, setCurrentShop } = useShopStore();
 
   // Check if device is authorized for admin
   const checkDeviceAuthorization = (admin: { deviceId?: string; deviceLocked?: boolean }): string | null => {
@@ -154,7 +155,20 @@ export default function LoginPage() {
   };
 
   const handleCustomerMode = () => {
-    setCurrentView('shop-select');
+    // Go directly to customer mode
+    // If no shop is selected, we'll use the first available shop or show a message
+    const shops = useShopStore.getState().shops;
+    const currentShop = useShopStore.getState().currentShop;
+    
+    if (!currentShop && shops.length > 0) {
+      // Auto-select first shop
+      setCurrentShop(shops[0]);
+    } else if (!currentShop) {
+      setError('No shop configured. Please contact the shop admin.');
+      return;
+    }
+    
+    setCurrentView('customer');
   };
 
   return (

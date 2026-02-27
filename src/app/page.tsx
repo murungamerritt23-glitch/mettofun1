@@ -3,17 +3,17 @@
 import { useEffect, useState } from 'react';
 import SplashScreen from '@/components/SplashScreen';
 import LoginPage from '@/components/LoginPage';
-import ShopSelector from '@/components/ShopSelector';
 import GameMode from '@/components/GameMode';
 import AdminDashboard from '@/components/AdminDashboard';
 import { useUIStore, useShopStore } from '@/store';
 import type { Shop } from '@/types';
 import { firebaseShops } from '@/lib/firebase';
 import { initDB } from '@/lib/local-db';
+import { getDeviceId, isDeviceAuthorized } from '@/lib/device';
 
 export default function Home() {
   const [isInitialized, setIsInitialized] = useState(false);
-  const { currentView, showSplash, setShowSplash } = useUIStore();
+  const { currentView, showSplash, setShowSplash, setCurrentView } = useUIStore();
   const { setShops, setCurrentShop } = useShopStore();
 
   useEffect(() => {
@@ -57,6 +57,29 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [setShowSplash, setShops, setCurrentShop]);
 
+  // Check if this device is a registered kiosk (shop device)
+  useEffect(() => {
+    if (!isInitialized || currentView !== 'login') return;
+    
+    const checkKioskMode = async () => {
+      const shops = useShopStore.getState().shops;
+      const currentDeviceId = getDeviceId();
+      
+      // Find a shop that has this device locked
+      const kioskShop = shops.find(shop => 
+        shop.deviceLocked && shop.deviceId === currentDeviceId
+      );
+      
+      if (kioskShop) {
+        // This device is a registered kiosk - go directly to customer mode
+        setCurrentShop(kioskShop);
+        setCurrentView('customer');
+      }
+    };
+    
+    checkKioskMode();
+  }, [isInitialized, currentView, setCurrentShop, setCurrentView]);
+
   // Show splash screen while loading
   if (showSplash || !isInitialized) {
     return <SplashScreen />;
@@ -66,8 +89,6 @@ export default function Home() {
   switch (currentView) {
     case 'login':
       return <LoginPage />;
-    case 'shop-select':
-      return <ShopSelector />;
     case 'customer':
       return <GameMode />;
     case 'admin':

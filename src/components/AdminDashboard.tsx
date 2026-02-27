@@ -146,6 +146,10 @@ export default function AdminDashboard() {
   // Filter tabs based on permissions
   const tabs = allTabs.filter(tab => {
     if (tab.requiredPermission === null) return true;
+    // Also show tab if user is shop_admin (direct check)
+    if (admin?.level === 'shop_admin' && (tab.requiredPermission === 'canEditQualifyingPurchase' || tab.requiredPermission === 'canEditItems')) {
+      return true;
+    }
     return (permissions as any)[tab.requiredPermission];
   });
 
@@ -455,7 +459,42 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                   
-                  {permissions.canEditQualifyingPurchase && (
+                  {/* Debug info - remove in production */}
+                  <div className="mb-4 p-2 bg-gray-800 rounded text-xs">
+                    <p className="text-gray-400">Debug: Admin Level = <span className="text-white">{admin?.level || 'undefined'}</span></p>
+                    <p className="text-gray-400">canEditQualifyingPurchase = <span className={(permissions.canEditQualifyingPurchase || admin?.level === 'shop_admin') ? 'text-green-400' : 'text-red-400'}>{String(permissions.canEditQualifyingPurchase || admin?.level === 'shop_admin')}</span></p>
+                  </div>
+
+                  {(permissions.canEditQualifyingPurchase || admin?.level === 'shop_admin') && (
+                    <div className="mb-4">
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center gap-2">
+                        Qualifying Purchase Amount (KSh)
+                        <span className="text-xs text-green-400 bg-green-900/20 px-2 py-0.5 rounded">Editable</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={currentShop?.qualifyingPurchase || 0}
+                        onChange={async (e) => {
+                          if (!currentShop) return;
+                          const newValue = parseInt(e.target.value) || 0;
+                          const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                          await firebaseShops.save(updatedShop);
+                          await localShops.save(updatedShop);
+                          setCurrentShop(updatedShop);
+                          const fbShops = await firebaseShops.getAllActive();
+                          setShops(fbShops);
+                        }}
+                        className="input w-full border-2 border-gold-500/50 focus:border-gold-400"
+                        min={0}
+                        step={100}
+                      />
+                      <p className="text-gray-500 text-xs mt-1">
+                        Click to edit • Minimum purchase amount required to play
+                      </p>
+                    </div>
+                  )}
+
+                  {(!permissions.canEditQualifyingPurchase && admin?.level !== 'shop_admin') && currentShop && (
                     <div className="mb-4">
                       <label className="block text-gray-400 text-sm mb-2">
                         Qualifying Purchase Amount (KSh)
@@ -463,21 +502,11 @@ export default function AdminDashboard() {
                       <input
                         type="number"
                         value={currentShop.qualifyingPurchase}
-                        onChange={async (e) => {
-                          const newValue = parseInt(e.target.value) || 0;
-      const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-      await firebaseShops.save(updatedShop);
-      await localShops.save(updatedShop);
-      setCurrentShop(updatedShop);
-      const fbShops = await firebaseShops.getAllActive();
-      setShops(fbShops);
-                        }}
-                        className="input w-full"
-                        min={0}
-                        step={100}
+                        disabled
+                        className="input w-full bg-gray-800 cursor-not-allowed opacity-60"
                       />
                       <p className="text-gray-500 text-xs mt-1">
-                        Minimum purchase amount required to play
+                        Read-only • Contact your administrator to change this value
                       </p>
                     </div>
                   )}
