@@ -37,6 +37,7 @@ export default function AdminDashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ phoneNumber: '', purchaseAmount: '', itemId: '' });
   const [itemsList, setItemsList] = useState<Item[]>([]);
+  const [demoQualifyingPurchase, setDemoQualifyingPurchase] = useState<number>(100);
 
   const { admin, logout } = useAuthStore();
   const { currentShop, setCurrentShop } = useShopStore();
@@ -603,7 +604,7 @@ export default function AdminDashboard() {
       setPendingCustomers(await localPendingCustomers.getByShop(currentShop!.id));
     };
 
-    const handleLaunchCustomer = async (customer: PendingCustomer, isDemo: boolean = false) => {
+    const handleLaunchCustomer = async (customer: PendingCustomer, isDemo: boolean = false, customQualifyingPurchase?: number) => {
       // For non-shop admins, force demo mode
       const isDemoMode = isDemo || admin?.level !== 'shop_admin';
       
@@ -613,8 +614,13 @@ export default function AdminDashboard() {
       // Get the item for this customer
       const item = itemsList.find(i => i.id === customer.itemId);
       
+      // Use custom qualifying purchase for demo mode, otherwise use shop's value
+      const qualifyingPurchase = isDemoMode && customQualifyingPurchase 
+        ? customQualifyingPurchase 
+        : (currentShop?.qualifyingPurchase || 100);
+      
       // Calculate box configuration based on purchase amount
-      const config = calculateBoxConfiguration(customer.purchaseAmount, currentShop?.qualifyingPurchase || 100);
+      const config = calculateBoxConfiguration(customer.purchaseAmount, qualifyingPurchase);
       
       // Generate winning number from the displayed range (1 to 18-threshold)
       const winningNum = generateSecureRandomNumber(18 - config.threshold);
@@ -681,6 +687,27 @@ export default function AdminDashboard() {
               >
                 <UserPlus size={20} /> Record Purchase
               </button>
+            </div>
+
+            {/* Demo Mode Qualifying Purchase Setting */}
+            <div className="card p-4 mb-6 bg-yellow-900/20 border-yellow-500/30">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Zap className="text-yellow-400" size={20} />
+                  <span className="text-yellow-400 font-medium">Demo Mode Qualifying Purchase:</span>
+                </div>
+                <input
+                  type="number"
+                  value={demoQualifyingPurchase}
+                  onChange={(e) => setDemoQualifyingPurchase(Number(e.target.value) || 0)}
+                  onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
+                  className="input-field w-32"
+                  min="0"
+                />
+                <span className="text-gray-400 text-sm">
+                  (Used when clicking &quot;Demo&quot; button - doesn&apos;t affect real shop settings)
+                </span>
+              </div>
             </div>
 
             {!currentShop ? (
@@ -773,6 +800,12 @@ export default function AdminDashboard() {
                                 <Zap size={12} /> Demo
                               </span>
                             )}
+                            <button 
+                              onClick={() => handleLaunchCustomer(c, true, demoQualifyingPurchase)}
+                              className="btn-secondary flex items-center gap-1"
+                            >
+                              <Zap size={16} /> Demo
+                            </button>
                             <button 
                               onClick={() => handleLaunchCustomer(c)}
                               className="btn-primary flex items-center gap-1"
