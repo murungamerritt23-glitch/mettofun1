@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
-  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap
+  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap, ShoppingCart
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops } from '@/lib/local-db';
@@ -154,21 +154,36 @@ export default function AdminDashboard() {
   // Define available tabs based on permissions
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
+    { id: 'myShop', label: 'My Shop', icon: Store, requiredPermission: 'shop_admin' },
+    { id: 'customers', label: 'Customers', icon: ShoppingCart, requiredPermission: 'shop_admin' },
     { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageAllShops' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
     { id: 'qualifyingPurchase', label: 'Qualifying Purchase', icon: Zap, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'attempts', label: 'Attempts', icon: Users, requiredPermission: 'canViewAnalytics' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, requiredPermission: 'canViewAnalytics' },
+    { id: 'staff', label: 'Staff', icon: UserCheck, requiredPermission: 'canManageAdmins' },
     { id: 'settings', label: 'Settings', icon: Settings, requiredPermission: null },
   ];
 
   // Filter tabs based on permissions
   const tabs = allTabs.filter(tab => {
     if (tab.requiredPermission === null) return true;
-    // Also show tab if user is shop_admin (direct check)
+    
+    // Handle shop_admin specific tabs
+    if (admin?.level === 'shop_admin' && tab.requiredPermission === 'shop_admin') {
+      return true;
+    }
+    
+    // Also show tab if user is shop_admin (direct check) for edit permissions
     if (admin?.level === 'shop_admin' && (tab.requiredPermission === 'canEditQualifyingPurchase' || tab.requiredPermission === 'canEditItems')) {
       return true;
     }
+    
+    // Handle staff tab for both canManageAdmins and canAssignShops
+    if (tab.requiredPermission === 'canManageAdmins' && (permissions.canManageAdmins || permissions.canAssignShops)) {
+      return true;
+    }
+    
     return (permissions as any)[tab.requiredPermission];
   });
 
