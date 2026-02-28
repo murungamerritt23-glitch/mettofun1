@@ -1,19 +1,16 @@
-# Active Context: Next.js Starter Template
+# Active Context: METOFUN - Promotional Reward Game App
 
 ## Current State
 
-**Template Status**: ✅ Ready for development
+**Project Status**: ✅ Live and operational
 
-The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. It's ready for AI-assisted expansion to build any type of application.
+METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeScript, Firebase, and Capacitor for Android APK.
 
 ## Recently Completed
 
-- [x] Base Next.js 16 setup with App Router
-- [x] TypeScript configuration with strict mode
-- [x] Tailwind CSS 4 integration
-- [x] ESLint configuration
-- [x] Memory bank documentation
-- [x] Recipe system for common features
+- [x] Fix missing sidebar tabs - add My Shop, Customers, Staff to navigation
+- [x] Fix qualifying purchase editing permissions - only shop_admin can edit
+- [x] Move themeColor from metadata to viewport (fixes Next.js static export warning)
 - [x] Add customer mode launch from admin dashboard (tap "Play" to switch to customer mode)
 - [x] Add super admin shop management features:
   - Delete shops (permanent deletion)
@@ -28,6 +25,10 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Add Android APK build support with Capacitor
   - Built METOFUN-debug.apk for Android installation
 - [x] Fix qualifying purchase input - ensure number type conversion for proper comparison
+- [x] Add editable qualifying purchase for demo mode:
+  - Demo Qualifying Purchase input in Customers tab
+  - "Demo" button launches with custom qualifying purchase
+  - Doesn't affect real shop settings
 - [x] Add editable qualifying purchase for demo mode:
   - Demo Qualifying Purchase input in Customers tab
   - "Demo" button launches with custom qualifying purchase
