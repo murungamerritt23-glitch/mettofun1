@@ -28,6 +28,10 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Add Android APK build support with Capacitor
   - Built METOFUN-debug.apk for Android installation
 - [x] Fix qualifying purchase input - ensure number type conversion for proper comparison
+- [x] Add editable qualifying purchase for demo mode:
+  - Demo Qualifying Purchase input in Customers tab
+  - "Demo" button launches with custom qualifying purchase
+  - Doesn't affect real shop settings
 
 ## Current Structure
 
