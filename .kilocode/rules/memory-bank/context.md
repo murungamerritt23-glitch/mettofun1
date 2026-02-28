@@ -32,6 +32,8 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
   - Demo Qualifying Purchase input in Customers tab
   - "Demo" button launches with custom qualifying purchase
   - Doesn't affect real shop settings
+- [x] Fix missing sidebar tabs - add My Shop, Customers, Staff to navigation
+- [x] Fix qualifying purchase editing permissions - only shop_admin can edit
 
 ## Current Structure
 
@@ -104,3 +106,5 @@ export async function GET() {
 |------|---------|
 | Initial | Template created with base setup |
 | Today | Add Play button in admin dashboard to launch customer mode directly |
+| Today | Fix missing sidebar tabs - add My Shop, Customers, Staff to navigation |
+| Today | Fix qualifying purchase editing permissions - only shop_admin can edit |
