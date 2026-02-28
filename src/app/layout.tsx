@@ -4,7 +4,6 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "MetoFun - Win Amazing Rewards!",
   description: "Promotional reward game - Play lucky number games and win exciting prizes!",
-  themeColor: "#4F46E5",
   manifest: "/manifest.json",
   other: {
     "apple-mobile-web-app-capable": "yes",
@@ -17,6 +16,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   minimumScale: 1,
   maximumScale: 5,
+  themeColor: "#4F46E5",
 };
 
 // Service Worker Registration (Client-side only)
