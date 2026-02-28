@@ -689,26 +689,28 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {/* Demo Mode Qualifying Purchase Setting */}
-            <div className="card p-4 mb-6 bg-yellow-900/20 border-yellow-500/30">
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <Zap className="text-yellow-400" size={20} />
-                  <span className="text-yellow-400 font-medium">Demo Mode Qualifying Purchase:</span>
+            {/* Demo Mode Qualifying Purchase Setting - Only for shop admins */}
+            {isShopAdmin && (
+              <div className="card p-4 mb-6 bg-yellow-900/20 border-yellow-500/30">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Zap className="text-yellow-400" size={20} />
+                    <span className="text-yellow-400 font-medium">Demo Mode Qualifying Purchase:</span>
+                  </div>
+                  <input
+                    type="number"
+                    value={demoQualifyingPurchase}
+                    onChange={(e) => setDemoQualifyingPurchase(Number(e.target.value) || 0)}
+                    onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
+                    className="input-field w-32"
+                    min="0"
+                  />
+                  <span className="text-gray-400 text-sm">
+                    (Used when clicking &quot;Demo&quot; button - doesn&apos;t affect real shop settings)
+                  </span>
                 </div>
-                <input
-                  type="number"
-                  value={demoQualifyingPurchase}
-                  onChange={(e) => setDemoQualifyingPurchase(Number(e.target.value) || 0)}
-                  onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
-                  className="input-field w-32"
-                  min="0"
-                />
-                <span className="text-gray-400 text-sm">
-                  (Used when clicking &quot;Demo&quot; button - doesn&apos;t affect real shop settings)
-                </span>
               </div>
-            </div>
+            )}
 
             {!currentShop ? (
               <div className="card p-8 text-center">
