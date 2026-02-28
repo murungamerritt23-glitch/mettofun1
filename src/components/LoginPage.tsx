@@ -202,6 +202,16 @@ export default function LoginPage() {
     });
   };
 
+  // Check if Firebase is properly configured (not using demo credentials)
+  const isFirebaseConfigured = typeof window !== 'undefined' && 
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID && 
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID !== 'demo-project';
+
+  const handleSetupShop = () => {
+    // Guide user to set up their shop
+    alert('To create a real shop:\n\n1. Set up Firebase:\n   - Go to console.firebase.google.com\n   - Create a new project\n   - Enable Firestore & Authentication\n   - Get your config from Project Settings\n\n2. Add Firebase config to .env.local\n\n3. Log in as Super Admin\n\n4. Go to Shops tab to create your shop\n\nSee SETUP.md for detailed instructions.');
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       {/* Background pattern */}
@@ -331,6 +341,14 @@ export default function LoginPage() {
             >
               Customer Mode →
             </button>
+            {!isFirebaseConfigured && (
+              <button
+                onClick={handleSetupShop}
+                className="mt-3 text-gold-500 text-sm hover:text-gold-400 w-full text-center font-semibold"
+              >
+                🚀 Set Up Your Real Shop
+              </button>
+            )}
           </div>
         </div>
 
