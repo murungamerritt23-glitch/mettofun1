@@ -938,6 +938,7 @@ export default function AdminDashboard() {
                       setIsCreatingShop(false);
                       setEditingShop(null);
                     }}
+                    isShopAdmin={isShopAdmin}
                   />
                 </motion.div>
               )}
@@ -1774,11 +1775,13 @@ function AdminSidebar({
 function ShopForm({ 
   shop, 
   onSave, 
-  onCancel 
+  onCancel,
+  isShopAdmin = false
 }: { 
   shop: Shop | null; 
   onSave: (shop: Shop) => void; 
   onCancel: () => void;
+  isShopAdmin?: boolean;
 }) {
   const [formData, setFormData] = useState({
     shopName: shop?.shopName || '',
@@ -1837,19 +1840,22 @@ function ShopForm({
           required
         />
       </div>
-      <div>
-        <label className="block text-sm text-gray-400 mb-1">Qualifying Purchase (KSh)</label>
-        <input
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          value={formData.qualifyingPurchase}
-          onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
-          onChange={(e) => setFormData({ ...formData, qualifyingPurchase: Number(e.target.value) || 0 })}
-          className="input"
-          required
-        />
-      </div>
+      {/* Qualifying Purchase - only editable by shop admin */}
+      {isShopAdmin && (
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Qualifying Purchase (KSh)</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={formData.qualifyingPurchase}
+            onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
+            onChange={(e) => setFormData({ ...formData, qualifyingPurchase: Number(e.target.value) || 0 })}
+            className="input"
+            required
+          />
+        </div>
+      )}
       <div>
         <label className="block text-sm text-gray-400 mb-1">Promo Message</label>
         <input
