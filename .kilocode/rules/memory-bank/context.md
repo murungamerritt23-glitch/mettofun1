@@ -8,6 +8,7 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Add shop setup guide (SETUP.md) and setup button on login page
 - [x] Fix missing sidebar tabs - add My Shop, Customers, Staff to navigation
 - [x] Fix qualifying purchase editing permissions - only shop_admin can edit
 - [x] Move themeColor from metadata to viewport (fixes Next.js static export warning)
@@ -106,6 +107,7 @@ export async function GET() {
 | Date | Changes |
 |------|---------|
 | Initial | Template created with base setup |
+| Today | Add shop setup guide and setup button on login page |
 | Today | Add Play button in admin dashboard to launch customer mode directly |
 | Today | Fix missing sidebar tabs - add My Shop, Customers, Staff to navigation |
 | Today | Fix qualifying purchase editing permissions - only shop_admin can edit |
