@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
-  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap, ShoppingCart
+  Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap, ShoppingCart,
+  Upload, RefreshCw
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops } from '@/lib/local-db';
@@ -2179,8 +2180,48 @@ function ItemForm({
     stockStatus: item.stockStatus,
     isActive: item.isActive,
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(item.imageUrl || null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const isPriceValid = formData.value <= qualifyingPurchase * 0.8;
+
+  // Handle file upload - convert to base64
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 500KB for offline storage)
+    if (file.size > 500 * 1024) {
+      alert('Image too large. Please use an image under 500KB');
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setImagePreview(base64);
+      setFormData({ ...formData, imageUrl: base64 });
+      setIsUploading(false);
+    };
+    reader.onerror = () => {
+      alert('Failed to read file');
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle URL input change
+  const handleUrlChange = (url: string) => {
+    setFormData({ ...formData, imageUrl: url });
+    setImagePreview(url || null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2208,19 +2249,65 @@ function ItemForm({
         />
       </div>
       
-      {/* Image URL Field */}
       <div>
-        <label className="block text-sm text-gray-400 mb-1">Image URL (optional)</label>
-        <input
-          type="url"
-          value={formData.imageUrl}
-          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-          className="input"
-          placeholder="https://example.com/image.jpg"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Enter a URL for the item image
-        </p>
+        <label className="block text-sm text-gray-400 mb-1">Item Image</label>
+        
+        {/* Image Preview */}
+        {imagePreview && (
+          <div className="mb-3 relative inline-block">
+            <img 
+              src={imagePreview} 
+              alt="Preview" 
+              className="h-24 w-24 object-cover rounded-lg border border-gray-600"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setImagePreview(null);
+                setFormData({ ...formData, imageUrl: '' });
+              }}
+              className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+        
+        {/* File Upload */}
+        <div className="mb-2">
+          <label className="flex items-center justify-center w-full h-12 px-4 transition bg-gray-800 border-2 border-gray-600 border-dashed rounded-lg cursor-pointer hover:border-gold-400 hover:bg-gray-750">
+            <div className="flex items-center text-gray-400">
+              {isUploading ? (
+                <RefreshCw size={18} className="animate-spin mr-2" />
+              ) : (
+                <Upload size={18} className="mr-2" />
+              )}
+              <span className="text-sm">{isUploading ? 'Uploading...' : 'Click to upload image'}</span>
+            </div>
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              disabled={isUploading}
+            />
+          </label>
+          <p className="text-xs text-gray-500 mt-1">
+            Upload an image (max 500KB) or enter a URL below
+          </p>
+        </div>
+        
+        {/* URL Input (alternative) */}
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Or use Image URL</label>
+          <input
+            type="url"
+            value={formData.imageUrl}
+            onChange={(e) => handleUrlChange(e.target.value)}
+            className="input"
+            placeholder="https://example.com/image.jpg"
+          />
+        </div>
       </div>
       
       <div>
