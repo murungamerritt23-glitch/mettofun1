@@ -8,6 +8,14 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Add file upload for item images in Items tab
+  - Shop admins can now upload images directly (max 500KB)
+  - Images stored as base64 for offline use
+  - Preview and remove image options available
+  - URL input still available as alternative
+- [x] Remove qualifying purchase from shop creation form
+  - Only shop admins can set qualifying purchase in My Shop tab
+  - Super/agent admins cannot set it during shop creation
 - [x] Add shop setup guide (SETUP.md) and setup button on login page
 - [x] Fix missing sidebar tabs - add My Shop, Customers, Staff to navigation
 - [x] Fix qualifying purchase editing permissions - only shop_admin can edit
@@ -30,12 +38,6 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Demo Qualifying Purchase input in Customers tab
   - "Demo" button launches with custom qualifying purchase
   - Doesn't affect real shop settings
-- [x] Add editable qualifying purchase for demo mode:
-  - Demo Qualifying Purchase input in Customers tab
-  - "Demo" button launches with custom qualifying purchase
-  - Doesn't affect real shop settings
-- [x] Fix missing sidebar tabs - add My Shop, Customers, Staff to navigation
-- [x] Fix qualifying purchase editing permissions - only shop_admin can edit
 
 ## Current Structure
 
