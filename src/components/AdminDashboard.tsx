@@ -39,6 +39,8 @@ export default function AdminDashboard() {
   const [newCustomer, setNewCustomer] = useState({ phoneNumber: '', purchaseAmount: '', itemId: '' });
   const [itemsList, setItemsList] = useState<Item[]>([]);
   const [demoQualifyingPurchase, setDemoQualifyingPurchase] = useState<number>(100);
+  const [qpInput, setQpInput] = useState<string>(''); // Local state for qualifying purchase input
+  const [qpSaving, setQpSaving] = useState(false); // Saving state for qualifying purchase
 
   const { admin, logout } = useAuthStore();
   const { currentShop, setCurrentShop } = useShopStore();
@@ -53,6 +55,14 @@ export default function AdminDashboard() {
       localItems.getByShop(currentShop.id).then(setItemsList);
     }
   }, [activeTab, currentShop]);
+
+  // Initialize qualifying purchase input when currentShop changes
+  useEffect(() => {
+    if (currentShop) {
+      setQpInput(String(currentShop.qualifyingPurchase || 0));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentShop?.id, currentShop?.qualifyingPurchase]);
 
   // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
   const isShopAdmin = admin?.level === 'shop_admin';
@@ -525,12 +535,18 @@ export default function AdminDashboard() {
                           type="text"
                           inputMode="numeric"
                           pattern="[0-9]*"
-                          value={currentShop?.qualifyingPurchase || 0}
+                          value={qpInput}
                           onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
-                          onChange={async (e) => {
-                            if (!currentShop) return;
+                          onChange={(e) => setQpInput(e.target.value)}
+                          className="input w-full max-w-xs text-xl font-bold border-2 border-gold-500 focus:border-gold-400"
+                          min={0}
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!currentShop || qpSaving) return;
+                            setQpSaving(true);
                             try {
-                              const newValue = Number(e.target.value) || 0;
+                              const newValue = Number(qpInput) || 0;
                               const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
                               
                               // Try to save to Firebase, but don't fail if Firebase is unavailable
@@ -550,14 +566,19 @@ export default function AdminDashboard() {
                                 setShops(localShopList);
                                 console.log('Saved locally (Firebase not available)');
                               }
+                              alert('Qualifying purchase updated successfully!');
                             } catch (err) {
                               console.error('Error saving qualifying purchase:', err);
                               alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                            } finally {
+                              setQpSaving(false);
                             }
                           }}
-                          className="input w-full max-w-xs text-xl font-bold border-2 border-gold-500 focus:border-gold-400"
-                          min={0}
-                        />
+                          disabled={qpSaving}
+                          className="btn-gold px-4 py-2"
+                        >
+                          {qpSaving ? 'Saving...' : 'Save'}
+                        </button>
                       </div>
                       <p className="text-gray-500 text-sm mt-2">
                         💡 Minimum purchase amount required to play the game
@@ -1288,12 +1309,18 @@ export default function AdminDashboard() {
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
-                      value={currentShop?.qualifyingPurchase || 0}
+                      value={qpInput}
                       onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
-                      onChange={async (e) => {
-                        if (!currentShop) return;
+                      onChange={(e) => setQpInput(e.target.value)}
+                      className="input w-full max-w-xs text-xl font-bold border-2 border-gold-500 focus:border-gold-400"
+                      min={0}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!currentShop || qpSaving) return;
+                        setQpSaving(true);
                         try {
-                          const newValue = Number(e.target.value) || 0;
+                          const newValue = Number(qpInput) || 0;
                           const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
                           
                           // Try to save to Firebase, but don't fail if Firebase is unavailable
@@ -1313,14 +1340,19 @@ export default function AdminDashboard() {
                             setShops(localShopList);
                             console.log('Saved locally (Firebase not available)');
                           }
+                          alert('Qualifying purchase updated successfully!');
                         } catch (err) {
                           console.error('Error saving qualifying purchase:', err);
                           alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                        } finally {
+                          setQpSaving(false);
                         }
                       }}
-                      className="input w-full max-w-xs text-xl font-bold border-2 border-gold-500 focus:border-gold-400"
-                      min={0}
-                    />
+                      disabled={qpSaving}
+                      className="btn-gold px-4 py-2"
+                    >
+                      {qpSaving ? 'Saving...' : 'Save'}
+                    </button>
                   </div>
                   <p className="text-gray-500 text-sm mt-2">
                     💡 Minimum purchase amount required to play the game
