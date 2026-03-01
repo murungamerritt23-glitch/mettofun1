@@ -8,6 +8,7 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Remove unused uuid dependency for tree shaking (smaller bundle)
 - [x] Add file upload for item images in Items tab
   - Shop admins can now upload images directly (max 500KB)
   - Images stored as base64 for offline use
