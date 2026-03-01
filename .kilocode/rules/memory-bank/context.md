@@ -42,6 +42,10 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Shop now saves to local storage first
   - Falls back to local-only if Firebase save fails
   - No longer shows error and prevents save
+- [x] Add offline fallback for settings fetching:
+  - Settings now cached to local storage when fetched from Firebase
+  - Falls back to local cache when offline
+  - No more error when Firebase is unavailable
 
 ## Current Structure
 
