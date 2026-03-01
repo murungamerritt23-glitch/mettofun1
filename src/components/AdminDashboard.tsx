@@ -532,11 +532,24 @@ export default function AdminDashboard() {
                             try {
                               const newValue = Number(e.target.value) || 0;
                               const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                              await firebaseShops.save(updatedShop);
+                              
+                              // Try to save to Firebase, but don't fail if Firebase is unavailable
+                              const saveResult = await firebaseShops.save(updatedShop);
+                              
+                              // Always save locally
                               await localShops.save(updatedShop);
                               setCurrentShop(updatedShop);
-                              const fbShops = await firebaseShops.getAllActive();
-                              setShops(fbShops);
+                              
+                              // Only re-fetch from Firebase if save was successful
+                              if (saveResult.success) {
+                                const fbShops = await firebaseShops.getAllActive();
+                                setShops(fbShops);
+                              } else {
+                                // Firebase save failed (likely not configured), update local list
+                                const localShopList = await localShops.getAll();
+                                setShops(localShopList);
+                                console.log('Saved locally (Firebase not available)');
+                              }
                             } catch (err) {
                               console.error('Error saving qualifying purchase:', err);
                               alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
@@ -1282,11 +1295,24 @@ export default function AdminDashboard() {
                         try {
                           const newValue = Number(e.target.value) || 0;
                           const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                          await firebaseShops.save(updatedShop);
+                          
+                          // Try to save to Firebase, but don't fail if Firebase is unavailable
+                          const saveResult = await firebaseShops.save(updatedShop);
+                          
+                          // Always save locally
                           await localShops.save(updatedShop);
                           setCurrentShop(updatedShop);
-                          const fbShops = await firebaseShops.getAllActive();
-                          setShops(fbShops);
+                          
+                          // Only re-fetch from Firebase if save was successful
+                          if (saveResult.success) {
+                            const fbShops = await firebaseShops.getAllActive();
+                            setShops(fbShops);
+                          } else {
+                            // Firebase save failed (likely not configured), update local list
+                            const localShopList = await localShops.getAll();
+                            setShops(localShopList);
+                            console.log('Saved locally (Firebase not available)');
+                          }
                         } catch (err) {
                           console.error('Error saving qualifying purchase:', err);
                           alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
