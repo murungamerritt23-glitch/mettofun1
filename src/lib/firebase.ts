@@ -28,6 +28,7 @@ import {
   connectFirestoreEmulator
 } from 'firebase/firestore';
 import type { Shop, Subscription, SubscriptionTier, Admin } from '@/types';
+import { localSettings } from './local-db';
 
 // Firebase configuration - Replace with your own config
 const firebaseConfig = {
@@ -448,20 +449,32 @@ export const firebaseSettings = {
   async getSettings(): Promise<{ termsContent: string; helpContent: string; version: string }> {
     const result = await firebaseDb.get(SETTINGS_COLLECTION, 'app_settings');
     if (result.error) {
-      console.error('Error fetching settings:', result.error);
+      // Try to get from local storage as fallback
+      const localValue = await localSettings.get('app_settings');
+      if (localValue) {
+        return {
+          termsContent: localValue.termsContent || '',
+          helpContent: localValue.helpContent || '',
+          version: localValue.version || '1.0.0'
+        };
+      }
+      // Return defaults if nothing found
       return {
-        termsContent: 'Default terms and conditions content. Please contact support.',
+        termsContent: '',
         helpContent: '',
         version: '1.0.0'
       };
     }
     if (result.data) {
       const data = result.data as any;
-      return {
+      const settings = {
         termsContent: data.termsContent || '',
         helpContent: data.helpContent || '',
         version: data.version || '1.0.0'
       };
+      // Cache to local storage for offline use
+      await localSettings.set('app_settings', settings);
+      return settings;
     }
     return {
       termsContent: '',
