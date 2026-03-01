@@ -46,6 +46,10 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Settings now cached to local storage when fetched from Firebase
   - Falls back to local cache when offline
   - No more error when Firebase is unavailable
+- [x] Fix qualifying purchase not saving when Firebase unavailable:
+  - Now checks if Firebase save was successful before re-fetching
+  - If Firebase fails, keeps local data and updates local shop list
+  - Shop admins can now edit qualifying purchase in demo mode
 
 ## Current Structure
 
