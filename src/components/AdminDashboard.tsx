@@ -219,7 +219,11 @@ export default function AdminDashboard() {
 
   const handleSaveShop = async (shop: Shop) => {
     // Save to Firebase first, then local for offline
-    await firebaseShops.save(shop);
+    const result = await firebaseShops.save(shop);
+    if (result.error) {
+      alert('Failed to save shop: ' + result.error);
+      return;
+    }
     await localShops.save(shop);
     setEditingShop(null);
     setIsCreatingShop(false);
