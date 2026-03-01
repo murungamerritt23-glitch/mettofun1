@@ -218,18 +218,27 @@ export default function AdminDashboard() {
   };
 
   const handleSaveShop = async (shop: Shop) => {
-    // Save to Firebase first, then local for offline
+    // Save to local first for offline support
+    await localShops.save(shop);
+    
+    // Try to save to Firebase, but don't fail if Firebase is not configured
     const result = await firebaseShops.save(shop);
     if (result.error) {
-      alert('Failed to save shop: ' + result.error);
-      return;
+      console.warn('Firebase save failed, shop saved locally:', result.error);
+      // Don't return - continue with local save
     }
-    await localShops.save(shop);
+    
     setEditingShop(null);
     setIsCreatingShop(false);
-    // Refresh from Firebase
-    const fbShops = await firebaseShops.getAllActive();
-    setShops(fbShops);
+    // Refresh from Firebase or local
+    try {
+      const fbShops = await firebaseShops.getAllActive();
+      setShops(fbShops);
+    } catch (e) {
+      // If Firebase fails, load from local
+      const localShopsData = await localShops.getAll();
+      setShops(localShopsData);
+    }
   };
 
   const handleToggleShopActive = async (shop: Shop) => {
