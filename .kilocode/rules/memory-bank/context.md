@@ -8,6 +8,9 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix qualifying purchase input not editable - useEffect now only triggers on shop change
+  - Removed currentShop?.qualifyingPurchase from useEffect dependencies
+  - Input now stays editable while typing and after saving
 - [x] Remove unused uuid dependency for tree shaking (smaller bundle)
 - [x] Add file upload for item images in Items tab
   - Shop admins can now upload images directly (max 500KB)
