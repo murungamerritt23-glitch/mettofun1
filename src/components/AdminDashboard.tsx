@@ -56,13 +56,13 @@ export default function AdminDashboard() {
     }
   }, [activeTab, currentShop]);
 
-  // Initialize qualifying purchase input when currentShop changes
+  // Initialize qualifying purchase input when currentShop changes (shop switched)
   useEffect(() => {
     if (currentShop) {
       setQpInput(String(currentShop.qualifyingPurchase || 0));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentShop?.id, currentShop?.qualifyingPurchase]);
+  }, [currentShop?.id]);
 
   // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
   const isShopAdmin = admin?.level === 'shop_admin';
