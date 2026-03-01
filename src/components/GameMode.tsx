@@ -134,7 +134,7 @@ export default function GameMode() {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     const formattedPhone = formatPhoneNumber(phoneNumber);
-    const config = calculateBoxConfiguration(amount, currentShop?.qualifyingPurchase || 100);
+    const config = calculateBoxConfiguration(amount, currentShop?.qualifyingPurchase || 0);
     
     setCustomerSession({
       phoneNumber: formattedPhone,
@@ -194,7 +194,7 @@ export default function GameMode() {
       currentShop?.id || 'demo',
       customerSession?.phoneNumber || phoneNumber,
       parseFloat(purchaseAmount),
-      currentShop?.qualifyingPurchase || 100,
+      currentShop?.qualifyingPurchase || 0,
       selectedBox || 0,
       correctNumber,
       won,
@@ -227,7 +227,7 @@ export default function GameMode() {
     // Generate new winning number from displayed range (1 to 18-threshold)
     const config = calculateBoxConfiguration(
       parseFloat(purchaseAmount), 
-      currentShop?.qualifyingPurchase || 100
+      currentShop?.qualifyingPurchase || 0
     );
     const newThreshold = config.threshold;
     const newWinningNum = generateSecureRandomNumber(18 - newThreshold);
@@ -276,7 +276,7 @@ export default function GameMode() {
   }
 
   const config = customerSession?.purchaseAmount 
-    ? calculateBoxConfiguration(customerSession.purchaseAmount, currentShop?.qualifyingPurchase || 100)
+    ? calculateBoxConfiguration(customerSession.purchaseAmount, currentShop?.qualifyingPurchase || 0)
     : { boxCount: 17, ratio: '<150%' };
 
   const translations = {
@@ -382,7 +382,7 @@ export default function GameMode() {
                   placeholder="100"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {t.qualifyingPurchase}: KSh {currentShop?.qualifyingPurchase || 100}
+                  {t.qualifyingPurchase}: KSh {currentShop?.qualifyingPurchase || 0}
                 </p>
               </div>
 

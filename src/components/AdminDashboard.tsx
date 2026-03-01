@@ -38,7 +38,7 @@ export default function AdminDashboard() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ phoneNumber: '', purchaseAmount: '', itemId: '' });
   const [itemsList, setItemsList] = useState<Item[]>([]);
-  const [demoQualifyingPurchase, setDemoQualifyingPurchase] = useState<number>(100);
+  const [demoQualifyingPurchase, setDemoQualifyingPurchase] = useState<number>(0);
   const [qpInput, setQpInput] = useState<string>(''); // Local state for qualifying purchase input
   const [qpSaving, setQpSaving] = useState(false); // Saving state for qualifying purchase
 
@@ -680,7 +680,7 @@ export default function AdminDashboard() {
       // Use custom qualifying purchase for demo mode, otherwise use shop's value
       const qualifyingPurchase = isDemoMode && customQualifyingPurchase 
         ? customQualifyingPurchase 
-        : (currentShop?.qualifyingPurchase || 100);
+        : (currentShop?.qualifyingPurchase || 0);
       
       // Calculate box configuration based on purchase amount
       const config = calculateBoxConfiguration(customer.purchaseAmount, qualifyingPurchase);
@@ -1858,7 +1858,7 @@ function ShopForm({
   const [formData, setFormData] = useState({
     shopName: shop?.shopName || '',
     shopCode: shop?.shopCode || '',
-    qualifyingPurchase: shop?.qualifyingPurchase || 100,
+    qualifyingPurchase: shop?.qualifyingPurchase || 0,
     promoMessage: shop?.promoMessage || 'Play & Win Amazing Rewards!',
     isActive: shop?.isActive ?? true,
     deviceId: shop?.deviceId || '',

@@ -148,7 +148,7 @@ export const localShops = {
       shopCode: 'METOFUN',
       deviceId: crypto.randomUUID(),
       deviceLocked: false,
-      qualifyingPurchase: 100,
+      qualifyingPurchase: 0,
       promoMessage: 'Play & Win Amazing Rewards!',
       isActive: true,
       createdAt: new Date(),
