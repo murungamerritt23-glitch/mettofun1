@@ -11,8 +11,13 @@ export const dynamic = 'force-static';
  * In production, this would connect to Firebase for proper verification
  */
 
-// Secret key for HMAC validation (in production, use environment variable)
-const VALIDATION_SECRET = process.env.GAME_VALIDATION_SECRET || 'metofun-default-secret';
+// Secret key for HMAC validation (must be set via environment variable in production)
+const VALIDATION_SECRET = process.env.GAME_VALIDATION_SECRET;
+
+// Check if running in production without proper configuration
+if (typeof window === 'undefined' && !VALIDATION_SECRET) {
+  console.warn('⚠️ SECURITY: GAME_VALIDATION_SECRET not set! Set in production!');
+}
 
 /**
  * Validate a game result
@@ -20,6 +25,18 @@ const VALIDATION_SECRET = process.env.GAME_VALIDATION_SECRET || 'metofun-default
  * Body: { shopId, purchaseAmount, qualifyingAmount, selectedBox, correctNumber, won, timestamp }
  */
 export async function POST(request: NextRequest) {
+  // In production, require a valid API key or authentication
+  const apiKey = request.headers.get('x-api-key');
+  const expectedApiKey = process.env.VALIDATION_API_KEY;
+  
+  // If API key is configured, validate it
+  if (expectedApiKey && apiKey !== expectedApiKey) {
+    return NextResponse.json(
+      { valid: false, error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { shopId, purchaseAmount, qualifyingAmount, selectedBox, correctNumber, won, timestamp } = body;
@@ -28,6 +45,32 @@ export async function POST(request: NextRequest) {
     if (!shopId || purchaseAmount === undefined || !qualifyingAmount || !selectedBox || !correctNumber) {
       return NextResponse.json(
         { valid: false, error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate numeric fields
+    if (typeof purchaseAmount !== 'number' || typeof qualifyingAmount !== 'number' || 
+        typeof selectedBox !== 'number' || typeof correctNumber !== 'number') {
+      return NextResponse.json(
+        { valid: false, error: 'Invalid field types' },
+        { status: 400 }
+      );
+    }
+
+    // Validate range
+    if (purchaseAmount < 0 || qualifyingAmount <= 0 || selectedBox < 1 || selectedBox > 6) {
+      return NextResponse.json(
+        { valid: false, error: 'Invalid values' },
+        { status: 400 }
+      );
+    }
+
+    // Validate timestamp (not older than 5 minutes)
+    const requestTime = Date.now();
+    if (timestamp && (requestTime - timestamp > 5 * 60 * 1000)) {
+      return NextResponse.json(
+        { valid: false, error: 'Request expired' },
         { status: 400 }
       );
     }
@@ -71,9 +114,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Generate validation hash for audit trail
-    const validationData = `${shopId}-${purchaseAmount}-${qualifyingAmount}-${selectedBox}-${correctNumber}-${timestamp}`;
-    const validationHash = CryptoJS.HmacSHA256(validationData, VALIDATION_SECRET).toString();
+    // Generate validation hash for audit trail (only if secret is configured)
+    let validationHash = '';
+    if (VALIDATION_SECRET) {
+      const validationData = `${shopId}-${purchaseAmount}-${qualifyingAmount}-${selectedBox}-${correctNumber}-${timestamp}`;
+      validationHash = CryptoJS.HmacSHA256(validationData, VALIDATION_SECRET).toString();
+    }
 
     return NextResponse.json({
       valid: true,

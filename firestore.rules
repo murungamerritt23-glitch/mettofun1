@@ -61,9 +61,12 @@ service cloud.firestore {
     }
     
     // Game attempts - shop-specific
+    // Only allow create if authenticated AND shop exists and is active
     match /shops/{shopId}/attempts/{attemptId} {
       allow read: if isAdmin();
-      allow create: if true; // Anyone can play
+      allow create: if isAuthenticated() && 
+        resource == null &&
+        get(/databases/$(database)/documents/shops/$(shopId)).data.isActive == true;
       allow write: if isSuperAdmin() || isAgentAdmin() || isShopOwner(shopId);
     }
     
