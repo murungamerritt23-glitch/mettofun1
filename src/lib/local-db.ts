@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import type { Shop, Item, GameAttempt, Admin, SyncQueue, CustomerSession, PendingCustomer, AdminLevel } from '@/types';
+import type { Shop, Item, GameAttempt, Admin, SyncQueue, CustomerSession, PendingCustomer, AdminLevel, NominationItem, CustomerNomination } from '@/types';
 
 interface MetoFunDB extends DBSchema {
   shops: {
@@ -39,6 +39,17 @@ interface MetoFunDB extends DBSchema {
     key: string;
     value: any;
   };
+  // Nomination stores
+  nominationItems: {
+    key: string;
+    value: NominationItem;
+    indexes: { 'by-shop': string; 'by-count': number };
+  };
+  customerNominations: {
+    key: string;
+    value: CustomerNomination;
+    indexes: { 'by-phone': string; 'by-shop': string; 'by-attempt': string };
+  };
 }
 
 let db: IDBPDatabase<MetoFunDB> | null = null;
@@ -46,7 +57,7 @@ let db: IDBPDatabase<MetoFunDB> | null = null;
 export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
   if (db) return db;
 
-  db = await openDB<MetoFunDB>('metofun-db', 2, {
+  db = await openDB<MetoFunDB>('metofun-db', 3, {
     upgrade(database, oldVersion) {
       // Shops store - only create if it doesn't exist
       if (!database.objectStoreNames.contains('shops')) {
@@ -95,6 +106,21 @@ export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
       // Settings store - only create if it doesn't exist
       if (!database.objectStoreNames.contains('settings')) {
         database.createObjectStore('settings', { keyPath: 'key' });
+      }
+
+      // Nomination items store (v3) - only create if it doesn't exist
+      if (!database.objectStoreNames.contains('nominationItems')) {
+        const nominationStore = database.createObjectStore('nominationItems', { keyPath: 'id' });
+        nominationStore.createIndex('by-shop', 'shopId');
+        nominationStore.createIndex('by-count', 'nominationCount');
+      }
+
+      // Customer nominations store (v3) - only create if it doesn't exist
+      if (!database.objectStoreNames.contains('customerNominations')) {
+        const customerNomStore = database.createObjectStore('customerNominations', { keyPath: 'id' });
+        customerNomStore.createIndex('by-phone', 'phoneNumber');
+        customerNomStore.createIndex('by-shop', 'shopId');
+        customerNomStore.createIndex('by-attempt', 'gameAttemptId');
       }
     }
   });
@@ -452,8 +478,124 @@ export const getDeviceId = async (): Promise<string> => {
 // Clear all data (for testing or logout)
 export const clearAllData = async (): Promise<void> => {
   const database = await initDB();
-  const stores = ['shops', 'items', 'attempts', 'admins', 'syncQueue', 'sessions', 'settings'] as const;
+  const stores = ['shops', 'items', 'attempts', 'admins', 'syncQueue', 'sessions', 'settings', 'nominationItems', 'customerNominations'] as const;
   for (const store of stores) {
     await database.clear(store);
+  }
+};
+
+// Nomination Item operations - items that customers can nominate
+export const localNominationItems = {
+  async getByShop(shopId: string): Promise<NominationItem[]> {
+    const database = await initDB();
+    const items = await database.getAllFromIndex('nominationItems', 'by-shop', shopId);
+    // Sort by nomination count descending
+    return items.sort((a, b) => b.nominationCount - a.nominationCount);
+  },
+
+  async get(id: string): Promise<NominationItem | undefined> {
+    const database = await initDB();
+    return database.get('nominationItems', id);
+  },
+
+  async save(item: NominationItem): Promise<void> {
+    const database = await initDB();
+    await database.put('nominationItems', item);
+  },
+
+  async incrementNominationCount(id: string): Promise<void> {
+    const database = await initDB();
+    const item = await database.get('nominationItems', id);
+    if (item) {
+      item.nominationCount += 1;
+      item.updatedAt = new Date();
+      await database.put('nominationItems', item);
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    const database = await initDB();
+    await database.delete('nominationItems', id);
+  },
+
+  async deleteByShop(shopId: string): Promise<void> {
+    const database = await initDB();
+    const items = await database.getAllFromIndex('nominationItems', 'by-shop', shopId);
+    const tx = database.transaction('nominationItems', 'readwrite');
+    await Promise.all([
+      ...items.map(item => tx.store.delete(item.id)),
+      tx.done
+    ]);
+  },
+
+  // Generate default nomination items for a shop (up to 100)
+  async ensureDefaultItems(shopId: string): Promise<NominationItem[]> {
+    const database = await initDB();
+    const existing = await database.getAllFromIndex('nominationItems', 'by-shop', shopId);
+    if (existing.length > 0) return existing.sort((a, b) => b.nominationCount - a.nominationCount);
+
+    // Create 100 default items
+    const defaultItems: NominationItem[] = Array.from({ length: 100 }, (_, i) => ({
+      id: `${shopId}-nom-${i + 1}`,
+      name: `Item ${i + 1}`,
+      value: (i + 1) * 1000,
+      nominationCount: 0,
+      isActive: true,
+      shopId,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+
+    const tx = database.transaction('nominationItems', 'readwrite');
+    await Promise.all([
+      ...defaultItems.map(item => tx.store.put(item)),
+      tx.done
+    ]);
+
+    return defaultItems;
+  }
+};
+
+// Customer Nomination operations - track who nominated what
+export const localCustomerNominations = {
+  async getByPhone(phoneNumber: string): Promise<CustomerNomination[]> {
+    const database = await initDB();
+    return database.getAllFromIndex('customerNominations', 'by-phone', phoneNumber);
+  },
+
+  async getByShop(shopId: string): Promise<CustomerNomination[]> {
+    const database = await initDB();
+    return database.getAllFromIndex('customerNominations', 'by-shop', shopId);
+  },
+
+  async getByAttempt(gameAttemptId: string): Promise<CustomerNomination[]> {
+    const database = await initDB();
+    return database.getAllFromIndex('customerNominations', 'by-attempt', gameAttemptId);
+  },
+
+  async save(nomination: CustomerNomination): Promise<void> {
+    const database = await initDB();
+    await database.put('customerNominations', nomination);
+  },
+
+  async hasNominatedThisAttempt(phoneNumber: string, gameAttemptId: string): Promise<boolean> {
+    const database = await initDB();
+    const nominations = await database.getAllFromIndex('customerNominations', 'by-attempt', gameAttemptId);
+    return nominations.some(n => n.phoneNumber === phoneNumber);
+  },
+
+  async getUnsynced(): Promise<CustomerNomination[]> {
+    const database = await initDB();
+    const all = await database.getAll('customerNominations');
+    return all.filter(n => !n.synced);
+  },
+
+  async markSynced(id: string): Promise<void> {
+    const database = await initDB();
+    const nomination = await database.get('customerNominations', id);
+    if (nomination) {
+      nomination.synced = true;
+      await database.put('customerNominations', nomination);
+    }
   }
 };

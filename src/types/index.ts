@@ -142,6 +142,30 @@ export interface Item {
   order: number;
 }
 
+// Nomination Types - for customer feedback after game attempts
+export interface NominationItem {
+  id: string;
+  name: string;
+  value: number;
+  imageUrl?: string;
+  nominationCount: number;
+  isActive: boolean;
+  shopId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Track which items a customer has nominated this attempt
+export interface CustomerNomination {
+  id: string;
+  phoneNumber: string;
+  shopId: string;
+  itemId: string;
+  gameAttemptId: string;
+  timestamp: Date;
+  synced: boolean;
+}
+
 // Game Types
 export type GameStatus = 'idle' | 'playing' | 'won' | 'lost';
 

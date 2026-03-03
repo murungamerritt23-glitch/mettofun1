@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings } from '@/types';
+import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings, NominationItem } from '@/types';
 import { localShops, localItems, localAttempts, localSessions, localSettings, getDeviceId } from '@/lib/local-db';
 
 // Auth Store
@@ -99,7 +99,7 @@ export const useItemStore = create<ItemState>()(
 
 // Game Store
 interface GameState {
-  gameStatus: 'idle' | 'playing' | 'won' | 'lost';
+  gameStatus: 'idle' | 'playing' | 'won' | 'lost' | 'nominating';
   selectedBox: number | null;
   correctNumber: number | null;
   thresholdNumber: number | null; // Winning threshold based on purchase amount
@@ -107,7 +107,11 @@ interface GameState {
   selectedItem: Item | null;
   isDemoMode: boolean;
   language: 'en' | 'sw';
-  setGameStatus: (status: 'idle' | 'playing' | 'won' | 'lost') => void;
+  // Nomination state
+  nominationItems: NominationItem[];
+  currentGameAttemptId: string | null;
+  hasNominatedThisAttempt: boolean;
+  setGameStatus: (status: 'idle' | 'playing' | 'won' | 'lost' | 'nominating') => void;
   setSelectedBox: (box: number | null) => void;
   setCorrectNumber: (number: number | null) => void;
   setThresholdNumber: (threshold: number | null) => void;
@@ -115,6 +119,9 @@ interface GameState {
   setSelectedItem: (item: Item | null) => void;
   setDemoMode: (isDemo: boolean) => void;
   setLanguage: (lang: 'en' | 'sw') => void;
+  setNominationItems: (items: NominationItem[]) => void;
+  setCurrentGameAttemptId: (id: string | null) => void;
+  setHasNominatedThisAttempt: (hasNominated: boolean) => void;
   resetGame: () => void;
 }
 
@@ -129,6 +136,10 @@ export const useGameStore = create<GameState>()(
       selectedItem: null,
       isDemoMode: false,
       language: 'en',
+      // Nomination state
+      nominationItems: [],
+      currentGameAttemptId: null,
+      hasNominatedThisAttempt: false,
       setGameStatus: (gameStatus) => set({ gameStatus }),
       setSelectedBox: (selectedBox) => set({ selectedBox }),
       setCorrectNumber: (correctNumber) => set({ correctNumber }),
@@ -137,12 +148,17 @@ export const useGameStore = create<GameState>()(
       setSelectedItem: (selectedItem) => set({ selectedItem }),
       setDemoMode: (isDemoMode) => set({ isDemoMode }),
       setLanguage: (language) => set({ language }),
+      setNominationItems: (nominationItems) => set({ nominationItems }),
+      setCurrentGameAttemptId: (currentGameAttemptId) => set({ currentGameAttemptId }),
+      setHasNominatedThisAttempt: (hasNominatedThisAttempt) => set({ hasNominatedThisAttempt }),
       resetGame: () => set({
         gameStatus: 'idle',
         selectedBox: null,
         correctNumber: null,
         thresholdNumber: null,
-        selectedItem: null
+        selectedItem: null,
+        currentGameAttemptId: null,
+        hasNominatedThisAttempt: false
       })
     }),
     {

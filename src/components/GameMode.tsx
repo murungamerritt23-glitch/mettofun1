@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Gift, ArrowLeft, Volume2, VolumeX, RefreshCw, 
-  Check, X, Star, Zap, Trophy, Sparkles, Languages, MapPin
+  Check, X, Star, Zap, Trophy, Sparkles, Languages, MapPin, Heart
 } from 'lucide-react';
 import { useGameStore, useShopStore, useItemStore, useUIStore } from '@/store';
 import { localItems, localAttempts } from '@/lib/local-db';
@@ -19,6 +19,7 @@ import {
 } from '@/lib/game-utils';
 import type { Item, GameAttempt } from '@/types';
 import { verifyShopLocation } from '@/lib/location';
+import NominationScreen from './NominationScreen';
 
 export default function GameMode() {
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +47,7 @@ export default function GameMode() {
     selectedItem, setSelectedItem,
     isDemoMode, setDemoMode,
     language, setLanguage,
+    currentGameAttemptId, setCurrentGameAttemptId,
     resetGame 
   } = useGameStore();
   
@@ -203,6 +205,9 @@ export default function GameMode() {
     
     localAttempts.save(attempt);
     
+    // Store the attempt ID for nomination tracking
+    setCurrentGameAttemptId(attempt.id);
+    
     setShowResult(true);
     setGameStatus(won ? 'won' : 'lost');
   };
@@ -243,7 +248,7 @@ export default function GameMode() {
     setGameStatus('playing');
     setWinningItem(null);
     setSelectedItem(null);
-    setSelectedItem(null);
+    setCurrentGameAttemptId(null);
   };
 
   const handleExit = () => {
@@ -251,6 +256,15 @@ export default function GameMode() {
     setShowItemPicker(false);
     setSelectedItem(null);
     setCurrentView('shop-select');
+  };
+
+  const handleNominate = () => {
+    setGameStatus('nominating');
+  };
+
+  const handleSkipNominate = () => {
+    resetGame();
+    setGameStatus('idle');
   };
 
   const handleDemoMode = () => {
@@ -295,7 +309,9 @@ export default function GameMode() {
       playAgain: 'Play Again',
       exit: 'Exit',
       language: 'Language',
-      box: 'Box'
+      box: 'Box',
+      nominate: 'Give Feedback',
+      skipNominate: 'Skip'
     },
     sw: {
       title: 'MetoFun',
@@ -312,11 +328,18 @@ export default function GameMode() {
       playAgain: 'Cheza Tena',
       exit: 'Toka',
       language: 'Lugha',
-      box: 'Sanduku'
+      box: 'Sanduku',
+      nominate: 'Toa Maoni',
+      skipNominate: 'Ruka'
     }
   };
 
   const t = translations[language];
+
+  // Show nomination screen when user chooses to nominate
+  if (gameStatus === 'nominating') {
+    return <NominationScreen />;
+  }
 
   // Game not started - show authorization form
   if (gameStatus === 'idle') {
@@ -581,8 +604,12 @@ export default function GameMode() {
                   </div>
                 )}
 
-                <button onClick={handlePlayAgain} className="btn-gold w-full">
-                  {t.playAgain}
+                <button onClick={handleNominate} className="btn-gold w-full mb-3 flex items-center justify-center gap-2">
+                  <Heart className="w-5 h-5" />
+                  {t.nominate}
+                </button>
+                <button onClick={handleSkipNominate} className="text-gray-400 text-sm">
+                  {t.skipNominate}
                 </button>
               </motion.div>
             ) : (
@@ -602,11 +629,12 @@ export default function GameMode() {
                     : `The correct number was ${correctNumber}`}
                 </p>
                 
-                <button onClick={handlePlayAgain} className="btn-gold-outline w-full mb-3">
-                  {t.playAgain}
+                <button onClick={handleNominate} className="btn-gold w-full mb-3 flex items-center justify-center gap-2">
+                  <Heart className="w-5 h-5" />
+                  {t.nominate}
                 </button>
-                <button onClick={handleExit} className="text-gray-400 text-sm">
-                  {t.exit}
+                <button onClick={handleSkipNominate} className="text-gray-400 text-sm">
+                  {t.skipNominate}
                 </button>
               </motion.div>
             )}

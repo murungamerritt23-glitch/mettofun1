@@ -8,57 +8,16 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
-- [x] Fix qualifying purchase input not editable - useEffect now only triggers on shop change
-  - Removed currentShop?.qualifyingPurchase from useEffect dependencies
-  - Input now stays editable while typing and after saving
-- [x] Remove unused uuid dependency for tree shaking (smaller bundle)
-- [x] Add file upload for item images in Items tab
-  - Shop admins can now upload images directly (max 500KB)
-  - Images stored as base64 for offline use
-  - Preview and remove image options available
-  - URL input still available as alternative
-- [x] Remove qualifying purchase from shop creation form
-  - Only shop admins can set qualifying purchase in My Shop tab
-  - Super/agent admins cannot set it during shop creation
-- [x] Add shop setup guide (SETUP.md) and setup button on login page
-- [x] Fix missing sidebar tabs - add My Shop, Customers, Staff to navigation
-- [x] Fix qualifying purchase editing permissions - only shop_admin can edit
-- [x] Move themeColor from metadata to viewport (fixes Next.js static export warning)
-- [x] Add customer mode launch from admin dashboard (tap "Play" to switch to customer mode)
-- [x] Add super admin shop management features:
-  - Delete shops (permanent deletion)
-  - Activate/deactivate shops
-  - Assign subscription packages (Basic/Medium/Pro)
-  - View all shops including inactive (super_admin only)
-  - Subscription channels configuration for each tier
-- [x] Add shop assignment feature for super admin and agent admin:
-  - New `canAssignShops` permission for agent_admin level
-  - Staff tab now visible for both canManageAdmins and canAssignShops
-  - Firebase admin functions for syncing assigned shops
-- [x] Add Android APK build support with Capacitor
-  - Built METOFUN-debug.apk for Android installation
-- [x] Fix qualifying purchase input - ensure number type conversion for proper comparison
-- [x] Add editable qualifying purchase for demo mode:
-  - Demo Qualifying Purchase input in Customers tab
-  - "Demo" button launches with custom qualifying purchase
-  - Doesn't affect real shop settings
-- [x] Fix shop save failing when Firebase not configured:
-  - Shop now saves to local storage first
-  - Falls back to local-only if Firebase save fails
-  - No longer shows error and prevents save
-- [x] Add offline fallback for settings fetching:
-  - Settings now cached to local storage when fetched from Firebase
-  - Falls back to local cache when offline
-  - No more error when Firebase is unavailable
-- [x] Fix qualifying purchase not saving when Firebase unavailable:
-  - Now checks if Firebase save was successful before re-fetching
-- [x] Rebuild qualifying purchase field with proper state management:
-  - Added local state (qpInput) for input field
-  - Added Save button instead of auto-save on every keystroke
-  - Initializes input from currentShop.qualifyingPurchase when shop changes
-  - Shows 'Saving...' state and confirms with alert on success
-  - If Firebase fails, keeps local data and updates local shop list
-  - Shop admins can now edit qualifying purchase in demo mode
+- [x] Add optional nomination screen after game result (win or lose)
+  - Customer can choose to nominate an item or skip
+  - Nomination screen shows up to 100 items sorted by nomination count (highest first)
+  - Each item shows: name, price/value, optional image, nomination count
+  - Customers can only nominate once per game attempt
+  - Nominations saved locally (offline-first), sync to Firebase when online
+  - Nomination eligibility resets automatically for next attempt
+  - Admins can edit/activate/deactivate nomination items via Items tab
+  - Read-only for customers
+  - Not affected by 80% pricing rule (feedback-only feature)
 
 ## Current Structure
 
