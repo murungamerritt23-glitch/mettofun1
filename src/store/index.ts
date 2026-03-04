@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings, NominationItem } from '@/types';
+import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings, NominationItem, ItemOfTheDay } from '@/types';
 import { localShops, localItems, localAttempts, localSessions, localSettings, getDeviceId } from '@/lib/local-db';
 
 // Auth Store
@@ -114,6 +114,8 @@ interface GameState {
   nominationItems: NominationItem[];
   currentGameAttemptId: string | null;
   hasNominatedThisAttempt: boolean;
+  // Item of the Day - global marketing banner
+  itemOfTheDay: ItemOfTheDay | null;
   setGameStatus: (status: 'idle' | 'playing' | 'won' | 'lost' | 'nominating') => void;
   setSelectedBox: (box: number | null) => void;
   setCorrectNumber: (number: number | null) => void;
@@ -126,6 +128,7 @@ interface GameState {
   setNominationItems: (items: NominationItem[]) => void;
   setCurrentGameAttemptId: (id: string | null) => void;
   setHasNominatedThisAttempt: (hasNominated: boolean) => void;
+  setItemOfTheDay: (item: ItemOfTheDay | null) => void;
   resetGame: () => void;
   clearTestData: () => void;
 }
@@ -148,6 +151,8 @@ export const useGameStore = create<GameState>()(
       nominationItems: [],
       currentGameAttemptId: null,
       hasNominatedThisAttempt: false,
+      // Item of the Day
+      itemOfTheDay: null,
       setGameStatus: (gameStatus) => set({ gameStatus }),
       setSelectedBox: (selectedBox) => set({ selectedBox }),
       setCorrectNumber: (correctNumber) => set({ correctNumber }),
@@ -160,6 +165,7 @@ export const useGameStore = create<GameState>()(
       setNominationItems: (nominationItems) => set({ nominationItems }),
       setCurrentGameAttemptId: (currentGameAttemptId) => set({ currentGameAttemptId }),
       setHasNominatedThisAttempt: (hasNominatedThisAttempt) => set({ hasNominatedThisAttempt }),
+      setItemOfTheDay: (itemOfTheDay) => set({ itemOfTheDay }),
       resetGame: () => set({
         gameStatus: 'idle',
         selectedBox: null,
@@ -216,6 +222,12 @@ export const initializeFromLocal = async () => {
   if (currentShop) {
     const items = await localItems.getByShop(currentShop.id);
     useItemStore.getState().setItems(items);
+  }
+  
+  // Load Item of the Day
+  const itemOfDay = await localSettings.get('itemOfTheDay');
+  if (itemOfDay) {
+    useGameStore.getState().setItemOfTheDay(itemOfDay);
   }
   
   // Get device ID

@@ -142,6 +142,17 @@ export interface Item {
   order: number;
 }
 
+// Item of the Day - global marketing banner controlled by Super Admin
+export interface ItemOfTheDay {
+  id: string;
+  name: string;
+  value: number;
+  imageUrl?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Nomination Types - for customer feedback after game attempts
 export interface NominationItem {
   id: string;

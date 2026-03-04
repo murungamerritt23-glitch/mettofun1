@@ -7,7 +7,7 @@ import {
   Check, X, Star, Zap, Trophy, Sparkles, Languages, MapPin, Heart
 } from 'lucide-react';
 import { useGameStore, useShopStore, useItemStore, useUIStore } from '@/store';
-import { localItems, localAttempts } from '@/lib/local-db';
+import { localItems, localAttempts, localSettings } from '@/lib/local-db';
 import { 
   calculateBoxConfiguration, 
   generateSecureRandomNumber,
@@ -49,12 +49,24 @@ export default function GameMode() {
     language, setLanguage,
     currentGameAttemptId, setCurrentGameAttemptId,
     isTestMode, testPhonePrefix,
+    itemOfTheDay,
     resetGame 
   } = useGameStore();
   
   const { currentShop } = useShopStore();
   const { items, setItems } = useItemStore();
   const { setCurrentView } = useUIStore();
+
+  // Load Item of the Day on mount
+  useEffect(() => {
+    const loadItemOfDay = async () => {
+      const savedItem = await localSettings.get('itemOfTheDay');
+      if (savedItem) {
+        useGameStore.getState().setItemOfTheDay(savedItem);
+      }
+    };
+    loadItemOfDay();
+  }, []);
 
   // Load shop items
   useEffect(() => {
@@ -540,6 +552,35 @@ export default function GameMode() {
               <p className="text-gray-400 text-sm">{language === 'sw' ? 'Umechagua:' : 'You selected:'}</p>
               <p className="gold-gradient-text text-xl font-bold">{selectedItem.name}</p>
               <p className="text-gold-400">KSh {selectedItem.value.toLocaleString()}</p>
+            </div>
+          )}
+
+          {/* Item of the Day Banner - Marketing Feature */}
+          {itemOfTheDay && itemOfTheDay.isActive && (
+            <div className="mb-4 p-4 bg-gradient-to-r from-amber-900/40 via-amber-800/30 to-amber-900/40 border-2 border-amber-500/50 rounded-xl">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-amber-900/50 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {itemOfTheDay.imageUrl ? (
+                    <img 
+                      src={itemOfTheDay.imageUrl} 
+                      alt={itemOfTheDay.name} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Gift className="text-amber-400 w-8 h-8" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-amber-400 text-xs font-semibold uppercase tracking-wider mb-1">
+                    ✨ {language === 'sw' ? 'Ombi la Leo' : 'Item of the Day'}
+                  </p>
+                  <p className="text-white text-lg font-bold">{itemOfTheDay.name}</p>
+                  <p className="text-amber-400 text-xl font-bold">KSh {itemOfTheDay.value.toLocaleString()}</p>
+                </div>
+                <div className="text-amber-500">
+                  <Star className="w-6 h-6" />
+                </div>
+              </div>
             </div>
           )}
 

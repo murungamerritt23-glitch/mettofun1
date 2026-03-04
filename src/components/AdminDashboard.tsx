@@ -6,14 +6,14 @@ import {
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
   Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap, ShoppingCart,
-  Upload, RefreshCw, FlaskConical
+  Upload, RefreshCw, FlaskConical, Gift, Star
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
-import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops } from '@/lib/local-db';
+import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings } from '@/lib/local-db';
 import { firebaseShops, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
-import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier } from '@/types';
+import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier, ItemOfTheDay } from '@/types';
 import { ADMIN_PERMISSIONS, SUBSCRIPTION_CHANNELS } from '@/types';
 
 type TabType = 'dashboard' | 'shops' | 'items' | 'qualifyingPurchase' | 'attempts' | 'analytics' | 'settings' | 'customers' | 'myShop' | 'staff';
@@ -32,6 +32,11 @@ export default function AdminDashboard() {
   const [termsContent, setTermsContent] = useState('');
   const [isEditingTerms, setIsEditingTerms] = useState(false);
   const [termsSaved, setTermsSaved] = useState(false);
+  // Item of the Day state
+  const [itemOfTheDay, setItemOfTheDay] = useState<ItemOfTheDay | null>(null);
+  const [isEditingItemOfDay, setIsEditingItemOfDay] = useState(false);
+  const [itemOfDayForm, setItemOfDayForm] = useState({ name: '', value: '', imageUrl: '' });
+  const [itemOfDaySaved, setItemOfDaySaved] = useState(false);
 
   // Customer management state (for 'customers' tab)
   const [pendingCustomers, setPendingCustomers] = useState<any[]>([]);
@@ -128,6 +133,17 @@ export default function AdminDashboard() {
     }
   }, [admin]);
 
+  // Load Item of the Day on mount
+  useEffect(() => {
+    const loadItemOfDay = async () => {
+      const savedItem = await localSettings.get('itemOfTheDay');
+      if (savedItem) {
+        setItemOfTheDay(savedItem);
+      }
+    };
+    loadItemOfDay();
+  }, []);
+
   // Admin handlers
   const handleSaveAdmin = async (adminData: Admin) => {
     // Check if trying to set as admin
@@ -206,6 +222,54 @@ export default function AdminDashboard() {
       setIsEditingTerms(false);
       setTimeout(() => setTermsSaved(false), 3000);
     }
+  };
+
+  // Save Item of the Day
+  const handleSaveItemOfDay = async () => {
+    if (!itemOfDayForm.name || !itemOfDayForm.value) {
+      alert('Please enter item name and value');
+      return;
+    }
+    
+    const newItem: ItemOfTheDay = {
+      id: 'item-of-the-day',
+      name: itemOfDayForm.name,
+      value: parseFloat(itemOfDayForm.value) || 0,
+      imageUrl: itemOfDayForm.imageUrl || undefined,
+      isActive: true,
+      createdAt: itemOfTheDay?.createdAt || new Date(),
+      updatedAt: new Date()
+    };
+    
+    // Save to local for offline support
+    await localSettings.set('itemOfTheDay', newItem);
+    setItemOfTheDay(newItem);
+    setIsEditingItemOfDay(false);
+    setItemOfDaySaved(true);
+    setTimeout(() => setItemOfDaySaved(false), 3000);
+  };
+
+  // Clear Item of the Day
+  const handleClearItemOfDay = async () => {
+    if (confirm('Are you sure you want to remove the Item of the Day?')) {
+      await localSettings.set('itemOfTheDay', null);
+      setItemOfTheDay(null);
+      setItemOfDayForm({ name: '', value: '', imageUrl: '' });
+    }
+  };
+
+  // Start editing Item of the Day
+  const handleEditItemOfDay = () => {
+    if (itemOfTheDay) {
+      setItemOfDayForm({
+        name: itemOfTheDay.name,
+        value: String(itemOfTheDay.value),
+        imageUrl: itemOfTheDay.imageUrl || ''
+      });
+    } else {
+      setItemOfDayForm({ name: '', value: '', imageUrl: '' });
+    }
+    setIsEditingItemOfDay(true);
   };
 
   const handleLogout = () => {
@@ -1768,6 +1832,135 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 text-gray-300 text-sm max-h-64 overflow-y-auto">
                       {termsContent || 'No terms and conditions defined. Click Edit to add content.'}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Item of the Day - Super Admin Only */}
+              {admin?.level === 'super_admin' && (
+                <div className="card border-amber-900/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-white flex items-center gap-2">
+                        <Star className="text-amber-400" size={18} />
+                        Item of the Day
+                      </h3>
+                      <p className="text-gray-400 text-sm">Global marketing banner shown in all shops</p>
+                    </div>
+                    {!isEditingItemOfDay ? (
+                      <div className="flex gap-2">
+                        {itemOfTheDay && (
+                          <button 
+                            onClick={handleEditItemOfDay}
+                            className="btn-gold-outline"
+                          >
+                            <Edit size={16} className="mr-2" />
+                            Edit
+                          </button>
+                        )}
+                        <button 
+                          onClick={handleEditItemOfDay}
+                          className="btn-gold"
+                        >
+                          <Plus size={16} className="mr-2" />
+                          {itemOfTheDay ? 'Change' : 'Add'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            setIsEditingItemOfDay(false);
+                            if (!itemOfTheDay) {
+                              setItemOfDayForm({ name: '', value: '', imageUrl: '' });
+                            }
+                          }}
+                          className="btn-gold-outline text-gray-400"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={handleSaveItemOfDay}
+                          className="btn-gold"
+                        >
+                          <Save size={16} className="mr-2" />
+                          Save
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {itemOfDaySaved && (
+                    <div className="mb-4 p-3 bg-green-900/30 border border-green-700 rounded-lg text-green-400 text-sm">
+                      ✓ Item of the Day saved successfully!
+                    </div>
+                  )}
+                  
+                  {isEditingItemOfDay ? (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Item Name</label>
+                        <input
+                          type="text"
+                          value={itemOfDayForm.name}
+                          onChange={(e) => setItemOfDayForm({ ...itemOfDayForm, name: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-amber-500 focus:outline-none"
+                          placeholder="e.g., Special Weekend Prize!"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Value (KSh)</label>
+                        <input
+                          type="number"
+                          value={itemOfDayForm.value}
+                          onChange={(e) => setItemOfDayForm({ ...itemOfDayForm, value: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-amber-500 focus:outline-none"
+                          placeholder="e.g., 50000"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Image URL (optional)</label>
+                        <input
+                          type="url"
+                          value={itemOfDayForm.imageUrl}
+                          onChange={(e) => setItemOfDayForm({ ...itemOfDayForm, imageUrl: e.target.value })}
+                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-amber-500 focus:outline-none"
+                          placeholder="https://example.com/image.jpg"
+                        />
+                      </div>
+                    </div>
+                  ) : itemOfTheDay ? (
+                    <div className="bg-gray-900 border border-gray-700 rounded-lg p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-amber-900/30 rounded-lg flex items-center justify-center">
+                          {itemOfTheDay.imageUrl ? (
+                            <img src={itemOfTheDay.imageUrl} alt={itemOfTheDay.name} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                            <Gift className="text-amber-400 w-8 h-8" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-amber-400 font-semibold">{itemOfTheDay.name}</p>
+                          <p className="text-white text-lg font-bold">KSh {itemOfTheDay.value.toLocaleString()}</p>
+                          <p className="text-gray-500 text-xs">
+                            Last updated: {new Date(itemOfTheDay.updatedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <button 
+                          onClick={handleClearItemOfDay}
+                          className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg"
+                          title="Remove Item of the Day"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 text-center text-gray-500">
+                      <Star className="w-8 h-8 mx-auto mb-2 text-gray-600" />
+                      <p>No Item of the Day set</p>
+                      <p className="text-xs">Click &quot;Add&quot; to create a featured item</p>
                     </div>
                   )}
                 </div>
