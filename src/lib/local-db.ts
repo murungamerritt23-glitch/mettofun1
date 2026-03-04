@@ -288,6 +288,29 @@ export const localAttempts = {
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
     return new Date(sorted[0].timestamp).getTime();
+  },
+
+  // Test mode specific operations
+  async getTestAttempts(): Promise<GameAttempt[]> {
+    const database = await initDB();
+    const all = await database.getAll('attempts');
+    return all.filter(a => a.isTest === true);
+  },
+
+  async getRealAttempts(): Promise<GameAttempt[]> {
+    const database = await initDB();
+    const all = await database.getAll('attempts');
+    return all.filter(a => a.isTest !== true);
+  },
+
+  async deleteTestAttempts(): Promise<void> {
+    const database = await initDB();
+    const testAttempts = await this.getTestAttempts();
+    const tx = database.transaction('attempts', 'readwrite');
+    await Promise.all([
+      ...testAttempts.map(attempt => tx.store.delete(attempt.id)),
+      tx.done
+    ]);
   }
 };
 

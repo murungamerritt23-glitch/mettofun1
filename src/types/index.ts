@@ -181,6 +181,7 @@ export interface GameAttempt {
   selectedItem?: Item;
   timestamp: Date;
   synced: boolean;
+  isTest?: boolean; // Test mode flag - marks test attempts to exclude from real analytics
 }
 
 export interface CustomerSession {

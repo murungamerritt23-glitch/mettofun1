@@ -104,7 +104,8 @@ export const createGameAttempt = (
   selectedBox: number,
   correctNumber: number,
   won: boolean,
-  selectedItem?: Item
+  selectedItem?: Item,
+  isTest?: boolean
 ): GameAttempt => {
   return {
     id: crypto.randomUUID(),
@@ -117,7 +118,8 @@ export const createGameAttempt = (
     won,
     selectedItem,
     timestamp: new Date(),
-    synced: false
+    synced: false,
+    isTest: isTest || false
   };
 };
 

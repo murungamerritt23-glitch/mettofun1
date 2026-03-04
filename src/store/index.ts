@@ -107,6 +107,9 @@ interface GameState {
   selectedItem: Item | null;
   isDemoMode: boolean;
   language: 'en' | 'sw';
+  // Test Mode - only for Super Admin
+  isTestMode: boolean;
+  testPhonePrefix: string; // Mock phone prefix for test data isolation
   // Nomination state
   nominationItems: NominationItem[];
   currentGameAttemptId: string | null;
@@ -118,11 +121,13 @@ interface GameState {
   setCustomerSession: (session: CustomerSession | null) => void;
   setSelectedItem: (item: Item | null) => void;
   setDemoMode: (isDemo: boolean) => void;
+  setTestMode: (isTest: boolean, prefix?: string) => void;
   setLanguage: (lang: 'en' | 'sw') => void;
   setNominationItems: (items: NominationItem[]) => void;
   setCurrentGameAttemptId: (id: string | null) => void;
   setHasNominatedThisAttempt: (hasNominated: boolean) => void;
   resetGame: () => void;
+  clearTestData: () => void;
 }
 
 export const useGameStore = create<GameState>()(
@@ -136,6 +141,9 @@ export const useGameStore = create<GameState>()(
       selectedItem: null,
       isDemoMode: false,
       language: 'en',
+      // Test Mode - only for Super Admin
+      isTestMode: false,
+      testPhonePrefix: 'TEST',
       // Nomination state
       nominationItems: [],
       currentGameAttemptId: null,
@@ -147,6 +155,7 @@ export const useGameStore = create<GameState>()(
       setCustomerSession: (customerSession) => set({ customerSession }),
       setSelectedItem: (selectedItem) => set({ selectedItem }),
       setDemoMode: (isDemoMode) => set({ isDemoMode }),
+      setTestMode: (isTestMode, testPhonePrefix = 'TEST') => set({ isTestMode, testPhonePrefix }),
       setLanguage: (language) => set({ language }),
       setNominationItems: (nominationItems) => set({ nominationItems }),
       setCurrentGameAttemptId: (currentGameAttemptId) => set({ currentGameAttemptId }),
@@ -159,6 +168,10 @@ export const useGameStore = create<GameState>()(
         selectedItem: null,
         currentGameAttemptId: null,
         hasNominatedThisAttempt: false
+      }),
+      clearTestData: () => set({
+        isTestMode: false,
+        testPhonePrefix: 'TEST'
       })
     }),
     {

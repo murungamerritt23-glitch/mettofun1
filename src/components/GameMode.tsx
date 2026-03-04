@@ -48,6 +48,7 @@ export default function GameMode() {
     isDemoMode, setDemoMode,
     language, setLanguage,
     currentGameAttemptId, setCurrentGameAttemptId,
+    isTestMode, testPhonePrefix,
     resetGame 
   } = useGameStore();
   
@@ -135,7 +136,11 @@ export default function GameMode() {
     // Simulate authorization
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    const formattedPhone = formatPhoneNumber(phoneNumber);
+    // Use test phone prefix if in test mode
+    const formattedPhone = isTestMode 
+      ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}` 
+      : formatPhoneNumber(phoneNumber);
+    
     const config = calculateBoxConfiguration(amount, currentShop?.qualifyingPurchase || 0);
     
     setCustomerSession({
@@ -191,7 +196,7 @@ export default function GameMode() {
       setSelectedItem(item || null);
     }
     
-    // Save attempt
+    // Save attempt - mark as test if in test mode
     const attempt = createGameAttempt(
       currentShop?.id || 'demo',
       customerSession?.phoneNumber || phoneNumber,
@@ -200,7 +205,8 @@ export default function GameMode() {
       selectedBox || 0,
       correctNumber,
       won,
-      winningItem || undefined
+      winningItem || undefined,
+      isTestMode // Pass test flag
     );
     
     localAttempts.save(attempt);
@@ -360,6 +366,18 @@ export default function GameMode() {
             <div className="card text-center mb-6">
               <h2 className="gold-gradient-text text-2xl font-bold">{currentShop.shopName}</h2>
               <p className="text-gray-400 text-sm">{currentShop.promoMessage}</p>
+            </div>
+          )}
+
+          {/* Test Mode Indicator */}
+          {isTestMode && (
+            <div className="bg-red-900/50 border border-red-500 rounded-lg p-3 mb-6 text-center">
+              <span className="text-red-400 font-bold">🔴 TEST MODE</span>
+              <p className="text-red-300 text-xs mt-1">
+                {language === 'sw' 
+                  ? 'Data haichukuliwi kwa hesabu za kawaida'
+                  : 'Test data isolated from real analytics'}
+              </p>
             </div>
           )}
 

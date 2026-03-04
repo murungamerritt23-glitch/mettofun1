@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
   Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap, ShoppingCart,
-  Upload, RefreshCw
+  Upload, RefreshCw, FlaskConical
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops } from '@/lib/local-db';
@@ -46,7 +46,7 @@ export default function AdminDashboard() {
   const { currentShop, setCurrentShop } = useShopStore();
   const { items, setItems } = useItemStore();
   const { setCurrentView } = useUIStore();
-  const { setCustomerSession, setSelectedItem, setGameStatus, setCorrectNumber, setThresholdNumber, setDemoMode } = useGameStore();
+  const { setCustomerSession, setSelectedItem, setGameStatus, setCorrectNumber, setThresholdNumber, setDemoMode, isTestMode, setTestMode, clearTestData } = useGameStore();
 
   // Load customers data when shop changes
   useEffect(() => {
@@ -338,7 +338,9 @@ export default function AdminDashboard() {
 
   // Dashboard view
   if (activeTab === 'dashboard') {
-    const analytics = attempts.length > 0 ? calculateShopAnalytics(attempts) : null;
+    // Filter out test attempts from analytics
+    const realAttempts = attempts.filter(a => a.isTest !== true);
+    const analytics = realAttempts.length > 0 ? calculateShopAnalytics(realAttempts) : null;
     
     return (
       <div className="min-h-screen flex">
@@ -376,7 +378,7 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Total Attempts</p>
-                    <p className="text-2xl font-bold text-white">{attempts.length}</p>
+                    <p className="text-2xl font-bold text-white">{realAttempts.length}</p>
                   </div>
                 </div>
               </div>
@@ -435,6 +437,36 @@ export default function AdminDashboard() {
                   <Settings className="text-gold-500 mb-2" size={24} />
                   <h3 className="font-semibold text-white">Backup Data</h3>
                   <p className="text-gray-400 text-sm">Export all data</p>
+                </button>
+              )}
+
+              {/* Test Mode Toggle - Super Admin Only */}
+              {admin?.level === 'super_admin' && (
+                <button
+                  onClick={async () => {
+                    if (isTestMode) {
+                      // Turning OFF - clear test data
+                      if (confirm('Turn off Test Mode? This will clear all test game attempts.')) {
+                        await localAttempts.deleteTestAttempts();
+                        clearTestData();
+                      }
+                    } else {
+                      // Turning ON
+                      if (confirm('Enable Test Mode? Test data will be isolated from real analytics.')) {
+                        const testPrefix = `TEST-${Date.now().toString(36).toUpperCase()}`;
+                        setTestMode(true, testPrefix);
+                      }
+                    }
+                  }}
+                  className={`card hover:border-gold-500 transition-all text-left ${isTestMode ? 'border-red-500' : ''}`}
+                >
+                  <FlaskConical className={`mb-2 ${isTestMode ? 'text-red-500' : 'text-gold-500'}`} size={24} />
+                  <h3 className="font-semibold text-white">
+                    {isTestMode ? '🔴 Test Mode ON' : 'Test Mode'}
+                  </h3>
+                  <p className="text-gray-400 text-sm">
+                    {isTestMode ? 'Tap to disable & clear data' : 'For Super Admin testing only'}
+                  </p>
                 </button>
               )}
             </div>
