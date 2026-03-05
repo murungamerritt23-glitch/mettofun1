@@ -9,11 +9,11 @@ import {
   Upload, RefreshCw, FlaskConical, Gift, Star, Heart
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
-import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings } from '@/lib/local-db';
+import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
 import { firebaseShops, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
-import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier, ItemOfTheDay } from '@/types';
+import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier, ItemOfTheDay, NominationItem } from '@/types';
 import { ADMIN_PERMISSIONS, SUBSCRIPTION_CHANNELS } from '@/types';
 
 type TabType = 'dashboard' | 'shops' | 'items' | 'qualifyingPurchase' | 'attempts' | 'analytics' | 'settings' | 'customers' | 'myShop' | 'staff';
@@ -46,6 +46,10 @@ export default function AdminDashboard() {
   const [demoQualifyingPurchase, setDemoQualifyingPurchase] = useState<number>(0);
   const [qpInput, setQpInput] = useState<string>(''); // Local state for qualifying purchase input
   const [qpSaving, setQpSaving] = useState(false); // Saving state for qualifying purchase
+  
+  // Top nominations state
+  const [topNominations, setTopNominations] = useState<NominationItem[]>([]);
+  const [nominationsLoading, setNominationsLoading] = useState(false);
 
   const { admin, logout } = useAuthStore();
   const { currentShop, setCurrentShop } = useShopStore();
@@ -65,9 +69,28 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (currentShop) {
       setQpInput(String(currentShop.qualifyingPurchase || 0));
+      loadTopNominations();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentShop?.id]);
+
+  // Load top nominations for the current shop
+  const loadTopNominations = async () => {
+    if (!currentShop) return;
+    setNominationsLoading(true);
+    try {
+      const nominations = await localNominationItems.getByShop(currentShop.id);
+      // Get top 10 with nominations > 0, sorted by count descending
+      const top10 = nominations
+        .filter(item => item.nominationCount > 0)
+        .slice(0, 10);
+      setTopNominations(top10);
+    } catch (error) {
+      console.error('Error loading nominations:', error);
+    } finally {
+      setNominationsLoading(false);
+    }
+  };
 
   // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
   const isShopAdmin = admin?.level === 'shop_admin';
@@ -535,6 +558,50 @@ export default function AdminDashboard() {
                 </button>
               )}
             </div>
+
+            {/* Top Customer Nominations Section */}
+            {currentShop && (
+              <div className="mt-8">
+                <h2 className="gold-gradient-text text-2xl font-bold mb-4">Top Customer Nominations</h2>
+                <div className="card">
+                  {nominationsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500 mx-auto"></div>
+                      <p className="text-gray-400 mt-2">Loading nominations...</p>
+                    </div>
+                  ) : topNominations.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No customer nominations yet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {topNominations.map((item, index) => (
+                        <div 
+                          key={item.id} 
+                          className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-gold-500 font-bold text-lg w-6">#{index + 1}</span>
+                            <span className="text-white font-medium">{item.name}</span>
+                            {item.imageUrl && (
+                              <img 
+                                src={item.imageUrl} 
+                                alt={item.name} 
+                                className="w-8 h-8 rounded object-cover"
+                              />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-400 text-sm">{item.nominationCount}</span>
+                            <span className="text-gold-500 text-sm">nominations</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>
