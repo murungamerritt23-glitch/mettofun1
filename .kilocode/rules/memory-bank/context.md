@@ -41,6 +41,11 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Solution: Added check `admin?.level === 'shop_admin'` to the conditional rendering
   - Now only shop_admin can see Top Customer Nominations
 
+- [x] Track which agent_admin added each shop
+  - Added `addedBy` and `addedByName` fields to Shop type
+  - When agent_admin adds a shop, the system now captures their ID and name
+  - Super admin can now see "Added by agent_admin: [name]" note on shop list
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
@@ -118,3 +123,4 @@ export async function GET() {
 | Today | Fix shop save - allow local fallback when Firebase not configured |
 | Today | Fix shop qualifying purchase not saving - auto-select shop on admin dashboard load |
 | Today | Fix Top Customer Nominations visibility - filter by assigned shops for non-super_admin |
+| Today | Track which agent_admin added each shop - add addedBy and addedByName fields with display note |
