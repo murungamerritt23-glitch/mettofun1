@@ -122,6 +122,8 @@ export interface Shop {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
+  addedBy?: string;         // agent_admin ID who added this shop
+  addedByName?: string;     // agent_admin name for display
   backupEnabled: boolean;
   lastBackup?: Date;
   location?: ShopLocation;

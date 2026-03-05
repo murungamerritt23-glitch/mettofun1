@@ -690,6 +690,11 @@ export default function AdminDashboard() {
                         <p className="text-gray-500 text-xs">
                           Qualifying: KSh {shop.qualifyingPurchase.toLocaleString()}
                         </p>
+                        {shop.addedByName && (
+                          <p className="text-blue-400 text-xs mt-1">
+                            Added by agent_admin: {shop.addedByName}
+                          </p>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -1181,6 +1186,7 @@ export default function AdminDashboard() {
                       setEditingShop(null);
                     }}
                     isShopAdmin={isShopAdmin}
+                    adminInfo={admin ? { id: admin.id, name: admin.name, level: admin.level } : null}
                   />
                 </motion.div>
               )}
@@ -1201,6 +1207,11 @@ export default function AdminDashboard() {
                       <p className="text-gray-500 text-xs">
                         Qualifying: KSh {shop.qualifyingPurchase.toLocaleString()}
                       </p>
+                      {shop.addedByName && (
+                        <p className="text-blue-400 text-xs mt-1">
+                          Added by agent_admin: {shop.addedByName}
+                        </p>
+                      )}
                       <div className="flex items-center gap-2 mt-2">
                         <span className={`px-2 py-1 rounded text-xs ${
                           shop.isActive 
@@ -2178,12 +2189,14 @@ function ShopForm({
   shop, 
   onSave, 
   onCancel,
-  isShopAdmin = false
+  isShopAdmin = false,
+  adminInfo = null
 }: { 
   shop: Shop | null; 
   onSave: (shop: Shop) => void; 
   onCancel: () => void;
   isShopAdmin?: boolean;
+  adminInfo?: { id: string; name: string; level: string } | null;
 }) {
   const [formData, setFormData] = useState({
     shopName: shop?.shopName || '',
@@ -2208,6 +2221,12 @@ function ShopForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // When creating a new shop and admin is agent_admin, track who added it
+    const isNewShop = !shop;
+    const addedByInfo = (isNewShop && adminInfo?.level === 'agent_admin') 
+      ? { addedBy: adminInfo.id, addedByName: adminInfo.name }
+      : {};
+    
     onSave({
       id: shop?.id || crypto.randomUUID(),
       ...formData,
@@ -2217,6 +2236,7 @@ function ShopForm({
       updatedAt: new Date(),
       createdBy: shop?.createdBy || 'super_admin',
       backupEnabled: shop?.backupEnabled || false,
+      ...addedByInfo,
     });
   };
 
