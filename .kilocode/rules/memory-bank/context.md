@@ -8,6 +8,17 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix shop qualifying purchase not saving issue
+  - Root cause: Admin Dashboard loaded shops but didn't set currentShop in Zustand store
+  - Solution: Added auto-select first shop logic when admin logs in
+  - This enables qualifying purchase editing for shop_admin
+
+- [x] Fix Top Customer Nominations visibility
+  - Issue: Only visible to shop_admin (others couldn't see it)
+  - Root cause: loadShops didn't filter by assigned shops for non-super_admin users
+  - Solution: Added filtering by admin.assignedShops for shop_admin and other admins
+  - Now all admins can see Top Customer Nominations for their assigned shops
+
 - [x] Add optional nomination screen after game result (win or lose)
   - Customer can choose to nominate an item or skip
   - Nomination screen shows up to 100 items sorted by nomination count (highest first)
@@ -94,3 +105,5 @@ export async function GET() {
 | Today | Fix missing sidebar tabs - add My Shop, Customers, Staff to navigation |
 | Today | Fix qualifying purchase editing permissions - only shop_admin can edit |
 | Today | Fix shop save - allow local fallback when Firebase not configured |
+| Today | Fix shop qualifying purchase not saving - auto-select shop on admin dashboard load |
+| Today | Fix Top Customer Nominations visibility - filter by assigned shops for non-super_admin |
