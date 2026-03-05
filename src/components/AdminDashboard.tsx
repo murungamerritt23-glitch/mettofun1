@@ -155,22 +155,8 @@ export default function AdminDashboard() {
           setShops(localShopList);
           autoSelectShop(localShopList);
         }
-      } else if (admin?.level === 'shop_admin' && permissions.canManageAssignedShops) {
-        // shop_admin with manage permission sees all their assigned shops (including inactive)
-        const allShops = await firebaseShops.getAll();
-        const filteredShops = filterByAssignedShops(allShops);
-        if (filteredShops.length > 0) {
-          setShops(filteredShops);
-          autoSelectShop(filteredShops);
-        } else {
-          // Fallback to local
-          const localShopList = await localShops.getAll();
-          const filteredLocalShops = filterByAssignedShops(localShopList);
-          setShops(filteredLocalShops);
-          autoSelectShop(filteredLocalShops);
-        }
       } else {
-        // Other admins (agent_admin without manage permission) see only active shops
+        // Other admins (agent_admin, shop_admin) see only active shops
         const fbShops = await firebaseShops.getAllActive();
         // Filter by assigned shops for shop_admin
         const filteredFbShops = filterByAssignedShops(fbShops);
