@@ -8,6 +8,12 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix shop_admin activate/deactivate button in super admin
+  - Issue: shop_admin couldn't see the activate/deactivate button for their shop
+  - Root cause: shop_admin had canManageAssignedShops and canActivateShops set to false in permissions
+  - Solution: Updated shop_admin permissions to enable canManageAssignedShops and canActivateShops
+  - Also updated loadShops to load all assigned shops (including inactive) so they can toggle status
+
 - [x] Fix shop qualifying purchase not saving issue
   - Root cause: Admin Dashboard loaded shops but didn't set currentShop in Zustand store
   - Solution: Added auto-select first shop logic when admin logs in
