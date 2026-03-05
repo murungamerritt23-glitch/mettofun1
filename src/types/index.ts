@@ -68,7 +68,7 @@ export const ADMIN_PERMISSIONS: Record<AdminLevel, AdminPermissions> = {
     canManageAssignedShops: true,
     canOnboardShops: true,
     canDeleteShops: false,
-    canActivateShops: true,
+    canActivateShops: false,
     canAssignSubscription: false,
     canManageAdmins: false,
     canAssignShops: true,
