@@ -589,8 +589,8 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* Top Customer Nominations Section */}
-            {currentShop && (
+            {/* Top Customer Nominations Section - Only for shop_admin */}
+            {currentShop && admin?.level === 'shop_admin' && (
               <div className="mt-8">
                 <h2 className="gold-gradient-text text-2xl font-bold mb-4">Top Customer Nominations</h2>
                 <div className="card">
