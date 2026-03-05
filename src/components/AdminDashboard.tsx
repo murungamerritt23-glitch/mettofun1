@@ -125,41 +125,51 @@ export default function AdminDashboard() {
       // Get current shop from store first
       const storedCurrentShop = useShopStore.getState().currentShop;
       
+      // Check if this is a shop_admin with assigned shops
+      const isShopAdmin = admin?.level === 'shop_admin';
+      const assignedShopIds = admin?.assignedShops || [];
+      
+      // Function to filter shops by assigned shops for shop_admin
+      const filterByAssignedShops = (shopList: Shop[]): Shop[] => {
+        if (isShopAdmin && assignedShopIds.length > 0) {
+          return shopList.filter(s => assignedShopIds.includes(s.id));
+        }
+        return shopList;
+      };
+      
+      // Function to auto-select first shop if none selected
+      const autoSelectShop = (shopList: Shop[]) => {
+        if (!storedCurrentShop && shopList.length > 0) {
+          setCurrentShop(shopList[0]);
+        }
+      };
+      
       // admin sees all shops (including inactive)
       if (admin?.level === 'super_admin') {
         const allShops = await firebaseShops.getAll();
         if (allShops.length > 0) {
           setShops(allShops);
-          // Auto-select first shop if none selected
-          if (!storedCurrentShop) {
-            setCurrentShop(allShops[0]);
-          }
+          autoSelectShop(allShops);
         } else {
           const localShopList = await localShops.getAll();
           setShops(localShopList);
-          // Auto-select first shop if none selected
-          if (!storedCurrentShop && localShopList.length > 0) {
-            setCurrentShop(localShopList[0]);
-          }
+          autoSelectShop(localShopList);
         }
       } else {
         // Other admins see only active shops
         const fbShops = await firebaseShops.getAllActive();
-        if (fbShops.length > 0) {
-          setShops(fbShops);
-          // Auto-select first shop if none selected
-          if (!storedCurrentShop) {
-            setCurrentShop(fbShops[0]);
-          }
+        // Filter by assigned shops for shop_admin
+        const filteredFbShops = filterByAssignedShops(fbShops);
+        if (filteredFbShops.length > 0) {
+          setShops(filteredFbShops);
+          autoSelectShop(filteredFbShops);
         } else {
           // Fallback to local if Firebase has no shops
           const localShopList = await localShops.getAll();
           const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
-          setShops(activeLocalShops);
-          // Auto-select first shop if none selected
-          if (!storedCurrentShop && activeLocalShops.length > 0) {
-            setCurrentShop(activeLocalShops[0]);
-          }
+          const filteredLocalShops = filterByAssignedShops(activeLocalShops);
+          setShops(filteredLocalShops);
+          autoSelectShop(filteredLocalShops);
         }
       }
     };
