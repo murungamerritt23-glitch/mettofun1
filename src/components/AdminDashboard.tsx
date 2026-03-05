@@ -122,24 +122,44 @@ export default function AdminDashboard() {
   // Load shops on mount
   useEffect(() => {
     const loadShops = async () => {
+      // Get current shop from store first
+      const storedCurrentShop = useShopStore.getState().currentShop;
+      
       // admin sees all shops (including inactive)
       if (admin?.level === 'super_admin') {
         const allShops = await firebaseShops.getAll();
         if (allShops.length > 0) {
           setShops(allShops);
+          // Auto-select first shop if none selected
+          if (!storedCurrentShop) {
+            setCurrentShop(allShops[0]);
+          }
         } else {
           const localShopList = await localShops.getAll();
           setShops(localShopList);
+          // Auto-select first shop if none selected
+          if (!storedCurrentShop && localShopList.length > 0) {
+            setCurrentShop(localShopList[0]);
+          }
         }
       } else {
         // Other admins see only active shops
         const fbShops = await firebaseShops.getAllActive();
         if (fbShops.length > 0) {
           setShops(fbShops);
+          // Auto-select first shop if none selected
+          if (!storedCurrentShop) {
+            setCurrentShop(fbShops[0]);
+          }
         } else {
           // Fallback to local if Firebase has no shops
           const localShopList = await localShops.getAll();
-          setShops(localShopList.filter((s: Shop) => s.isActive));
+          const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
+          setShops(activeLocalShops);
+          // Auto-select first shop if none selected
+          if (!storedCurrentShop && activeLocalShops.length > 0) {
+            setCurrentShop(activeLocalShops[0]);
+          }
         }
       }
     };
