@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
   Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap, ShoppingCart,
-  Upload, RefreshCw, FlaskConical, Gift, Star
+  Upload, RefreshCw, FlaskConical, Gift, Star, Heart
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings } from '@/lib/local-db';
@@ -237,6 +237,7 @@ export default function AdminDashboard() {
       value: parseFloat(itemOfDayForm.value) || 0,
       imageUrl: itemOfDayForm.imageUrl || undefined,
       isActive: true,
+      likes: itemOfTheDay?.likes || 0,
       createdAt: itemOfTheDay?.createdAt || new Date(),
       updatedAt: new Date()
     };
@@ -1943,9 +1944,16 @@ export default function AdminDashboard() {
                         <div className="flex-1">
                           <p className="text-amber-400 font-semibold">{itemOfTheDay.name}</p>
                           <p className="text-white text-lg font-bold">KSh {itemOfTheDay.value.toLocaleString()}</p>
-                          <p className="text-gray-500 text-xs">
-                            Last updated: {new Date(itemOfTheDay.updatedAt).toLocaleDateString()}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-gray-500 text-xs">
+                              Last updated: {new Date(itemOfTheDay.updatedAt).toLocaleDateString()}
+                            </span>
+                            <span className="text-gray-600">|</span>
+                            <span className="flex items-center gap-1 text-amber-400 text-xs">
+                              <Heart className="w-3 h-3" />
+                              {itemOfTheDay.likes || 0} likes
+                            </span>
+                          </div>
                         </div>
                         <button 
                           onClick={handleClearItemOfDay}

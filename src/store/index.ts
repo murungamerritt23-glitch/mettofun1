@@ -116,6 +116,7 @@ interface GameState {
   hasNominatedThisAttempt: boolean;
   // Item of the Day - global marketing banner
   itemOfTheDay: ItemOfTheDay | null;
+  hasLikedItemOfDay: boolean; // Track if customer has liked in this session
   setGameStatus: (status: 'idle' | 'playing' | 'won' | 'lost' | 'nominating') => void;
   setSelectedBox: (box: number | null) => void;
   setCorrectNumber: (number: number | null) => void;
@@ -129,6 +130,8 @@ interface GameState {
   setCurrentGameAttemptId: (id: string | null) => void;
   setHasNominatedThisAttempt: (hasNominated: boolean) => void;
   setItemOfTheDay: (item: ItemOfTheDay | null) => void;
+  incrementItemOfDayLikes: () => void;
+  setHasLikedItemOfDay: (hasLiked: boolean) => void;
   resetGame: () => void;
   clearTestData: () => void;
 }
@@ -153,6 +156,7 @@ export const useGameStore = create<GameState>()(
       hasNominatedThisAttempt: false,
       // Item of the Day
       itemOfTheDay: null,
+      hasLikedItemOfDay: false,
       setGameStatus: (gameStatus) => set({ gameStatus }),
       setSelectedBox: (selectedBox) => set({ selectedBox }),
       setCorrectNumber: (correctNumber) => set({ correctNumber }),
@@ -166,6 +170,16 @@ export const useGameStore = create<GameState>()(
       setCurrentGameAttemptId: (currentGameAttemptId) => set({ currentGameAttemptId }),
       setHasNominatedThisAttempt: (hasNominatedThisAttempt) => set({ hasNominatedThisAttempt }),
       setItemOfTheDay: (itemOfTheDay) => set({ itemOfTheDay }),
+      incrementItemOfDayLikes: () => {
+        const current = useGameStore.getState().itemOfTheDay;
+        if (current) {
+          const updated = { ...current, likes: (current.likes || 0) + 1 };
+          set({ itemOfTheDay: updated });
+          // Save to local storage
+          localSettings.set('itemOfTheDay', updated);
+        }
+      },
+      setHasLikedItemOfDay: (hasLikedItemOfDay) => set({ hasLikedItemOfDay }),
       resetGame: () => set({
         gameStatus: 'idle',
         selectedBox: null,

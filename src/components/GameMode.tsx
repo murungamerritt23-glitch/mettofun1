@@ -50,6 +50,9 @@ export default function GameMode() {
     currentGameAttemptId, setCurrentGameAttemptId,
     isTestMode, testPhonePrefix,
     itemOfTheDay,
+    hasLikedItemOfDay,
+    setHasLikedItemOfDay,
+    incrementItemOfDayLikes,
     resetGame 
   } = useGameStore();
   
@@ -577,9 +580,27 @@ export default function GameMode() {
                   <p className="text-white text-lg font-bold">{itemOfTheDay.name}</p>
                   <p className="text-amber-400 text-xl font-bold">KSh {itemOfTheDay.value.toLocaleString()}</p>
                 </div>
-                <div className="text-amber-500">
-                  <Star className="w-6 h-6" />
-                </div>
+                <button
+                  onClick={() => {
+                    if (!hasLikedItemOfDay) {
+                      incrementItemOfDayLikes();
+                      setHasLikedItemOfDay(true);
+                    }
+                  }}
+                  disabled={hasLikedItemOfDay}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
+                    hasLikedItemOfDay 
+                      ? 'bg-amber-600/50 cursor-default' 
+                      : 'bg-amber-600/30 hover:bg-amber-600/50 active:scale-95'
+                  }`}
+                >
+                  <Heart 
+                    className={`w-6 h-6 ${hasLikedItemOfDay ? 'fill-amber-400 text-amber-400' : 'text-amber-400'}`} 
+                  />
+                  <span className="text-xs text-amber-300 font-semibold">
+                    {itemOfTheDay.likes || 0}
+                  </span>
+                </button>
               </div>
             </div>
           )}

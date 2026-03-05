@@ -149,6 +149,7 @@ export interface ItemOfTheDay {
   value: number;
   imageUrl?: string;
   isActive: boolean;
+  likes: number; // Customer likes count
   createdAt: Date;
   updatedAt: Date;
 }
