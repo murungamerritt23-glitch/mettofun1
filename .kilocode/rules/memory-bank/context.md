@@ -36,6 +36,11 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Read-only for customers
   - Not affected by 80% pricing rule (feedback-only feature)
 
+- [x] Fix Top Customer Nominations visibility
+  - Issue: agent_admin and super_admin could see Top Customer Nominations (should only be visible to shop_admin)
+  - Solution: Added check `admin?.level === 'shop_admin'` to the conditional rendering
+  - Now only shop_admin can see Top Customer Nominations
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
