@@ -77,6 +77,12 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Solution: Added settings icon button in GameMode.tsx, visible only to shop_admin
   - Button calls setCurrentView('admin') to switch back to admin dashboard
 
+- [x] Allow unlimited game sessions without logout/login
+  - Issue: After playing one game, shop admin had to logout and login again to serve next customer
+  - Root cause: handleSkipNominate didn't fully reset game state
+  - Solution: Updated handleSkipNominate to clear all customer data, phone/amount fields, and all picker states
+  - Now after skipping nomination, shop admin sees fresh entry form to serve next customer immediately
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
