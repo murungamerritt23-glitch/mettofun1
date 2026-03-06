@@ -126,6 +126,15 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Updated splash container background to match METOFUN theme (#0A1628)
   - Now shows the custom animated logo when app starts
 
+- [x] Restrict shop_admin to only their permanently assigned shop
+  - Issue: Shop admin could access all shops assigned to them, could swap between multiple shops
+  - Root cause: assignedShops array could contain multiple shops, My Shop tab showed list to choose from
+  - Solution: 
+    1. LoginPage now sets shop_admin's assignedShops to only their device-linked shop when logging in
+    2. My Shop tab now shows only one shop for shop_admin (no list to choose from)
+    3. Removed X button that allowed shop_admin to deselect their shop
+  - Now shop_admin is permanently tied to one specific shop based on device
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
@@ -206,3 +215,4 @@ export async function GET() {
 | Today | Track which agent_admin added each shop - add addedBy and addedByName fields with display note |
 | Today | Hide Customer Mode and Manage Items buttons from agent_admin and super_admin - only visible to shop_admin |
 | Today | Add custom METOFUN logo with dark navy background (#0A1628) and gold theme |
+| Today | Restrict shop_admin to only their permanently assigned shop - cannot swap or choose shops |

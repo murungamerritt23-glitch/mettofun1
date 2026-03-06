@@ -771,13 +771,17 @@ export default function AdminDashboard() {
     const assignedShopIds = admin?.assignedShops || [];
     const isShopAdmin = admin?.level === 'shop_admin';
     
-    // For shop admins, only show their assigned shops
+    // For shop admins, only show their ONE permanently assigned shop
+    // They cannot switch shops - it's permanent based on device
     // For super/agent admins, show all shops (or assigned if specified)
     const availableShops = isShopAdmin 
-      ? shops.filter(s => assignedShopIds.includes(s.id))
+      ? shops.filter(s => assignedShopIds.includes(s.id)).slice(0, 1) // Only first shop for shop_admin
       : assignedShopIds.length > 0 
         ? shops.filter(s => assignedShopIds.includes(s.id))
         : shops;
+    
+    // For shop_admin, if no currentShop is set but they have one assigned, auto-select it
+    const effectiveShop = currentShop || (isShopAdmin && availableShops.length === 1 ? availableShops[0] : null);
     
     return (
       <div className="min-h-screen flex">
@@ -795,35 +799,41 @@ export default function AdminDashboard() {
           <div className="max-w-2xl mx-auto">
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">My Shop</h1>
             
-            {!currentShop ? (
+            {!effectiveShop ? (
               <div className="card">
-                <h3 className="font-semibold text-white mb-4">Select Your Shop</h3>
-                {availableShops.length === 0 ? (
-                  <p className="text-gray-500">No shops assigned to your account.</p>
+                {isShopAdmin ? (
+                  <p className="text-gray-500">No shop assigned to your device. Contact your administrator.</p>
                 ) : (
-                  <div className="space-y-3">
-                    {availableShops.map((shop) => (
-                      <button
-                        key={shop.id}
-                        onClick={() => {
-                          setCurrentShop(shop);
-                          loadItems();
-                        }}
-                        className="w-full card hover:border-gold-500 text-left"
-                      >
-                        <h4 className="font-semibold text-white">{shop.shopName}</h4>
-                        <p className="text-gray-400 text-sm">Code: {shop.shopCode}</p>
-                        <p className="text-gray-500 text-xs">
-                          Qualifying: KSh {shop.qualifyingPurchase.toLocaleString()}
-                        </p>
-                        {shop.addedByName && (
-                          <p className="text-blue-400 text-xs mt-1">
-                            Added by agent_admin: {shop.addedByName}
-                          </p>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <h3 className="font-semibold text-white mb-4">Select Your Shop</h3>
+                    {availableShops.length === 0 ? (
+                      <p className="text-gray-500">No shops assigned to your account.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {availableShops.map((shop) => (
+                          <button
+                            key={shop.id}
+                            onClick={() => {
+                              setCurrentShop(shop);
+                              loadItems();
+                            }}
+                            className="w-full card hover:border-gold-500 text-left"
+                          >
+                            <h4 className="font-semibold text-white">{shop.shopName}</h4>
+                            <p className="text-gray-400 text-sm">Code: {shop.shopCode}</p>
+                            <p className="text-gray-500 text-xs">
+                              Qualifying: KSh {shop.qualifyingPurchase.toLocaleString()}
+                            </p>
+                            {shop.addedByName && (
+                              <p className="text-blue-400 text-xs mt-1">
+                                Added by agent_admin: {shop.addedByName}
+                              </p>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ) : (
@@ -831,15 +841,18 @@ export default function AdminDashboard() {
                 <div className="card mb-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="font-semibold text-white text-lg">{currentShop.shopName}</h3>
-                      <p className="text-gray-400 text-sm">Code: {currentShop.shopCode}</p>
+                      <h3 className="font-semibold text-white text-lg">{effectiveShop.shopName}</h3>
+                      <p className="text-gray-400 text-sm">Code: {effectiveShop.shopCode}</p>
                     </div>
-                    <button
-                      onClick={() => setCurrentShop(null)}
-                      className="text-gray-400 hover:text-white"
-                    >
-                      <X size={20} />
-                    </button>
+                    {/* Hide the X button for shop_admin - they cannot switch shops */}
+                    {!isShopAdmin && (
+                      <button
+                        onClick={() => setCurrentShop(null)}
+                        className="text-gray-400 hover:text-white"
+                      >
+                        <X size={20} />
+                      </button>
+                    )}
                   </div>
                   
                   {/* Debug info - remove in production */}
@@ -936,7 +949,7 @@ export default function AdminDashboard() {
                     <h3 className="font-semibold text-white mb-4">Quick Edit Items</h3>
                     <p className="text-gray-400 text-sm mb-4">
                       Go to the Items tab to edit prize values. 
-                      Item values must be ≤ 80% of qualifying purchase (KSh {(currentShop.qualifyingPurchase * 0.8).toLocaleString()})
+                      Item values must be ≤ 80% of qualifying purchase (KSh {(effectiveShop?.qualifyingPurchase * 0.8).toLocaleString()})
                     </p>
                     <button
                       onClick={() => setActiveTab('items')}

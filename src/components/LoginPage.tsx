@@ -98,6 +98,9 @@ export default function LoginPage() {
             const currentDeviceId = getDeviceId();
             const shop = await localShops.getByDeviceId(currentDeviceId);
             if (shop) {
+              // Set the shop as the ONLY assigned shop for this shop_admin (permanent assignment)
+              const updatedAdmin = { ...demoAdmin, assignedShops: [shop.id] };
+              setAdmin(updatedAdmin);
               setCurrentShop(shop);
             }
             // Shop admin goes directly to customer mode
@@ -142,6 +145,9 @@ export default function LoginPage() {
           const currentDeviceId = getDeviceId();
           const shop = await localShops.getByDeviceId(currentDeviceId);
           if (shop) {
+            // Set the shop as the ONLY assigned shop for this shop_admin (permanent assignment)
+            const updatedAdmin = { ...admin, assignedShops: [shop.id] };
+            setAdmin(updatedAdmin);
             setCurrentShop(shop);
           }
           // Shop admin goes directly to customer mode
