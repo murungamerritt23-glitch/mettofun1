@@ -122,25 +122,23 @@ export default function GameMode() {
       return;
     }
     
-    // Handle empty or invalid purchase amount - default to 0 which will pass if qualifying purchase is 0
+    // Handle empty or invalid purchase amount - show error if invalid
     let amount = parseFloat(purchaseAmount);
     if (isNaN(amount) || amount < 0) {
-      amount = 0; // Default to 0 for empty/invalid amounts
+      alert(language === 'sw' ? 'Tafadhali ingiza kiwango sahihi cha manunuzi' : 'Please enter a valid purchase amount');
+      return;
     }
     
     const qualifyingPurchase = Number(currentShop?.qualifyingPurchase) || 0;
     
-    // If qualifying purchase > 0, warn but still allow play (more lenient)
+    // Strict validation - purchase amount must be equal or above qualifying purchase
     if (qualifyingPurchase > 0 && amount < qualifyingPurchase) {
-      // Show warning but allow play - make it more forgiving
-      const confirmPlay = confirm(
-        language === 'sw' 
-          ? `Umefika kwa KSh ${amount.toLocaleString()}. Kiwango cha chini ni KSh ${qualifyingPurchase.toLocaleString()}. Unachagua kuendelea?`
-          : `You entered KSh ${amount.toLocaleString()}. Minimum is KSh ${qualifyingPurchase.toLocaleString()}. Continue anyway?`
+      alert(
+        language === 'sw'
+          ? `Kiwango cha chini ni KSh ${qualifyingPurchase.toLocaleString()}. Tafadhali ingiza kiwango cha juu au sawa na ${qualifyingPurchase.toLocaleString()}.`
+          : `Minimum purchase is KSh ${qualifyingPurchase.toLocaleString()}. Please enter an amount equal to or above ${qualifyingPurchase.toLocaleString()}.`
       );
-      if (!confirmPlay) {
-        return;
-      }
+      return;
     }
 
     setIsAuthorizing(true);
