@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Sparkles } from 'lucide-react';
 import { useUIStore } from '@/store';
 
 export default function SplashScreen() {
@@ -34,100 +33,34 @@ export default function SplashScreen() {
           transition={{ duration: 0.5 }}
           className="splash-container"
         >
-          {/* Animated shopping cart with gold ball */}
+          {/* Animated METOFUN Logo */}
           <div className="relative mb-8">
-            {/* Golden ball */}
-            <motion.div
-              className="absolute -top-4 left-1/2 w-8 h-8 rounded-full"
-              style={{
-                background: 'radial-gradient(circle at 30% 30%, #fcd34d, #f59e0b, #b45309)',
-                boxShadow: '0 0 20px #f59e0b, 0 0 40px rgba(245,158,11,0.5)'
-              }}
-              animate={{
-                x: [0, 30, -30, 0],
-                y: [0, -40, 0, 0],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
+            <motion.img
+              src="/metofun-logo.svg"
+              alt="METOFUN"
+              className="w-64 h-64"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5 }}
             />
-            
-            {/* Shopping cart */}
-            <motion.div
-              animate={{
-                y: [0, -10, 0]
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            >
-              <ShoppingCart 
-                size={80} 
-                className="text-gold-500"
-                style={{ color: '#f59e0b' }}
-              />
-            </motion.div>
-            
-            {/* Sparkles */}
-            <motion.div
-              className="absolute inset-0"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              <Sparkles 
-                className="absolute -top-2 -right-2 text-gold-300"
-                size={24}
-                style={{ color: '#fcd34d' }}
-              />
-              <Sparkles 
-                className="absolute top-4 -left-2 text-gold-400"
-                size={16}
-                style={{ color: '#fbbf24' }}
-              />
-            </motion.div>
           </div>
-
-          {/* Logo text */}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="gold-gradient-text text-5xl font-bold mb-2"
-          >
-            MetoFun
-          </motion.h1>
           
+          {/* Loading bar */}
+          <div className="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-yellow-500 to-amber-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.2 }}
+            />
+          </div>
+          
+          {/* Loading text */}
           <motion.p
+            className="mt-4 text-amber-400 text-lg"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="text-gray-400 text-lg mb-8"
-          >
-            Win Rewards. Play Lucky.
-          </motion.p>
-
-          {/* Progress bar */}
-          <div className="w-64 h-2 bg-gray-800 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{
-                background: 'linear-gradient(90deg, #f59e0b, #fbbf24)'
-              }}
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(progress, 100)}%` }}
-            />
-          </div>
-
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.6 }}
-            transition={{ delay: 0.7 }}
-            className="text-gray-500 text-sm mt-4"
+            transition={{ delay: 0.3 }}
           >
             Loading...
           </motion.p>

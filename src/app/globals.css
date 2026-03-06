@@ -315,7 +315,7 @@ body {
 .splash-container {
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  background: linear-gradient(135deg, #0A1628 0%, #061220 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
