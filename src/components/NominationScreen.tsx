@@ -88,7 +88,8 @@ export default function NominationScreen() {
   };
 
   const handleSkip = () => {
-    setGameStatus('idle');
+    // Reset game state for next customer
+    resetGame();
   };
 
   const handleExit = () => {
