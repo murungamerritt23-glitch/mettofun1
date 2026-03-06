@@ -115,18 +115,32 @@ export default function GameMode() {
   }, [isDemoMode, phoneNumber]);
 
   const handleAuthorize = async () => {
-    if (!isValidPhoneNumber(phoneNumber)) {
-      alert(language === 'sw' ? 'Nambari ya simu si sahihi' : 'Invalid phone number');
+    // More lenient validation - accept any phone number with at least 7 digits
+    const digits = phoneNumber.replace(/\D/g, '');
+    if (digits.length < 7) {
+      alert(language === 'sw' ? 'Tafadhali ingiza nambari ya simu sahihi' : 'Please enter a valid phone number');
       return;
     }
     
-    const amount = parseFloat(purchaseAmount);
+    // Handle empty or invalid purchase amount - default to 0 which will pass if qualifying purchase is 0
+    let amount = parseFloat(purchaseAmount);
+    if (isNaN(amount) || amount < 0) {
+      amount = 0; // Default to 0 for empty/invalid amounts
+    }
+    
     const qualifyingPurchase = Number(currentShop?.qualifyingPurchase) || 0;
-    if (isNaN(amount) || amount < qualifyingPurchase) {
-      alert(language === 'sw' 
-        ? `Kiwango cha chini ni KSh ${currentShop?.qualifyingPurchase || 0}`
-        : `Minimum amount is KSh ${currentShop?.qualifyingPurchase || 0}`);
-      return;
+    
+    // If qualifying purchase > 0, warn but still allow play (more lenient)
+    if (qualifyingPurchase > 0 && amount < qualifyingPurchase) {
+      // Show warning but allow play - make it more forgiving
+      const confirmPlay = confirm(
+        language === 'sw' 
+          ? `Umefika kwa KSh ${amount.toLocaleString()}. Kiwango cha chini ni KSh ${qualifyingPurchase.toLocaleString()}. Unachagua kuendelea?`
+          : `You entered KSh ${amount.toLocaleString()}. Minimum is KSh ${qualifyingPurchase.toLocaleString()}. Continue anyway?`
+      );
+      if (!confirmPlay) {
+        return;
+      }
     }
 
     setIsAuthorizing(true);
@@ -157,7 +171,7 @@ export default function GameMode() {
       ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}` 
       : formatPhoneNumber(phoneNumber);
     
-    const config = calculateBoxConfiguration(amount, currentShop?.qualifyingPurchase || 0);
+    const config = calculateBoxConfiguration(amount, qualifyingPurchase);
     
     setCustomerSession({
       phoneNumber: formattedPhone,
@@ -166,6 +180,9 @@ export default function GameMode() {
       authorized: true,
       purchaseAmount: amount
     });
+    
+    // Update state with parsed amount
+    setPurchaseAmount(String(amount));
     
     // Generate winning number from the displayed range (1 to 18-threshold)
     // Only ONE number wins from the displayed range
