@@ -46,6 +46,11 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - When agent_admin adds a shop, the system now captures their ID and name
   - Super admin can now see "Added by agent_admin: [name]" note on shop list
 
+- [x] Hide Customer Mode and Manage Items buttons from agent_admin and super_admin
+  - Issue: These buttons in admin dashboard were visible to all admin types
+  - Solution: Added `isShopAdmin` check to wrap both buttons
+  - Now only shop_admin can see "Customer Mode" and "Manage Items" buttons on dashboard
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
@@ -124,3 +129,4 @@ export async function GET() {
 | Today | Fix shop qualifying purchase not saving - auto-select shop on admin dashboard load |
 | Today | Fix Top Customer Nominations visibility - filter by assigned shops for non-super_admin |
 | Today | Track which agent_admin added each shop - add addedBy and addedByName fields with display note |
+| Today | Hide Customer Mode and Manage Items buttons from agent_admin and super_admin - only visible to shop_admin |
