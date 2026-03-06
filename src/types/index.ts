@@ -19,6 +19,7 @@ export interface Admin {
   region?: string;
   deviceId?: string;        // Device ID this admin is locked to
   deviceLocked?: boolean;   // Whether device locking is enabled for this admin
+  dashboardPassword?: string; // 4-digit PIN for shop_admin dashboard access
 }
 
 // Permission types for role-based access control

@@ -51,6 +51,14 @@ export default function AdminDashboard() {
   const [topNominations, setTopNominations] = useState<NominationItem[]>([]);
   const [nominationsLoading, setNominationsLoading] = useState(false);
 
+  // Password protection state for shop_admin
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
   const { admin, logout } = useAuthStore();
   const { currentShop, setCurrentShop } = useShopStore();
   const { items, setItems } = useItemStore();
@@ -95,6 +103,55 @@ export default function AdminDashboard() {
   // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
   const isShopAdmin = admin?.level === 'shop_admin';
   const isAdmin = admin?.level === 'super_admin' || admin?.level === 'agent_admin';
+
+  // Default password for shop_admin (can be changed)
+  const DEFAULT_PASSWORD = '0000';
+
+  // Handle password verification for shop_admin
+  const handlePasswordSubmit = () => {
+    const storedPassword = admin?.dashboardPassword || DEFAULT_PASSWORD;
+    if (passwordInput === storedPassword) {
+      setIsPasswordVerified(true);
+      setPasswordError('');
+    } else {
+      setPasswordError(isShopAdmin ? 'Incorrect PIN' : 'Invalid password');
+    }
+  };
+
+  // Handle password change for shop_admin
+  const handlePasswordChange = async () => {
+    if (newPassword.length !== 4 || !/^\d{4}$/.test(newPassword)) {
+      alert('PIN must be exactly 4 digits');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      alert('PINs do not match');
+      return;
+    }
+    
+    // Verify current password first
+    const currentPassword = admin?.dashboardPassword || DEFAULT_PASSWORD;
+    if (passwordInput !== currentPassword) {
+      alert('Current PIN is incorrect');
+      return;
+    }
+
+    try {
+      // Update the admin's password in local storage
+      const updatedAdmin = { ...admin, dashboardPassword: newPassword } as Admin;
+      await localAdmins.save(updatedAdmin);
+      useAuthStore.getState().setAdmin(updatedAdmin);
+      
+      setIsChangingPassword(false);
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordInput('');
+      alert('PIN changed successfully!');
+    } catch (error) {
+      console.error('Error changing password:', error);
+      alert('Failed to change PIN');
+    }
+  };
   const defaultPermissions: AdminPermissions = {
     canManageAllShops: false,
     canManageAssignedShops: false,
@@ -271,6 +328,59 @@ export default function AdminDashboard() {
     
     return (permissions as any)[tab.requiredPermission];
   });
+
+  // Password protection for shop_admin
+  if (isShopAdmin && !isPasswordVerified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="card-gold max-w-md w-full">
+          <h2 className="gold-gradient-text text-2xl font-bold text-center mb-6">
+            Admin Dashboard
+          </h2>
+          <p className="text-gray-400 text-center mb-6">
+            Enter your 4-digit PIN to access the dashboard
+          </p>
+          
+          <div className="space-y-4">
+            <div>
+              <input
+                type="password"
+                maxLength={4}
+                pattern="[0-9]*"
+                inputMode="numeric"
+                value={passwordInput}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                  setPasswordInput(val);
+                }}
+                className="input text-center text-2xl tracking-widest font-mono"
+                placeholder="••••"
+                autoFocus
+              />
+            </div>
+            
+            {passwordError && (
+              <p className="text-red-400 text-center text-sm">{passwordError}</p>
+            )}
+            
+            <button
+              onClick={handlePasswordSubmit}
+              className="btn-gold w-full"
+            >
+              Unlock
+            </button>
+            
+            <button
+              onClick={() => setCurrentView('customer')}
+              className="text-gray-400 hover:text-gold-400 text-sm w-full text-center"
+            >
+              ← Back to Customer Mode
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Save terms and conditions
   const handleSaveTerms = async () => {
@@ -1857,6 +1967,103 @@ export default function AdminDashboard() {
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">Settings</h1>
             
             <div className="space-y-4">
+              {/* Dashboard PIN - Only for shop_admin */}
+              {isShopAdmin && (
+                <div className="card">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-white">Dashboard PIN</h3>
+                      <p className="text-gray-400 text-sm">Protect your dashboard with a 4-digit PIN</p>
+                    </div>
+                    {!isChangingPassword ? (
+                      <button 
+                        onClick={() => setIsChangingPassword(true)}
+                        className="btn-gold-outline"
+                      >
+                        <Edit size={16} className="mr-2" />
+                        Change PIN
+                      </button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            setIsChangingPassword(false);
+                            setNewPassword('');
+                            setConfirmPassword('');
+                            setPasswordInput('');
+                          }}
+                          className="btn-gold-outline text-gray-400"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {isChangingPassword && (
+                    <div className="space-y-4 mt-4 pt-4 border-t border-gray-700">
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Current PIN</label>
+                        <input
+                          type="password"
+                          maxLength={4}
+                          pattern="[0-9]*"
+                          inputMode="numeric"
+                          value={passwordInput}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                            setPasswordInput(val);
+                          }}
+                          className="input text-center tracking-widest font-mono"
+                          placeholder="Enter current PIN"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">New PIN (4 digits)</label>
+                        <input
+                          type="password"
+                          maxLength={4}
+                          pattern="[0-9]*"
+                          inputMode="numeric"
+                          value={newPassword}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                            setNewPassword(val);
+                          }}
+                          className="input text-center tracking-widest font-mono"
+                          placeholder="Enter new PIN"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Confirm New PIN</label>
+                        <input
+                          type="password"
+                          maxLength={4}
+                          pattern="[0-9]*"
+                          inputMode="numeric"
+                          value={confirmPassword}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                            setConfirmPassword(val);
+                          }}
+                          className="input text-center tracking-widest font-mono"
+                          placeholder="Confirm new PIN"
+                        />
+                      </div>
+                      
+                      <button
+                        onClick={handlePasswordChange}
+                        className="btn-gold w-full"
+                      >
+                        Save New PIN
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="card">
                 <div className="flex items-center justify-between">
                   <div>
