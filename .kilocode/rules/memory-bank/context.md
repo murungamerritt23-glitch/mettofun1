@@ -83,6 +83,12 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Solution: Updated handleSkipNominate to clear all customer data, phone/amount fields, and all picker states
   - Now after skipping nomination, shop admin sees fresh entry form to serve next customer immediately
 
+- [x] Fix: Allow item nomination and like on Item of the Day for every game attempt
+  - Issue: After completing a nomination, the next game attempt wouldn't allow nomination or like
+  - Root cause: NominationScreen handleExit only set gameStatus to 'idle', didn't reset flags
+  - Solution: Added resetGame() call in handleExit to reset hasNominatedThisAttempt and hasLikedItemOfDay flags
+  - Now every game attempt allows both nomination and like
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
