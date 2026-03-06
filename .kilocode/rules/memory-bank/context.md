@@ -101,6 +101,18 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Solution: Added resetGame() call in handleExit to reset hasNominatedThisAttempt and hasLikedItemOfDay flags
   - Now every game attempt allows both nomination and like
 
+- [x] Add custom METOFUN logo with dark navy background and gold theme
+  - Created new logo SVG with:
+    - Dark navy background (#0A1628)
+    - Golden sphere with gradient effect
+    - Shopping cart outline on ball
+    - Gift box with "17" inside cart
+    - Semi-circular gold ring below
+    - "METO FUN" text along the ring
+  - Updated web icons: icon-192.svg and icon-512.svg
+  - Updated Android launcher icons: ic_launcher_background.xml and ic_launcher_foreground.xml
+  - Updated manifest.json and layout.tsx theme colors
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
@@ -180,3 +192,4 @@ export async function GET() {
 | Today | Fix Top Customer Nominations visibility - filter by assigned shops for non-super_admin |
 | Today | Track which agent_admin added each shop - add addedBy and addedByName fields with display note |
 | Today | Hide Customer Mode and Manage Items buttons from agent_admin and super_admin - only visible to shop_admin |
+| Today | Add custom METOFUN logo with dark navy background (#0A1628) and gold theme |
