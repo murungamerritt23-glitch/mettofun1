@@ -20,7 +20,8 @@ export default function NominationScreen() {
     currentGameAttemptId, 
     hasNominatedThisAttempt,
     setHasNominatedThisAttempt,
-    customerSession
+    customerSession,
+    resetGame
   } = useGameStore();
   
   const { currentShop } = useShopStore();
@@ -93,7 +94,8 @@ export default function NominationScreen() {
   const handleExit = () => {
     setSelectedItem(null);
     setShowSuccess(false);
-    setGameStatus('idle');
+    // Reset game state for next customer
+    resetGame();
   };
 
   const translations = {
