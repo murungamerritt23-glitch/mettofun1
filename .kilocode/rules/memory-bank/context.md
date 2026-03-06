@@ -8,6 +8,12 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix qualifying purchase not saving to Firebase
+  - Root cause: Date objects were being passed directly to Firebase, which cannot store them
+  - Solution: Convert Date to ISO string before saving, and handle both ISO strings and Firebase timestamps when reading
+  - Also added missing fields (addedBy, addedByName) to save/load operations
+  - Fixed all shop retrieval functions: getAllActive, getAll, getByCode, subscribeToActiveShops
+
 - [x] Hide Customer Mode button from admin login screen
   - Removed the "Customer Mode →" button from the login page
   - This prevents customers from accessing customer mode through the admin login screen
