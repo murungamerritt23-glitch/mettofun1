@@ -51,6 +51,12 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Solution: Added `isShopAdmin` check to wrap both buttons
   - Now only shop_admin can see "Customer Mode" and "Manage Items" buttons on dashboard
 
+- [x] Show Shops tab for agent_admin to enable add shop functionality
+  - Issue: agent_admin couldn't see the Shops tab to add new shops
+  - Root cause: Shops tab required `canManageAllShops` permission, but agent_admin only has `canManageAssignedShops`
+  - Solution: Added check for `canManageAssignedShops` in tabs filter logic
+  - Now agent_admin can see the Shops tab and add new shops
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
