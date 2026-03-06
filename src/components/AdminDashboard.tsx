@@ -264,6 +264,11 @@ export default function AdminDashboard() {
       return true;
     }
     
+    // Handle shops tab for both canManageAllShops and canManageAssignedShops
+    if (tab.requiredPermission === 'canManageAllShops' && (permissions.canManageAllShops || permissions.canManageAssignedShops)) {
+      return true;
+    }
+    
     return (permissions as any)[tab.requiredPermission];
   });
 
