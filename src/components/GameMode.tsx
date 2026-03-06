@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Gift, ArrowLeft, Volume2, VolumeX, RefreshCw, 
-  Check, X, Star, Zap, Trophy, Sparkles, Languages, MapPin, Heart
+  Check, X, Star, Zap, Trophy, Sparkles, Languages, MapPin, Heart, Settings
 } from 'lucide-react';
-import { useGameStore, useShopStore, useItemStore, useUIStore } from '@/store';
+import { useGameStore, useShopStore, useItemStore, useUIStore, useAuthStore } from '@/store';
 import { localItems, localAttempts, localSettings } from '@/lib/local-db';
 import { 
   calculateBoxConfiguration, 
@@ -59,6 +59,7 @@ export default function GameMode() {
   const { currentShop } = useShopStore();
   const { items, setItems } = useItemStore();
   const { setCurrentView } = useUIStore();
+  const { admin } = useAuthStore();
 
   // Load Item of the Day on mount
   useEffect(() => {
@@ -352,7 +353,7 @@ export default function GameMode() {
   // Game not started - show authorization form
   if (gameStatus === 'idle') {
     return (
-      <div className="min-h-screen p-4">
+      <div className="min-h-screen p-4 relative">
         {/* Header */}
         <div className="max-w-md mx-auto mb-6">
           <button
@@ -362,6 +363,17 @@ export default function GameMode() {
             <ArrowLeft size={20} />
             {language === 'sw' ? 'Rudi' : 'Back'}
           </button>
+
+          {/* Admin Menu - Only visible to shop_admin */}
+          {admin?.level === 'shop_admin' && (
+            <button
+              onClick={() => setCurrentView('admin')}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gold-400"
+              title={language === 'sw' ? 'Dashibodi ya Admin' : 'Admin Dashboard'}
+            >
+              <Settings size={24} />
+            </button>
+          )}
 
           {/* Shop Info */}
           {currentShop && (
