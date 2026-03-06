@@ -57,6 +57,11 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Solution: Added check for `canManageAssignedShops` in tabs filter logic
   - Now agent_admin can see the Shops tab and add new shops
 
+- [x] Shop admin goes directly to customer mode on login
+  - Issue: Shop admin had to navigate to customer mode after login
+  - Solution: Modified login flow to redirect shop_admin directly to customer mode
+  - Now shop_admin sees customer game screen immediately after logging in
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
