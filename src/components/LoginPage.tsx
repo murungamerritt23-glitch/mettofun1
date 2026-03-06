@@ -344,12 +344,7 @@ export default function LoginPage() {
             >
               Demo Login (Shop Admin)
             </button>
-            <button
-              onClick={handleCustomerMode}
-              className="text-gray-400 text-sm hover:text-gold-400 w-full text-center"
-            >
-              Customer Mode →
-            </button>
+
             {!isFirebaseConfigured && (
               <button
                 onClick={handleSetupShop}
