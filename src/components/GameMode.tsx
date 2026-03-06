@@ -290,7 +290,15 @@ export default function GameMode() {
   };
 
   const handleSkipNominate = () => {
+    // Full reset for new customer - clear everything
     resetGame();
+    setPhoneNumber('');
+    setPurchaseAmount('');
+    setShowItemPicker(false);
+    setShowNumberPicker(false);
+    setShowResult(false);
+    setSelectedNumber(null);
+    setWinningItem(null);
     setGameStatus('idle');
   };
 
