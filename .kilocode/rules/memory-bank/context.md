@@ -14,6 +14,12 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Also added missing fields (addedBy, addedByName) to save/load operations
   - Fixed all shop retrieval functions: getAllActive, getAll, getByCode, subscribeToActiveShops
 
+- [x] Fix minimum qualifying purchase not updating in customer mode
+  - Issue: When admin updated qualifying purchase, customer mode showed old value
+  - Root cause: loadShops only set currentShop if none existed, using stale cached data from localStorage
+  - Solution: Now always updates currentShop with fresh data from Firebase when loading
+  - Fixed in both AdminDashboard.tsx and page.tsx
+
 - [x] Hide Customer Mode button from admin login screen
   - Removed the "Customer Mode →" button from the login page
   - This prevents customers from accessing customer mode through the admin login screen
