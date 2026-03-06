@@ -198,6 +198,13 @@ export default function AdminDashboard() {
       const autoSelectShop = (shopList: Shop[]) => {
         if (!storedCurrentShop && shopList.length > 0) {
           setCurrentShop(shopList[0]);
+        } else if (storedCurrentShop) {
+          // Always update currentShop with fresh data from Firebase/local storage
+          // This ensures qualifying purchase and other fields are up-to-date
+          const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
+          if (updatedShop) {
+            setCurrentShop(updatedShop);
+          }
         }
       };
       

@@ -36,9 +36,17 @@ export default function Home() {
         setShops(shops || []);
         
         // If no current shop but there are shops, set the first one
+        // Always update currentShop with fresh data from Firebase to ensure
+        // qualifying purchase and other fields are up-to-date
         const storedShop = useShopStore.getState().currentShop;
         if (!storedShop && shops && shops.length > 0) {
           setCurrentShop(shops[0]);
+        } else if (storedShop && shops) {
+          // Update stored shop with fresh data from Firebase
+          const updatedShop = shops.find(s => s.id === storedShop.id);
+          if (updatedShop) {
+            setCurrentShop(updatedShop);
+          }
         }
       } catch (error) {
         console.error('Failed to initialize:', error);
