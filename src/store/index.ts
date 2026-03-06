@@ -187,7 +187,8 @@ export const useGameStore = create<GameState>()(
         thresholdNumber: null,
         selectedItem: null,
         currentGameAttemptId: null,
-        hasNominatedThisAttempt: false
+        hasNominatedThisAttempt: false,
+        hasLikedItemOfDay: false
       }),
       clearTestData: () => set({
         isTestMode: false,

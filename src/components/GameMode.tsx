@@ -253,6 +253,9 @@ export default function GameMode() {
     // Fresh game session - no time restrictions
     // After results are displayed (win/loss), next entry always starts fresh
     
+    // Reset liked state for fresh session (allows new like on item of the day)
+    setHasLikedItemOfDay(false);
+    
     // Generate new winning number from displayed range (1 to 18-threshold)
     const config = calculateBoxConfiguration(
       parseFloat(purchaseAmount), 
