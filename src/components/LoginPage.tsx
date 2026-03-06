@@ -100,9 +100,11 @@ export default function LoginPage() {
             if (shop) {
               setCurrentShop(shop);
             }
+            // Shop admin goes directly to customer mode
+            setCurrentView('customer');
+          } else {
+            setCurrentView('admin');
           }
-          
-          setCurrentView('admin');
         } else {
           setError(result.error);
         }
@@ -142,9 +144,11 @@ export default function LoginPage() {
           if (shop) {
             setCurrentShop(shop);
           }
+          // Shop admin goes directly to customer mode
+          setCurrentView('customer');
+        } else {
+          setCurrentView('admin');
         }
-        
-        setCurrentView('admin');
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -175,7 +179,12 @@ export default function LoginPage() {
     };
     
     setAdmin(demoAdmin);
-    setCurrentView('admin');
+    // Shop admin goes directly to customer mode, others go to admin dashboard
+    if (adminLevel === 'shop_admin') {
+      setCurrentView('customer');
+    } else {
+      setCurrentView('admin');
+    }
   };
 
   const handleCustomerMode = () => {
