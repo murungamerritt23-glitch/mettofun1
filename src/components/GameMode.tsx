@@ -234,21 +234,8 @@ export default function GameMode() {
   };
 
   const handlePlayAgain = async () => {
-    // One attempt per qualified purchase - check if they need to make new purchase
-    const lastAttemptTime = await localAttempts.getLastAttemptTime(customerSession?.phoneNumber || '');
-    const now = Date.now();
-    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-    
-    // Check if last attempt was more than a day ago (allow new attempt)
-    if (lastAttemptTime && (now - lastAttemptTime) < ONE_DAY_MS) {
-      // Already played today - need to make new purchase
-      alert(language === 'sw' 
-        ? 'Unacheza mara moja kwa kununua! Tafadhali nunua tena ili kucheza tena.'
-        : 'One attempt per purchase! Please make a new purchase to play again.');
-      resetGame();
-      setGameStatus('idle');
-      return;
-    }
+    // Fresh game session - no time restrictions
+    // After results are displayed (win/loss), next entry always starts fresh
     
     // Generate new winning number from displayed range (1 to 18-threshold)
     const config = calculateBoxConfiguration(
