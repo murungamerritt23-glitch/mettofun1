@@ -16,7 +16,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   minimumScale: 1,
   maximumScale: 5,
-  themeColor: "#4F46E5",
+  themeColor: "#0A1628",
 };
 
 // Service Worker Registration (Client-side only)

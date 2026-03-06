@@ -4,8 +4,8 @@
   "description": "Promotional reward game for shops - play offline, win prizes!",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4F46E5",
+  "background_color": "#0A1628",
+  "theme_color": "#0A1628",
   "orientation": "portrait-primary",
   "icons": [
     {
