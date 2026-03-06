@@ -529,6 +529,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {isShopAdmin && (
               <button
                 onClick={() => setCurrentView('customer')}
                 className="card hover:border-gold-500 transition-all text-left"
@@ -537,7 +538,9 @@ export default function AdminDashboard() {
                 <h3 className="font-semibold text-white">Customer Mode</h3>
                 <p className="text-gray-400 text-sm">Start a game session</p>
               </button>
-              
+            )}
+            
+            {isShopAdmin && (
               <button
                 onClick={() => setActiveTab('items')}
                 className="card hover:border-gold-500 transition-all text-left"
@@ -546,6 +549,7 @@ export default function AdminDashboard() {
                 <h3 className="font-semibold text-white">Manage Items</h3>
                 <p className="text-gray-400 text-sm">Update prizes & values</p>
               </button>
+            )}
               
               {(permissions.canManageAllShops || permissions.canManageAssignedShops) && (
                 <button
