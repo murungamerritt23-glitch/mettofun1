@@ -113,6 +113,19 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Updated Android launcher icons: ic_launcher_background.xml and ic_launcher_foreground.xml
   - Updated manifest.json and layout.tsx theme colors
 
+- [x] Animate METOFUN logo with bounce, glow, and sparkle effects
+  - Added bounce animation to golden sphere, cart, and gift box
+  - Added spinning wheels on cart
+  - Added glowing ring with pulsing effect
+  - Added shimmering gradient on cart and gift box
+  - Added sparkle effects in corners that fade in/out
+  - Applied animations to: metofun-logo.svg, icon-192.svg, icon-512.svg
+
+- [x] Use animated logo in SplashScreen on app initialization
+  - Replaced Framer Motion animations with the animated metofun-logo.svg
+  - Updated splash container background to match METOFUN theme (#0A1628)
+  - Now shows the custom animated logo when app starts
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
