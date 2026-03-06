@@ -62,6 +62,11 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Solution: Modified login flow to redirect shop_admin directly to customer mode
   - Now shop_admin sees customer game screen immediately after logging in
 
+- [x] Add navigation back to admin dashboard for shop_admin
+  - Issue: Shop admin couldn't get back to admin dashboard from customer mode
+  - Solution: Added settings icon button in GameMode.tsx, visible only to shop_admin
+  - Button calls setCurrentView('admin') to switch back to admin dashboard
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
