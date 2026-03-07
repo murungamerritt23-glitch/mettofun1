@@ -2380,7 +2380,13 @@ function AdminSidebar({
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="p-6">
-          <h1 className="gold-gradient-text text-2xl font-bold mb-8">MetoFun</h1>
+          <div className="mb-8">
+            <img 
+              src="/metofun-logo.png" 
+              alt="METOFUN" 
+              className="w-32 h-auto"
+            />
+          </div>
           
           <nav className="space-y-2">
             {tabs.map((tab) => (

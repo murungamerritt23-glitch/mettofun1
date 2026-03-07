@@ -404,6 +404,11 @@ export default function GameMode() {
           {/* Shop Info */}
           {currentShop && (
             <div className="card text-center mb-6">
+              <img 
+                src="/metofun-logo.png" 
+                alt="METOFUN" 
+                className="w-32 h-auto mx-auto mb-3"
+              />
               <h2 className="gold-gradient-text text-2xl font-bold">{currentShop.shopName}</h2>
               <p className="text-gray-400 text-sm">{currentShop.promoMessage}</p>
             </div>

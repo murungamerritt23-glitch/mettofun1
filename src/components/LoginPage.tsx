@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, Lock, Eye, EyeOff, ShoppingCart, Loader2, FileText, CheckCircle } from 'lucide-react';
+import { Mail, Phone, Lock, Eye, EyeOff, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { useAuthStore, useUIStore, useShopStore } from '@/store';
 import { firebaseAuth, firebaseSettings } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
@@ -248,13 +248,13 @@ export default function LoginPage() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200 }}
-            className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4"
-            style={{
-              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-              boxShadow: '0 0 30px rgba(245,158,11,0.4)'
-            }}
+            className="inline-flex items-center justify-center mb-4"
           >
-            <ShoppingCart size={40} className="text-black" />
+            <img 
+              src="/metofun-logo.png" 
+              alt="METOFUN" 
+              className="w-24 h-auto"
+            />
           </motion.div>
           <h1 className="gold-gradient-text text-4xl font-bold">MetoFun</h1>
           <p className="text-gray-400 mt-2">Admin Login</p>
