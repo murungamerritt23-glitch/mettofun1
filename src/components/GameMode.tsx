@@ -302,6 +302,21 @@ export default function GameMode() {
     setGameStatus('idle');
   };
 
+  const handleRefresh = () => {
+    // Clear phone and purchase amount fields
+    setPhoneNumber('');
+    setPurchaseAmount('');
+    // Reset all game state for a fresh session
+    resetGame();
+    setShowItemPicker(false);
+    setShowNumberPicker(false);
+    setShowResult(false);
+    setSelectedNumber(null);
+    setSelectedBox(null);
+    setWinningItem(null);
+    setGameStatus('idle');
+  };
+
   const handleDemoMode = () => {
     setDemoMode(true);
     setPhoneNumber('255700000000');
@@ -429,10 +444,19 @@ export default function GameMode() {
           {/* Demo Mode */}
           <button
             onClick={handleDemoMode}
-            className="btn-gold-outline w-full mb-6 flex items-center justify-center gap-2"
+            className="btn-gold-outline w-full mb-3 flex items-center justify-center gap-2"
           >
             <Zap size={20} />
             {t.demoMode}
+          </button>
+
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefresh}
+            className="btn-outline w-full mb-6 flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={20} />
+            {language === 'sw' ? 'Fanya Upya' : 'New Session'}
           </button>
 
           {/* Auth Form */}
