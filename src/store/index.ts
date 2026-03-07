@@ -172,12 +172,13 @@ export const useGameStore = create<GameState>()(
       setItemOfTheDay: (itemOfTheDay) => set({ itemOfTheDay }),
       incrementItemOfDayLikes: () => {
         const current = useGameStore.getState().itemOfTheDay;
-        if (current) {
-          const updated = { ...current, likes: (current.likes || 0) + 1 };
-          set({ itemOfTheDay: updated });
-          // Save to local storage
-          localSettings.set('itemOfTheDay', updated);
-        }
+        const { isTestMode } = useGameStore.getState();
+        // Skip incrementing likes in test mode
+        if (isTestMode || !current) return;
+        const updated = { ...current, likes: (current.likes || 0) + 1 };
+        set({ itemOfTheDay: updated });
+        // Save to local storage
+        localSettings.set('itemOfTheDay', updated);
       },
       setHasLikedItemOfDay: (hasLikedItemOfDay) => set({ hasLikedItemOfDay }),
       resetGame: () => set({

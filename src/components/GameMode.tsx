@@ -48,6 +48,7 @@ export default function GameMode() {
     isDemoMode, setDemoMode,
     language, setLanguage,
     currentGameAttemptId, setCurrentGameAttemptId,
+    hasNominatedThisAttempt, setHasNominatedThisAttempt,
     isTestMode, testPhonePrefix,
     itemOfTheDay,
     hasLikedItemOfDay,

@@ -20,7 +20,8 @@ export default function NominationScreen() {
     hasNominatedThisAttempt,
     setHasNominatedThisAttempt,
     customerSession,
-    resetGame
+    resetGame,
+    isTestMode
   } = useGameStore();
   
   const { currentShop } = useShopStore();
@@ -59,8 +60,10 @@ export default function NominationScreen() {
       // Save the nomination
       await localCustomerNominations.save(nomination);
       
-      // Increment the item's nomination count
-      await localNominationItems.incrementNominationCount(item.id);
+      // Increment the item's nomination count ONLY if NOT in test mode
+      if (!isTestMode) {
+        await localNominationItems.incrementNominationCount(item.id);
+      }
       
       // Mark that this customer has nominated this attempt
       setHasNominatedThisAttempt(true);

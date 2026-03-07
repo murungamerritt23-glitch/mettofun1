@@ -237,25 +237,33 @@ export const localItems = {
 
 // Attempt operations
 export const localAttempts = {
-  async getAll(): Promise<GameAttempt[]> {
+  async getAll(includeTest = false): Promise<GameAttempt[]> {
     const database = await initDB();
-    return database.getAll('attempts');
+    const attempts = await database.getAll('attempts');
+    if (includeTest) return attempts;
+    return attempts.filter(a => a.isTest !== true);
   },
 
-  async getByShop(shopId: string): Promise<GameAttempt[]> {
+  async getByShop(shopId: string, includeTest = false): Promise<GameAttempt[]> {
     const database = await initDB();
-    return database.getAllFromIndex('attempts', 'by-shop', shopId);
+    const attempts = await database.getAllFromIndex('attempts', 'by-shop', shopId);
+    if (includeTest) return attempts;
+    return attempts.filter(a => a.isTest !== true);
   },
 
-  async getByPhone(phoneNumber: string): Promise<GameAttempt[]> {
+  async getByPhone(phoneNumber: string, includeTest = false): Promise<GameAttempt[]> {
     const database = await initDB();
-    return database.getAllFromIndex('attempts', 'by-phone', phoneNumber);
+    const attempts = await database.getAllFromIndex('attempts', 'by-phone', phoneNumber);
+    if (includeTest) return attempts;
+    return attempts.filter(a => a.isTest !== true);
   },
 
-  async getUnsynced(): Promise<GameAttempt[]> {
+  async getUnsynced(includeTest = false): Promise<GameAttempt[]> {
     const database = await initDB();
     const all = await database.getAll('attempts');
-    return all.filter(a => !a.synced);
+    const unsynced = all.filter(a => !a.synced);
+    if (includeTest) return unsynced;
+    return unsynced.filter(a => a.isTest !== true);
   },
 
   async save(attempt: GameAttempt): Promise<void> {
