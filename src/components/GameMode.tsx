@@ -315,6 +315,9 @@ export default function GameMode() {
     setSelectedBox(null);
     setWinningItem(null);
     setGameStatus('idle');
+    // CRITICAL: Reset nomination flag so user can nominate again in new session
+    setHasNominatedThisAttempt(false);
+    setHasLikedItemOfDay(false);
   };
 
   const handleDemoMode = () => {
