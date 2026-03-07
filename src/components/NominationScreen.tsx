@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Gift, Heart, Check, X, Star } from 'lucide-react';
+import { ArrowLeft, Gift, Heart } from 'lucide-react';
 import { useGameStore, useShopStore } from '@/store';
 import { localNominationItems, localCustomerNominations } from '@/lib/local-db';
 import type { NominationItem } from '@/types';
 
 export default function NominationScreen() {
   const [items, setItems] = useState<NominationItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState<NominationItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -40,8 +39,8 @@ export default function NominationScreen() {
     loadItems();
   }, [currentShop]);
 
-  const handleNominate = async () => {
-    if (!selectedItem || !currentGameAttemptId || !customerSession) return;
+  const handleNominate = async (item: NominationItem) => {
+    if (!currentGameAttemptId || !customerSession) return;
     
     setIsSaving(true);
     
@@ -51,7 +50,7 @@ export default function NominationScreen() {
         id: crypto.randomUUID(),
         phoneNumber: customerSession.phoneNumber,
         shopId: currentShop?.id || 'demo',
-        itemId: selectedItem.id,
+        itemId: item.id,
         gameAttemptId: currentGameAttemptId,
         timestamp: new Date(),
         synced: false
@@ -61,7 +60,7 @@ export default function NominationScreen() {
       await localCustomerNominations.save(nomination);
       
       // Increment the item's nomination count
-      await localNominationItems.incrementNominationCount(selectedItem.id);
+      await localNominationItems.incrementNominationCount(item.id);
       
       // Mark that this customer has nominated this attempt
       setHasNominatedThisAttempt(true);
@@ -87,14 +86,7 @@ export default function NominationScreen() {
     }
   };
 
-  const handleSkip = () => {
-    // Reset game state for next customer
-    resetGame();
-  };
-
   const handleExit = () => {
-    setSelectedItem(null);
-    setShowSuccess(false);
     // Reset game state for next customer
     resetGame();
   };
@@ -213,7 +205,7 @@ export default function NominationScreen() {
       {/* Header */}
       <div className="max-w-md mx-auto mb-4">
         <button
-          onClick={handleSkip}
+          onClick={handleExit}
           className="flex items-center gap-2 text-gray-400 hover:text-gold-400 mb-4"
         >
           <ArrowLeft size={20} />
@@ -237,34 +229,6 @@ export default function NominationScreen() {
         </div>
       </div>
 
-      {/* Selected item preview */}
-      {selectedItem && (
-        <div className="max-w-md mx-auto mb-4">
-          <div className="p-3 bg-gold-900/30 rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {selectedItem.imageUrl ? (
-                <img 
-                  src={selectedItem.imageUrl} 
-                  alt={selectedItem.name}
-                  className="w-12 h-12 object-cover rounded"
-                />
-              ) : (
-                <Gift className="w-12 h-12 text-gold-400" />
-              )}
-              <div>
-                <p className="text-white font-semibold">{selectedItem.name}</p>
-                <p className="text-gold-400 text-sm">KSh {selectedItem.value.toLocaleString()}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-pink-400 font-bold">
-                {selectedItem.nominationCount} {t.nominations}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Item Grid */}
       <div className="max-w-md mx-auto">
         <p className="text-gray-500 text-sm text-center mb-3">
@@ -280,11 +244,10 @@ export default function NominationScreen() {
               transition={{ delay: index * 0.02 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setSelectedItem(item)}
+              onClick={() => handleNominate(item)}
+              disabled={isSaving}
               className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center ${
-                selectedItem?.id === item.id 
-                  ? 'ring-2 ring-pink-500 bg-pink-900/50' 
-                  : ''
+                isSaving ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
               {/* Rank badge for top items */}
@@ -328,33 +291,14 @@ export default function NominationScreen() {
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="max-w-md mx-auto mt-6 space-y-3">
-        {selectedItem ? (
-          <button
-            onClick={handleNominate}
-            disabled={isSaving}
-            className="btn-gold w-full flex items-center justify-center gap-2"
-          >
-            {isSaving ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 1 }}
-                className="w-5 h-5 border-2 border-black border-t-transparent rounded-full"
-              />
-            ) : (
-              <Heart className="w-5 h-5" />
-            )}
-            {t.nominate}
-          </button>
-        ) : (
-          <button
-            onClick={handleSkip}
-            className="btn-gold-outline w-full"
-          >
-            {t.skip}
-          </button>
-        )}
+      {/* Exit button */}
+      <div className="max-w-md mx-auto mt-6">
+        <button
+          onClick={handleExit}
+          className="btn-gold-outline w-full"
+        >
+          {t.exit}
+        </button>
       </div>
     </div>
   );
