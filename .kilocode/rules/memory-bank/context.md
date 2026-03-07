@@ -141,6 +141,13 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Updated GameMode.tsx to show logo image in customer entry screen
   - Removed unused ShoppingCart import from LoginPage
 
+- [x] Improve nomination screen UX
+  - Removed nominate button at bottom of screen
+  - Now users can nominate by tapping directly on the item
+  - Added Exit button that resets session (like results screen)
+  - Removed selected item preview and skip button
+  - Flow: tap item → immediate nomination → success → exit → new customer
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
@@ -223,3 +230,4 @@ export async function GET() {
 | Today | Add custom METOFUN logo with dark navy background (#0A1628) and gold theme |
 | Today | Restrict shop_admin to only their permanently assigned shop - cannot swap or choose shops |
 | Today | Replace custom SVG logo with user's custom image from Google Photos |
+| Today | Improve nomination screen UX - tap to nominate, exit button resets session |
