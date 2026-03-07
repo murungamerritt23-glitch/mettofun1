@@ -135,13 +135,11 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
     3. Removed X button that allowed shop_admin to deselect their shop
   - Now shop_admin is permanently tied to one specific shop based on device
 
-- [x] Replace custom SVG logo with user's custom image from Google Photos
-  - Downloaded user's logo from Google Photos share link (https://photos.app.goo.gl/Lps2H676UEbCAWfm8)
-  - Logo is a 341x512 PNG image
-  - Updated manifest.json to use PNG instead of SVG icons
-  - Updated SplashScreen.tsx to load metofun-logo.png instead of SVG
-  - Updated service worker (sw.js) to cache PNG logo
-  - Removed old SVG icon files from cache list
+- [x] Display custom METOFUN logo on admin login, dashboard, and customer mode
+  - Updated LoginPage.tsx to show metofun-logo.png instead of ShoppingCart icon
+  - Updated AdminDashboard.tsx sidebar to show logo image instead of text
+  - Updated GameMode.tsx to show logo image in customer entry screen
+  - Removed unused ShoppingCart import from LoginPage
 
 ## Current Structure
 
