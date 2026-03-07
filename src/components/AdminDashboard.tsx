@@ -50,6 +50,13 @@ export default function AdminDashboard() {
   // Top nominations state
   const [topNominations, setTopNominations] = useState<NominationItem[]>([]);
   const [nominationsLoading, setNominationsLoading] = useState(false);
+  
+  // Nomination Items Management state
+  const [nominationItems, setNominationItems] = useState<NominationItem[]>([]);
+  const [isEditingNominationItems, setIsEditingNominationItems] = useState(false);
+  const [editingNominationItem, setEditingNominationItem] = useState<NominationItem | null>(null);
+  const [isCreatingNominationItem, setIsCreatingNominationItem] = useState(false);
+  const [nominationItemsLoading, setNominationItemsLoading] = useState(false);
 
   // Password protection state for shop_admin
   const [isPasswordVerified, setIsPasswordVerified] = useState(false);
@@ -98,6 +105,50 @@ export default function AdminDashboard() {
     } finally {
       setNominationsLoading(false);
     }
+  };
+
+  // Load all nomination items for editing
+  const loadNominationItems = async () => {
+    if (!currentShop) return;
+    setNominationItemsLoading(true);
+    try {
+      const items = await localNominationItems.getByShop(currentShop.id);
+      setNominationItems(items);
+    } catch (error) {
+      console.error('Error loading nomination items:', error);
+    } finally {
+      setNominationItemsLoading(false);
+    }
+  };
+
+  // Open nomination items editor
+  const handleOpenNominationItemsEditor = async () => {
+    await loadNominationItems();
+    setIsEditingNominationItems(true);
+  };
+
+  // Save nomination item
+  const handleSaveNominationItem = async (item: NominationItem) => {
+    await localNominationItems.save(item);
+    setEditingNominationItem(null);
+    setIsCreatingNominationItem(false);
+    loadNominationItems();
+    loadTopNominations();
+  };
+
+  // Delete nomination item
+  const handleDeleteNominationItem = async (itemId: string) => {
+    if (confirm('Are you sure you want to delete this nomination item?')) {
+      await localNominationItems.delete(itemId);
+      loadNominationItems();
+      loadTopNominations();
+    }
+  };
+
+  // Toggle nomination item active status
+  const handleToggleNominationItemActive = async (item: NominationItem) => {
+    await localNominationItems.save({ ...item, isActive: !item.isActive, updatedAt: new Date() });
+    loadNominationItems();
   };
 
   // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
@@ -672,6 +723,17 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 text-sm">Update prizes & values</p>
               </button>
             )}
+            
+            {isShopAdmin && (
+              <button
+                onClick={handleOpenNominationItemsEditor}
+                className="card hover:border-gold-500 transition-all text-left"
+              >
+                <Gift className="text-gold-500 mb-2" size={24} />
+                <h3 className="font-semibold text-white">Manage Nominations</h3>
+                <p className="text-gray-400 text-sm">Edit customer nomination items</p>
+              </button>
+            )}
               
               {(permissions.canManageAllShops || permissions.canManageAssignedShops) && (
                 <button
@@ -755,6 +817,184 @@ export default function AdminDashboard() {
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Nomination Items Editor Modal */}
+            {isEditingNominationItems && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                <div className="bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                  <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+                    <h2 className="gold-gradient-text text-xl font-bold">Manage Nomination Items</h2>
+                    <button
+                      onClick={() => setIsEditingNominationItems(false)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+                  
+                  <div className="p-4 overflow-y-auto max-h-[70vh]">
+                    {nominationItemsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500 mx-auto"></div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mb-4">
+                          <button
+                            onClick={() => {
+                              setEditingNominationItem({
+                                id: `${currentShop?.id}-nom-${Date.now()}`,
+                                name: '',
+                                value: 0,
+                                nominationCount: 0,
+                                isActive: true,
+                                shopId: currentShop?.id || '',
+                                createdAt: new Date(),
+                                updatedAt: new Date()
+                              });
+                              setIsCreatingNominationItem(true);
+                            }}
+                            className="btn-gold flex items-center gap-2"
+                          >
+                            <Plus size={18} /> Add New Item
+                          </button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {nominationItems.map((item) => (
+                            <div 
+                              key={item.id} 
+                              className={`flex items-center justify-between p-3 rounded-lg ${item.isActive ? 'bg-gray-800/50' : 'bg-gray-800/20 opacity-50'}`}
+                            >
+                              <div className="flex items-center gap-3 flex-1">
+                                <div className="flex-1">
+                                  <p className="text-white font-medium">{item.name || '(No name)'}</p>
+                                  <p className="text-gray-400 text-sm">Value: {item.value.toLocaleString()} | Nominations: {item.nominationCount}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleToggleNominationItemActive(item)}
+                                  className={`px-3 py-1 rounded text-sm ${item.isActive ? 'bg-green-900/50 text-green-400' : 'bg-gray-700 text-gray-400'}`}
+                                >
+                                  {item.isActive ? 'Active' : 'Inactive'}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingNominationItem(item);
+                                    setIsCreatingNominationItem(false);
+                                  }}
+                                  className="p-2 text-blue-400 hover:text-blue-300"
+                                >
+                                  <Edit size={18} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteNominationItem(item.id)}
+                                  className="p-2 text-red-400 hover:text-red-300"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Edit/Create Nomination Item Modal */}
+            {editingNominationItem && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                <div className="bg-gray-900 rounded-lg max-w-md w-full">
+                  <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+                    <h2 className="gold-gradient-text text-xl font-bold">
+                      {isCreatingNominationItem ? 'Add Nomination Item' : 'Edit Nomination Item'}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setEditingNominationItem(null);
+                        setIsCreatingNominationItem(false);
+                      }}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+                  
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.target as HTMLFormElement;
+                      const name = (form.elements.namedItem('name') as HTMLInputElement).value;
+                      const value = parseFloat((form.elements.namedItem('value') as HTMLInputElement).value) || 0;
+                      const imageUrl = (form.elements.namedItem('imageUrl') as HTMLInputElement).value;
+                      
+                      handleSaveNominationItem({
+                        ...editingNominationItem,
+                        name,
+                        value,
+                        imageUrl: imageUrl || undefined,
+                        updatedAt: new Date()
+                      });
+                    }}
+                    className="p-4 space-y-4"
+                  >
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-1">Item Name</label>
+                      <input
+                        name="name"
+                        defaultValue={editingNominationItem.name}
+                        className="input w-full"
+                        placeholder="Enter item name"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-1">Value / Price</label>
+                      <input
+                        name="value"
+                        type="number"
+                        defaultValue={editingNominationItem.value}
+                        className="input w-full"
+                        placeholder="Enter value"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-1">Image URL (optional)</label>
+                      <input
+                        name="imageUrl"
+                        type="url"
+                        defaultValue={editingNominationItem.imageUrl || ''}
+                        className="input w-full"
+                        placeholder="https://example.com/image.jpg"
+                      />
+                    </div>
+                    
+                    <div className="flex gap-2 pt-4">
+                      <button type="submit" className="btn-gold flex-1">
+                        <Save size={18} className="inline mr-2" />
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingNominationItem(null);
+                          setIsCreatingNominationItem(false);
+                        }}
+                        className="btn-gray flex-1"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}
