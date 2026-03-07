@@ -80,6 +80,27 @@ export default function AdminDashboard() {
     }
   }, [activeTab, currentShop]);
 
+  // Load attempts when shop changes (for dashboard and analytics)
+  useEffect(() => {
+    if (currentShop) {
+      loadAttempts();
+    }
+  }, [currentShop?.id]);
+
+  // Refresh attempts when switching to dashboard or analytics tab
+  useEffect(() => {
+    if ((activeTab === 'dashboard' || activeTab === 'analytics') && currentShop) {
+      loadAttempts();
+    }
+  }, [activeTab, currentShop?.id]);
+
+  // Load items when shop changes
+  useEffect(() => {
+    if (currentShop) {
+      loadItems();
+    }
+  }, [currentShop?.id]);
+
   // Initialize qualifying purchase input when currentShop changes (shop switched)
   useEffect(() => {
     if (currentShop) {
