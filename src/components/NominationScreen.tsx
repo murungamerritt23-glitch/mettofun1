@@ -74,11 +74,6 @@ export default function NominationScreen() {
       setShowSuccess(true);
       setIsSaving(false);
       
-      // Show success message briefly then exit
-      setTimeout(() => {
-        handleExit();
-      }, 1500);
-      
     } catch (error) {
       console.error('Error saving nomination:', error);
       setIsSaving(false);
@@ -174,6 +169,10 @@ export default function NominationScreen() {
               {t.nominated}
             </h2>
             <p className="text-gray-400">{t.thankYou}</p>
+            
+            <button onClick={handleExit} className="btn-gold w-full mt-6">
+              {t.exit}
+            </button>
           </motion.div>
         </motion.div>
       </div>
