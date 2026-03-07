@@ -246,15 +246,21 @@ export default function AdminDashboard() {
       };
       
       // Function to auto-select first shop if none selected
-      const autoSelectShop = (shopList: Shop[]) => {
+      const autoSelectShop = async (shopList: Shop[]) => {
         if (!storedCurrentShop && shopList.length > 0) {
           setCurrentShop(shopList[0]);
+          // Load attempts for the selected shop
+          const shopAttempts = await localAttempts.getByShop(shopList[0].id);
+          setAttempts(shopAttempts);
         } else if (storedCurrentShop) {
           // Always update currentShop with fresh data from Firebase/local storage
           // This ensures qualifying purchase and other fields are up-to-date
           const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
           if (updatedShop) {
             setCurrentShop(updatedShop);
+            // Load attempts for the current shop
+            const shopAttempts = await localAttempts.getByShop(updatedShop.id);
+            setAttempts(shopAttempts);
           }
         }
       };
