@@ -702,7 +702,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {isShopAdmin && (
+              {(isShopAdmin || admin?.level === 'super_admin') && (
               <button
                 onClick={() => setCurrentView('customer')}
                 className="card hover:border-gold-500 transition-all text-left"
