@@ -164,6 +164,12 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Resets all game state for a fresh session
   - Button labeled "New Session" (English) or "Fanya Upya" (Swahili)
 
+- [x] Fix dashboard analytics not loading when shop is selected
+  - Issue: Win rate, total attempts, and other analytics not updating on dashboard
+  - Root cause: loadAttempts() was only called when clicking "Manage Items" button
+  - Solution: Added loadAttempts() call in autoSelectShop function when shop is selected
+  - Now analytics load automatically when dashboard loads or shop changes
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
