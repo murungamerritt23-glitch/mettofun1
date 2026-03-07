@@ -8,6 +8,16 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix Test Mode affecting real data
+  - Issue: Test Mode was updating real nomination counts, likes, and analytics
+  - Root cause: No checks to prevent saving test data to real analytics
+  - Solution: 
+    1. Skip incrementing nomination count when isTestMode is true in NominationScreen
+    2. Skip incrementing Item of the Day likes when isTestMode is true in store
+    3. Filter out test attempts from getAll, getByShop, getByPhone, getUnsynced functions
+    4. All functions now accept optional `includeTest` parameter (default: false)
+  - Test Mode now properly isolates test data from real analytics
+
 - [x] Fix qualifying purchase not saving to Firebase
   - Root cause: Date objects were being passed directly to Firebase, which cannot store them
   - Solution: Convert Date to ISO string before saving, and handle both ISO strings and Firebase timestamps when reading
