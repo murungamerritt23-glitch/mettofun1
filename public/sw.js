@@ -9,8 +9,7 @@ self.addEventListener('install', (event) => {
       return cache.addAll([
         '/',
         '/manifest.json',
-        '/icon-192.svg',
-        '/icon-512.svg',
+        '/metofun-logo.png',
       ]);
     })
   );

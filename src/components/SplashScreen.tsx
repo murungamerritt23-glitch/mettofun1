@@ -36,9 +36,9 @@ export default function SplashScreen() {
           {/* Animated METOFUN Logo */}
           <div className="relative mb-8">
             <motion.img
-              src="/metofun-logo.svg"
+              src="/metofun-logo.png"
               alt="METOFUN"
-              className="w-64 h-64"
+              className="w-64 h-auto"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5 }}
