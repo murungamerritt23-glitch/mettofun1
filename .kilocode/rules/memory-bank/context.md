@@ -148,6 +148,12 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Removed selected item preview and skip button
   - Flow: tap item → immediate nomination → success → exit → new customer
 
+- [x] Add refresh button on customer mode to reset session
+  - Added refresh button on customer entry screen
+  - When tapped, clears phone number and purchase amount fields
+  - Resets all game state for a fresh session
+  - Button labeled "New Session" (English) or "Fanya Upya" (Swahili)
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
@@ -231,3 +237,4 @@ export async function GET() {
 | Today | Restrict shop_admin to only their permanently assigned shop - cannot swap or choose shops |
 | Today | Replace custom SVG logo with user's custom image from Google Photos |
 | Today | Improve nomination screen UX - tap to nominate, exit button resets session |
+| Today | Add refresh button on customer mode to reset session - clears phone and purchase amount fields for new customer |
