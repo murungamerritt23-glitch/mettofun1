@@ -83,21 +83,21 @@ export default function AdminDashboard() {
   // Load attempts when shop changes (for dashboard and analytics)
   useEffect(() => {
     if (currentShop) {
-      loadAttempts();
+      loadAttempts().catch(err => console.error('Failed to load attempts:', err));
     }
   }, [currentShop?.id]);
 
   // Refresh attempts when switching to dashboard or analytics tab
   useEffect(() => {
     if ((activeTab === 'dashboard' || activeTab === 'analytics') && currentShop) {
-      loadAttempts();
+      loadAttempts().catch(err => console.error('Failed to refresh attempts:', err));
     }
   }, [activeTab, currentShop?.id]);
 
   // Load items when shop changes
   useEffect(() => {
     if (currentShop) {
-      loadItems();
+      loadItems().catch(err => console.error('Failed to load items:', err));
     }
   }, [currentShop?.id]);
 
