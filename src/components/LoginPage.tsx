@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, Lock, Eye, EyeOff, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { useAuthStore, useUIStore, useShopStore } from '@/store';
-import { firebaseAuth, firebaseSettings } from '@/lib/firebase';
+import { firebaseAuth, firebaseSettings, firebaseShops } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
 import type { AdminLevel, Admin } from '@/types';
@@ -98,12 +98,25 @@ export default function LoginPage() {
             const currentDeviceId = getDeviceId();
             // First try to find shop by device ID (backward compatibility)
             let shop = await localShops.getByDeviceId(currentDeviceId);
-            // If not found by device, try to find by email match
+            // If not found by device, try to find by email match in local shops
             if (!shop) {
               const allShops = await localShops.getAll();
               shop = allShops.find(s => 
                 s.adminEmail?.toLowerCase() === email.toLowerCase()
               );
+            }
+            // If still not found, try to find by email in Firebase
+            if (!shop) {
+              try {
+                const firebaseShop = await firebaseShops.getByEmail(email);
+                shop = firebaseShop || undefined;
+                // If found in Firebase, save to local storage for offline access
+                if (shop) {
+                  await localShops.save(shop);
+                }
+              } catch (e) {
+                console.error('Error fetching shop from Firebase:', e);
+              }
             }
             if (shop) {
               // Verify email matches (security check)
@@ -165,12 +178,25 @@ export default function LoginPage() {
           const currentDeviceId = getDeviceId();
           // First try to find shop by device ID (backward compatibility)
           let shop = await localShops.getByDeviceId(currentDeviceId);
-          // If not found by device, try to find by email match
+          // If not found by device, try to find by email match in local shops
           if (!shop) {
             const allShops = await localShops.getAll();
             shop = allShops.find(s => 
               s.adminEmail?.toLowerCase() === email.toLowerCase()
             );
+          }
+          // If still not found, try to find by email in Firebase
+          if (!shop) {
+            try {
+              const firebaseShop = await firebaseShops.getByEmail(email);
+              shop = firebaseShop || undefined;
+              // If found in Firebase, save to local storage for offline access
+              if (shop) {
+                await localShops.save(shop);
+              }
+            } catch (e) {
+              console.error('Error fetching shop from Firebase:', e);
+            }
           }
           if (shop) {
             // Verify email matches (security check)

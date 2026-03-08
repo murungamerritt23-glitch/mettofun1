@@ -269,6 +269,38 @@ export const firebaseShops = {
     };
   },
 
+  // Get shop by admin email
+  async getByEmail(email: string): Promise<Shop | null> {
+    const result = await firebaseDb.getAll(SHOPS_COLLECTION, [
+      where('adminEmail', '==', email.toLowerCase())
+    ]);
+    if (result.error || !result.data || result.data.length === 0) {
+      return null;
+    }
+    const doc = result.data[0] as any;
+    return {
+      id: doc.id,
+      shopName: doc.shopName,
+      shopCode: doc.shopCode,
+      deviceId: doc.deviceId,
+      deviceLocked: doc.deviceLocked,
+      qualifyingPurchase: doc.qualifyingPurchase,
+      promoMessage: doc.promoMessage,
+      isActive: doc.isActive,
+      createdAt: doc.createdAt?.toDate?.() ? doc.createdAt.toDate() : (doc.createdAt ? new Date(doc.createdAt) : new Date()),
+      updatedAt: doc.updatedAt?.toDate?.() ? doc.updatedAt.toDate() : (doc.updatedAt ? new Date(doc.updatedAt) : new Date()),
+      createdBy: doc.createdBy,
+      backupEnabled: doc.backupEnabled,
+      addedBy: doc.addedBy,
+      addedByName: doc.addedByName,
+      location: doc.location,
+      subscriptionTier: doc.subscriptionTier,
+      subscriptionStatus: doc.subscriptionStatus,
+      subscriptionId: doc.subscriptionId,
+      adminEmail: doc.adminEmail || '',
+    };
+  },
+
   // Create or update a shop
   async save(shop: Shop): Promise<{ success: boolean; error?: string }> {
     const result = await firebaseDb.set(SHOPS_COLLECTION, shop.id, {
@@ -284,6 +316,7 @@ export const firebaseShops = {
       backupEnabled: shop.backupEnabled,
       addedBy: shop.addedBy || null,
       addedByName: shop.addedByName || null,
+      adminEmail: shop.adminEmail || null,
     });
     return { success: !result.error, error: result.error };
   },
