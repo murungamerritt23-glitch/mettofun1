@@ -131,6 +131,7 @@ export interface Shop {
   subscriptionId?: string;
   subscriptionTier?: SubscriptionTier;
   subscriptionStatus?: SubscriptionStatus;
+  adminEmail: string;       // Shop admin email - must match login email
 }
 
 // Item Types

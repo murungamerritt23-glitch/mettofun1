@@ -233,6 +233,7 @@ export const firebaseShops = {
       subscriptionTier: doc.subscriptionTier,
       subscriptionStatus: doc.subscriptionStatus,
       subscriptionId: doc.subscriptionId,
+      adminEmail: doc.adminEmail || '',
     }));
   },
 
@@ -264,6 +265,7 @@ export const firebaseShops = {
       subscriptionTier: doc.subscriptionTier,
       subscriptionStatus: doc.subscriptionStatus,
       subscriptionId: doc.subscriptionId,
+      adminEmail: doc.adminEmail || '',
     };
   },
 
@@ -311,6 +313,7 @@ export const firebaseShops = {
           subscriptionTier: doc.subscriptionTier,
           subscriptionStatus: doc.subscriptionStatus,
           subscriptionId: doc.subscriptionId,
+          adminEmail: doc.adminEmail || '',
         }));
         callback(shops);
       }
@@ -343,6 +346,7 @@ export const firebaseShops = {
       subscriptionTier: doc.subscriptionTier,
       subscriptionStatus: doc.subscriptionStatus,
       subscriptionId: doc.subscriptionId,
+      adminEmail: doc.adminEmail || '',
     }));
   },
 

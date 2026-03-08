@@ -93,15 +93,35 @@ export default function LoginPage() {
           
           setAdmin(demoAdmin);
           
-          // Auto-select shop for shop admins based on device ID (one shop = one device)
+          // Auto-select shop for shop admins based on device ID and email match
           if (demoAdmin.level === 'shop_admin') {
             const currentDeviceId = getDeviceId();
-            const shop = await localShops.getByDeviceId(currentDeviceId);
+            // First try to find shop by device ID (backward compatibility)
+            let shop = await localShops.getByDeviceId(currentDeviceId);
+            // If not found by device, try to find by email match
+            if (!shop) {
+              const allShops = await localShops.getAll();
+              shop = allShops.find(s => 
+                s.adminEmail?.toLowerCase() === email.toLowerCase()
+              );
+            }
             if (shop) {
+              // Verify email matches (security check)
+              if (shop.adminEmail && shop.adminEmail.toLowerCase() !== email.toLowerCase()) {
+                setError('This device is not authorized for your account. Please contact support.');
+                setIsLoading(false);
+                setLoading(false);
+                return;
+              }
               // Set the shop as the ONLY assigned shop for this shop_admin (permanent assignment)
               const updatedAdmin = { ...demoAdmin, assignedShops: [shop.id] };
               setAdmin(updatedAdmin);
               setCurrentShop(shop);
+            } else {
+              setError('No shop assigned to this device or email. Please contact your administrator.');
+              setIsLoading(false);
+              setLoading(false);
+              return;
             }
             // Shop admin goes directly to customer mode
             setCurrentView('customer');
@@ -140,15 +160,35 @@ export default function LoginPage() {
         
         setAdmin(admin);
         
-        // Auto-select shop for shop admins based on device ID (one shop = one device)
+        // Auto-select shop for shop admins based on device ID and email match
         if (admin.level === 'shop_admin') {
           const currentDeviceId = getDeviceId();
-          const shop = await localShops.getByDeviceId(currentDeviceId);
+          // First try to find shop by device ID (backward compatibility)
+          let shop = await localShops.getByDeviceId(currentDeviceId);
+          // If not found by device, try to find by email match
+          if (!shop) {
+            const allShops = await localShops.getAll();
+            shop = allShops.find(s => 
+              s.adminEmail?.toLowerCase() === email.toLowerCase()
+            );
+          }
           if (shop) {
+            // Verify email matches (security check)
+            if (shop.adminEmail && shop.adminEmail.toLowerCase() !== email.toLowerCase()) {
+              setError('This device is not authorized for your account. Please contact support.');
+              setIsLoading(false);
+              setLoading(false);
+              return;
+            }
             // Set the shop as the ONLY assigned shop for this shop_admin (permanent assignment)
             const updatedAdmin = { ...admin, assignedShops: [shop.id] };
             setAdmin(updatedAdmin);
             setCurrentShop(shop);
+          } else {
+            setError('No shop assigned to this device or email. Please contact your administrator.');
+            setIsLoading(false);
+            setLoading(false);
+            return;
           }
           // Shop admin goes directly to customer mode
           setCurrentView('customer');

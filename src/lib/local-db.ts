@@ -180,7 +180,8 @@ export const localShops = {
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: 'system',
-      backupEnabled: false
+      backupEnabled: false,
+      adminEmail: '',
     };
     
     await this.save(defaultShop);

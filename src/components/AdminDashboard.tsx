@@ -545,6 +545,18 @@ export default function AdminDashboard() {
       return;
     }
     
+    // Check for duplicate adminEmail in local shops
+    if (shop.adminEmail) {
+      const existingByEmail = shops.find(s => 
+        s.adminEmail?.toLowerCase() === shop.adminEmail!.toLowerCase() && 
+        s.id !== shop.id
+      );
+      if (existingByEmail) {
+        alert(`A shop with admin email "${shop.adminEmail}" already exists. Each email can only be linked to one shop.`);
+        return;
+      }
+    }
+    
     // Also check Firebase for duplicates (in case other devices added shops)
     try {
       const allFbShops = await firebaseShops.getAll();
@@ -564,6 +576,18 @@ export default function AdminDashboard() {
       if (fbDuplicateByDevice) {
         alert(`This device is already registered to another shop in the system. Each device can only be linked to one shop.`);
         return;
+      }
+      
+      // Check Firebase for duplicate adminEmail
+      if (shop.adminEmail) {
+        const fbDuplicateByEmail = allFbShops.find(s => 
+          s.adminEmail?.toLowerCase() === shop.adminEmail!.toLowerCase() && 
+          s.id !== shop.id
+        );
+        if (fbDuplicateByEmail) {
+          alert(`A shop with admin email "${shop.adminEmail}" already exists in the system. Each email can only be linked to one shop.`);
+          return;
+        }
       }
     } catch (e) {
       // If Firebase check fails, proceed with local validation (user might be offline)
@@ -2739,6 +2763,7 @@ function ShopForm({
     isActive: shop?.isActive ?? true,
     deviceId: shop?.deviceId || '',
     deviceLocked: shop?.deviceLocked || false,
+    adminEmail: shop?.adminEmail || '',
   });
 
   const handleRegisterDevice = () => {
@@ -2769,6 +2794,7 @@ function ShopForm({
       updatedAt: new Date(),
       createdBy: shop?.createdBy || 'super_admin',
       backupEnabled: shop?.backupEnabled || false,
+      adminEmail: formData.adminEmail,
       ...addedByInfo,
     });
   };
@@ -2794,6 +2820,18 @@ function ShopForm({
           className="input"
           required
         />
+      </div>
+      <div>
+        <label className="block text-sm text-gray-400 mb-1">Shop Admin Email</label>
+        <input
+          type="email"
+          value={formData.adminEmail}
+          onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value.toLowerCase() })}
+          className="input"
+          placeholder="admin@example.com"
+          required
+        />
+        <p className="text-xs text-gray-500 mt-1">This email must match the shop admin&apos;s login email</p>
       </div>
       {/* Qualifying Purchase - only editable by shop admin */}
       {isShopAdmin && (
