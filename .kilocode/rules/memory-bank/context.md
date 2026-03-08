@@ -171,6 +171,14 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Prevents saving if shopCode (case-insensitive) or deviceId already exists
   - Shows clear error messages to prevent confusion
 
+- [x] Link shop to shop admin login email
+  - Added adminEmail field to Shop type
+  - When adding/editing a shop, admin must enter shop admin's email
+  - Email is validated: must match shop admin's login email
+  - Login now checks both deviceId (backward compat) AND email match
+  - Prevents shop access if email doesn't match login email
+  - Added duplicate email validation - each email can only link to one shop
+
 - [x] Fix dashboard analytics not loading when shop is selected
   - Issue: Win rate, total attempts, and other analytics not updating on dashboard
   - Root cause: loadAttempts() was only called when clicking "Manage Items" button
