@@ -164,6 +164,13 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Resets all game state for a fresh session
   - Button labeled "New Session" (English) or "Fanya Upya" (Swahili)
 
+- [x] Prevent duplicate shops with same shopCode or deviceId
+  - Issue: System allowed saving shops with identical credentials
+  - Solution: Added duplicate check in handleSaveShop function
+  - Checks both local shops and Firebase for duplicates
+  - Prevents saving if shopCode (case-insensitive) or deviceId already exists
+  - Shows clear error messages to prevent confusion
+
 - [x] Fix dashboard analytics not loading when shop is selected
   - Issue: Win rate, total attempts, and other analytics not updating on dashboard
   - Root cause: loadAttempts() was only called when clicking "Manage Items" button
