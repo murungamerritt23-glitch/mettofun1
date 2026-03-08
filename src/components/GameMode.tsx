@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Gift, ArrowLeft, Volume2, VolumeX, RefreshCw, 
-  Check, X, Star, Zap, Trophy, Sparkles, Languages, MapPin, Heart, Settings
+  Check, X, Star, Zap, Trophy, Sparkles, Languages, MapPin, Heart, Settings, LogOut
 } from 'lucide-react';
 import { useGameStore, useShopStore, useItemStore, useUIStore, useAuthStore } from '@/store';
 import { localItems, localAttempts, localSettings } from '@/lib/local-db';
@@ -60,7 +60,7 @@ export default function GameMode() {
   const { currentShop } = useShopStore();
   const { items, setItems } = useItemStore();
   const { setCurrentView } = useUIStore();
-  const { admin } = useAuthStore();
+  const { admin, logout } = useAuthStore();
 
   // Load Item of the Day on mount
   useEffect(() => {
@@ -411,13 +411,25 @@ export default function GameMode() {
 
           {/* Admin Menu - Only visible to shop_admin */}
           {admin?.level === 'shop_admin' && (
-            <button
-              onClick={() => setCurrentView('admin')}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gold-400"
-              title={language === 'sw' ? 'Dashibodi ya Admin' : 'Admin Dashboard'}
-            >
-              <Settings size={24} />
-            </button>
+            <div className="absolute top-4 right-4 flex gap-2">
+              <button
+                onClick={() => {
+                  logout();
+                  setCurrentView('login');
+                }}
+                className="p-2 text-gray-400 hover:text-red-400"
+                title={language === 'sw' ? 'Toka' : 'Logout'}
+              >
+                <LogOut size={24} />
+              </button>
+              <button
+                onClick={() => setCurrentView('admin')}
+                className="p-2 text-gray-400 hover:text-gold-400"
+                title={language === 'sw' ? 'Dashibodi ya Admin' : 'Admin Dashboard'}
+              >
+                <Settings size={24} />
+              </button>
+            </div>
           )}
 
           {/* Shop Info */}
