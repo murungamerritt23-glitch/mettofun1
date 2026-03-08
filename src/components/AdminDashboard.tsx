@@ -525,6 +525,51 @@ export default function AdminDashboard() {
   };
 
   const handleSaveShop = async (shop: Shop) => {
+    // Check for duplicate shopCode in local shops (case-insensitive)
+    const existingByCode = shops.find(s => 
+      s.shopCode.toLowerCase() === shop.shopCode.toLowerCase() && 
+      s.id !== shop.id // Exclude current shop if editing
+    );
+    if (existingByCode) {
+      alert(`A shop with code "${shop.shopCode}" already exists. Please use a different shop code.`);
+      return;
+    }
+    
+    // Check for duplicate deviceId in local shops
+    const existingByDevice = shops.find(s => 
+      s.deviceId === shop.deviceId && 
+      s.id !== shop.id // Exclude current shop if editing
+    );
+    if (existingByDevice) {
+      alert(`This device is already registered to another shop. Each device can only be linked to one shop.`);
+      return;
+    }
+    
+    // Also check Firebase for duplicates (in case other devices added shops)
+    try {
+      const allFbShops = await firebaseShops.getAll();
+      const fbDuplicateByCode = allFbShops.find(s => 
+        s.shopCode.toLowerCase() === shop.shopCode.toLowerCase() && 
+        s.id !== shop.id
+      );
+      if (fbDuplicateByCode) {
+        alert(`A shop with code "${shop.shopCode}" already exists in the system. Please use a different shop code.`);
+        return;
+      }
+      
+      const fbDuplicateByDevice = allFbShops.find(s => 
+        s.deviceId === shop.deviceId && 
+        s.id !== shop.id
+      );
+      if (fbDuplicateByDevice) {
+        alert(`This device is already registered to another shop in the system. Each device can only be linked to one shop.`);
+        return;
+      }
+    } catch (e) {
+      // If Firebase check fails, proceed with local validation (user might be offline)
+      console.warn('Could not check Firebase for duplicates:', e);
+    }
+    
     // Save to local first for offline support
     await localShops.save(shop);
     
