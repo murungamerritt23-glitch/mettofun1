@@ -190,6 +190,14 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Updated validation logic in game-utils.ts
   - Updated all UI text and alerts in AdminDashboard.tsx
 
+- [x] Add search functionality to nomination screen
+  - Added search input field to filter items by name
+  - Users can now search for items instead of scrolling through all 100 items
+  - Search is case-insensitive and filters in real-time
+  - Clear button to reset search
+  - Shows "No items found" message when search has no results
+  - Both English and Swahili placeholders supported
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
