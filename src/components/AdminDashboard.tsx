@@ -782,6 +782,8 @@ export default function AdminDashboard() {
               </div>
               )}
               
+              {/* Total Attempts - Hide for agent_admin */}
+              {admin?.level !== 'agent_admin' && (
               <div className="card">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-green-900/50 flex items-center justify-center">
@@ -793,6 +795,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+              )}
               
               <div className="card">
                 <div className="flex items-center gap-3">
@@ -806,6 +809,8 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
+              {/* Win Rate - Hide for agent_admin */}
+              {admin?.level !== 'agent_admin' && (
               <div className="card">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-purple-900/50 flex items-center justify-center">
@@ -819,6 +824,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
