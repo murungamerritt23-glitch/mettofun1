@@ -767,8 +767,11 @@ export default function AdminDashboard() {
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">Dashboard</h1>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              {/* Active Shops - Only for super_admin and agent_admin */}
-              {(admin?.level === 'super_admin' || admin?.level === 'agent_admin') && (
+              {/* Analytics - Only for super_admin and shop_admin, hide for agent_admin */}
+              {admin?.level !== 'agent_admin' && (
+              <>
+              {/* Active Shops - Only for super_admin */}
+              {admin?.level === 'super_admin' && (
               <div className="card">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-gold-900/50 flex items-center justify-center">
@@ -782,8 +785,7 @@ export default function AdminDashboard() {
               </div>
               )}
               
-              {/* Total Attempts - Hide for agent_admin */}
-              {admin?.level !== 'agent_admin' && (
+              {/* Total Attempts - Only for super_admin and shop_admin */}
               <div className="card">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-green-900/50 flex items-center justify-center">
@@ -795,7 +797,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              )}
               
               <div className="card">
                 <div className="flex items-center gap-3">
@@ -809,8 +810,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              {/* Win Rate - Hide for agent_admin */}
-              {admin?.level !== 'agent_admin' && (
+              {/* Win Rate - Only for super_admin and shop_admin */}
               <div className="card">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-purple-900/50 flex items-center justify-center">
@@ -824,6 +824,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+              </>
               )}
             </div>
 
