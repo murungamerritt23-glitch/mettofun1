@@ -185,6 +185,11 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Solution: Added loadAttempts() call in autoSelectShop function when shop is selected
   - Now analytics load automatically when dashboard loads or shop changes
 
+- [x] Change price cup rule from 80% to 60%
+  - Item values must now be ≤ 60% of qualifying purchase (was 80%)
+  - Updated validation logic in game-utils.ts
+  - Updated all UI text and alerts in AdminDashboard.tsx
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
