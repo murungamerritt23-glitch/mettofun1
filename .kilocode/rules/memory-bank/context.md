@@ -214,6 +214,12 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Solution: Added conditional check to only show Active Shops card for super_admin and agent_admin
   - Now shop_admin doesn't see Active Shops metric in their dashboard
 
+- [x] Hide "total attempts" and "win rate" in agent admin dashboard
+  - Issue: Agent admin was seeing Total Attempts and Win Rate metrics
+  - Solution: Added conditional checks to hide these two cards for agent_admin
+  - Now agent_admin only sees Active Shops and Active Items metrics
+  - shop_admin and super_admin still see all metrics
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
