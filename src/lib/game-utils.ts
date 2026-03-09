@@ -69,9 +69,9 @@ export const getWinningItem = (randomNumber: number, items: Item[]): Item | null
   return activeItems[index];
 };
 
-// Validate item price against qualifying purchase (80% rule)
+// Validate item price against qualifying purchase (60% rule)
 export const validateItemPrice = (itemValue: number, qualifyingPurchase: number): boolean => {
-  return itemValue <= qualifyingPurchase * 0.8;
+  return itemValue <= qualifyingPurchase * 0.6;
 };
 
 // Generate 17 default items for a new shop

@@ -1303,7 +1303,7 @@ export default function AdminDashboard() {
                     <h3 className="font-semibold text-white mb-4">Quick Edit Items</h3>
                     <p className="text-gray-400 text-sm mb-4">
                       Go to the Items tab to edit prize values. 
-                      Item values must be ≤ 80% of qualifying purchase (KSh {(effectiveShop?.qualifyingPurchase * 0.8).toLocaleString()})
+                      Item values must be ≤ 60% of qualifying purchase (KSh {(effectiveShop?.qualifyingPurchase * 0.6).toLocaleString()})
                     </p>
                     <button
                       onClick={() => setActiveTab('items')}
@@ -1890,8 +1890,8 @@ export default function AdminDashboard() {
                             : 'text-red-400'
                         }`}>
                           {validateItemPrice(item.value, currentShop.qualifyingPurchase)
-                            ? '✓ Within 80% limit'
-                            : '⚠ Exceeds 80% limit'}
+                            ? '✓ Within 60% limit'
+                            : '⚠ Exceeds 60% limit'}
                         </div>
                       )}
                     </div>
@@ -2082,8 +2082,8 @@ export default function AdminDashboard() {
             <div className="card">
               <h3 className="font-semibold text-white mb-3">Important Notes</h3>
               <ul className="text-gray-400 text-sm space-y-2">
-                <li>• Item values must be ≤ 80% of qualifying purchase</li>
-                <li>• Current limit: KSh {(currentShop.qualifyingPurchase * 0.8).toLocaleString()} per item</li>
+                <li>• Item values must be ≤ 60% of qualifying purchase</li>
+                <li>• Current limit: KSh {(currentShop.qualifyingPurchase * 0.6).toLocaleString()} per item</li>
                 <li>• Go to Items tab to edit prize values</li>
               </ul>
             </div>
@@ -3342,7 +3342,7 @@ function ItemForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isPriceValid) {
-      alert(`Item value must be <= 80% of qualifying purchase (KSh ${(qualifyingPurchase * 0.8).toLocaleString()})`);
+      alert(`Item value must be <= 60% of qualifying purchase (KSh ${(qualifyingPurchase * 0.6).toLocaleString()})`);
       return;
     }
     onSave({
