@@ -459,15 +459,19 @@ export const localPendingCustomers = {
     await database.delete('pendingCustomers', id);
   }
 };
+
+// Legacy sync functions (deprecated - use localDB instead)
 export const localSync = {
   async addToQueue(type: SyncQueue['type'], data: any): Promise<void> {
     const database = await initDB();
     const queueItem: SyncQueue = {
       id: crypto.randomUUID(),
       type,
-      data,
-      timestamp: new Date(),
-      status: 'pending'
+      operation: 'create',
+      data: JSON.stringify(data),
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     await database.put('syncQueue', queueItem);
   },
@@ -483,6 +487,7 @@ export const localSync = {
     const item = await database.get('syncQueue', id);
     if (item) {
       item.status = 'synced';
+      item.updatedAt = new Date().toISOString();
       await database.put('syncQueue', item);
     }
   },
@@ -492,6 +497,7 @@ export const localSync = {
     const item = await database.get('syncQueue', id);
     if (item) {
       item.status = 'failed';
+      item.updatedAt = new Date().toISOString();
       await database.put('syncQueue', item);
     }
   }
@@ -634,5 +640,64 @@ export const localCustomerNominations = {
       nomination.synced = true;
       await database.put('customerNominations', nomination);
     }
+  }
+};
+
+// LocalDB wrapper for sync service
+export const localDB = {
+  // Add item to sync queue
+  async addToSyncQueue(item: SyncQueue): Promise<void> {
+    const database = await initDB();
+    await database.put('syncQueue', item);
+  },
+
+  // Get all pending sync items
+  async getPendingSyncItems(): Promise<SyncQueue[]> {
+    const database = await initDB();
+    const all = await database.getAll('syncQueue');
+    return all.filter(q => q.status === 'pending' || q.status === 'failed');
+  },
+
+  // Mark sync item as synced
+  async markSyncItemSynced(id: string): Promise<void> {
+    const database = await initDB();
+    const item = await database.get('syncQueue', id);
+    if (item) {
+      item.status = 'synced';
+      item.updatedAt = new Date().toISOString();
+      await database.put('syncQueue', item);
+    }
+  },
+
+  // Update sync item status
+  async updateSyncItemStatus(id: string, status: 'pending' | 'synced' | 'failed', lastError?: string): Promise<void> {
+    const database = await initDB();
+    const item = await database.get('syncQueue', id);
+    if (item) {
+      item.status = status;
+      item.updatedAt = new Date().toISOString();
+      if (lastError) {
+        item.lastError = lastError;
+      }
+      if (item.retryCount !== undefined) {
+        item.retryCount += 1;
+      } else {
+        item.retryCount = 1;
+      }
+      await database.put('syncQueue', item);
+    }
+  },
+
+  // Clear all sync queue items
+  async clearSyncQueue(): Promise<void> {
+    const database = await initDB();
+    await database.clear('syncQueue');
+  },
+
+  // Get sync queue count
+  async getSyncQueueCount(): Promise<number> {
+    const database = await initDB();
+    const pending = await database.getAll('syncQueue');
+    return pending.filter(q => q.status === 'pending').length;
   }
 };

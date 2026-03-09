@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings, NominationItem, ItemOfTheDay, SyncQueue } from '@/types';
+import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings, NominationItem, ItemOfTheDay, SyncQueue, SyncItemType, SyncOperation } from '@/types';
 import { localShops, localItems, localAttempts, localSessions, localSettings, getDeviceId } from '@/lib/local-db';
 
 // Auth Store with Security Features
@@ -334,7 +334,14 @@ export const useUIStore = create<UIState>()(
 );
 
 // Sync Queue Store - Tracks pending offline sync items
-export interface SyncQueueItem extends SyncQueue {
+export interface SyncQueueItem {
+  id: string;
+  type: SyncItemType;
+  operation: SyncOperation;
+  data: any;
+  status: 'pending' | 'synced' | 'failed';
+  createdAt: string;
+  updatedAt: string;
   retryCount: number;
   lastError?: string;
 }

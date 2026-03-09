@@ -149,7 +149,7 @@ export function SyncStatus({ onManualSync }: SyncStatusProps) {
                         {getTypeLabel(item.type)}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(item.timestamp).toLocaleString()}
+                        {new Date(item.createdAt).toLocaleString()}
                       </p>
                       {item.lastError && (
                         <p className="text-xs text-red-500 mt-1">{item.lastError}</p>

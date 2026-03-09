@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Gift, Heart, Search } from 'lucide-react';
 import { useGameStore, useShopStore, useAuthStore } from '@/store';
 import { localNominationItems, localCustomerNominations } from '@/lib/local-db';
+import { saveNominationWithSync, saveNominationItemWithSync } from '@/lib/sync-service';
 import type { NominationItem } from '@/types';
 
 export default function NominationScreen() {
@@ -62,12 +63,15 @@ export default function NominationScreen() {
         synced: false
       };
       
-      // Save the nomination
-      await localCustomerNominations.save(nomination);
+      // Save the nomination with offline sync support
+      await saveNominationWithSync(nomination);
       
       // Increment the item's nomination count ONLY if NOT in super admin test mode
       if (!isSuperAdminTestMode) {
         await localNominationItems.incrementNominationCount(item.id);
+        // Sync the updated item to Firebase if online
+        const updatedItem = { ...item, nominationCount: (item.nominationCount || 0) + 1, updatedAt: new Date() };
+        await saveNominationItemWithSync(updatedItem, false);
       }
       
       // Mark that this customer has nominated this attempt

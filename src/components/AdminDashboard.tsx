@@ -11,6 +11,7 @@ import {
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
 import { firebaseShops, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
+import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier, ItemOfTheDay, NominationItem } from '@/types';
@@ -144,7 +145,7 @@ export default function AdminDashboard() {
 
   // Save nomination item
   const handleSaveNominationItem = async (item: NominationItem) => {
-    await localNominationItems.save(item);
+    await saveNominationItemWithSync(item, !editingNominationItem);
     setEditingNominationItem(null);
     setIsCreatingNominationItem(false);
     loadNominationItems();
@@ -162,7 +163,8 @@ export default function AdminDashboard() {
 
   // Toggle nomination item active status
   const handleToggleNominationItemActive = async (item: NominationItem) => {
-    await localNominationItems.save({ ...item, isActive: !item.isActive, updatedAt: new Date() });
+    const updatedItem = { ...item, isActive: !item.isActive, updatedAt: new Date() };
+    await saveNominationItemWithSync(updatedItem, false);
     loadNominationItems();
   };
 
@@ -679,14 +681,7 @@ export default function AdminDashboard() {
     }
     
     // Save to local first for offline support
-    await localShops.save(shop);
-    
-    // Try to save to Firebase, but don't fail if Firebase is not configured
-    const result = await firebaseShops.save(shop);
-    if (result.error) {
-      console.warn('Firebase save failed, shop saved locally:', result.error);
-      // Don't return - continue with local save
-    }
+    await saveShopWithSync(shop, !editingShop);
     
     setEditingShop(null);
     setIsCreatingShop(false);
@@ -702,8 +697,8 @@ export default function AdminDashboard() {
   };
 
   const handleToggleShopActive = async (shop: Shop) => {
-    await firebaseShops.update(shop.id, { isActive: !shop.isActive });
-    await localShops.save({ ...shop, isActive: !shop.isActive });
+    const updatedShop = { ...shop, isActive: !shop.isActive };
+    await saveShopWithSync(updatedShop, false);
     // Reload shops
     if (admin?.level === 'super_admin') {
       const allShops = await firebaseShops.getAll();
@@ -759,7 +754,7 @@ export default function AdminDashboard() {
   };
 
   const handleSaveItem = async (item: Item) => {
-    await localItems.save(item);
+    await saveItemWithSync(item, !editingItem);
     setEditingItem(null);
     loadItems();
   };

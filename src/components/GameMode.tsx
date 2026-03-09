@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useGameStore, useShopStore, useItemStore, useUIStore, useAuthStore } from '@/store';
 import { localItems, localAttempts, localSettings } from '@/lib/local-db';
+import { saveAttemptWithSync } from '@/lib/sync-service';
 import { 
   calculateBoxConfiguration, 
   generateSecureRandomNumber,
@@ -253,7 +254,7 @@ export default function GameMode() {
         isSuperAdminTestMode // Pass test flag
       );
       
-      await localAttempts.save(attempt);
+      await saveAttemptWithSync(attempt);
       
       // Store the attempt ID for nomination tracking
       setCurrentGameAttemptId(attempt.id);

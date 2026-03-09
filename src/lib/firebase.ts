@@ -27,7 +27,7 @@ import {
   serverTimestamp,
   connectFirestoreEmulator
 } from 'firebase/firestore';
-import type { Shop, Subscription, SubscriptionTier, Admin } from '@/types';
+import type { Shop, Subscription, SubscriptionTier, Admin, GameAttempt, Item, NominationItem, CustomerNomination } from '@/types';
 import { localSettings } from './local-db';
 
 // Firebase configuration - Replace with your own config
@@ -660,5 +660,236 @@ export const firebaseSubscriptions = {
     const sub = await this.getByShopId(shopId);
     if (!sub || sub.status !== 'active') return false;
     return new Date(sub.endDate) > new Date();
+  }
+};
+
+// Game Attempts collection helper functions for Firestore
+const ATTEMPTS_COLLECTION = 'attempts';
+
+export const firebaseAttempts = {
+  // Create a new game attempt
+  async create(attempt: GameAttempt): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      const result = await firebaseDb.set(ATTEMPTS_COLLECTION, attempt.id, {
+        ...attempt,
+        timestamp: attempt.timestamp?.toISOString?.() || attempt.timestamp,
+        syncedAt: serverTimestamp()
+      });
+      return { success: !result.error, id: attempt.id, error: result.error };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get all attempts
+  async getAll(): Promise<GameAttempt[]> {
+    const result = await firebaseDb.getAll(ATTEMPTS_COLLECTION, []);
+    if (result.error) {
+      console.error('Error fetching attempts:', result.error);
+      return [];
+    }
+    return (result.data || []).map((doc: any) => ({
+      ...doc,
+      timestamp: doc.timestamp?.toDate?.() ? doc.timestamp.toDate() : (doc.timestamp ? new Date(doc.timestamp) : new Date())
+    }));
+  },
+
+  // Get attempts by shop
+  async getByShop(shopId: string): Promise<GameAttempt[]> {
+    const result = await firebaseDb.getAll(ATTEMPTS_COLLECTION, [
+      where('shopId', '==', shopId)
+    ]);
+    if (result.error) return [];
+    return (result.data || []).map((doc: any) => ({
+      ...doc,
+      timestamp: doc.timestamp?.toDate?.() ? doc.timestamp.toDate() : (doc.timestamp ? new Date(doc.timestamp) : new Date())
+    }));
+  },
+
+  // Update attempt
+  async update(id: string, data: Partial<GameAttempt>): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.update(ATTEMPTS_COLLECTION, id, data);
+    return { success: !result.error, error: result.error };
+  },
+
+  // Delete attempt
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.delete(ATTEMPTS_COLLECTION, id);
+    return { success: !result.error, error: result.error };
+  }
+};
+
+// Items collection helper functions for Firestore
+const ITEMS_COLLECTION = 'items';
+
+export const firebaseItems = {
+  // Create a new item
+  async create(item: Item): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      const result = await firebaseDb.set(ITEMS_COLLECTION, item.id, {
+        ...item,
+        createdAt: item.createdAt?.toISOString?.() || item.createdAt,
+        updatedAt: item.updatedAt?.toISOString?.() || item.updatedAt
+      });
+      return { success: !result.error, id: item.id, error: result.error };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get all items
+  async getAll(): Promise<Item[]> {
+    const result = await firebaseDb.getAll(ITEMS_COLLECTION, []);
+    if (result.error) {
+      console.error('Error fetching items:', result.error);
+      return [];
+    }
+    return (result.data || []).map((doc: any) => ({
+      ...doc,
+      createdAt: doc.createdAt?.toDate?.() ? doc.createdAt.toDate() : (doc.createdAt ? new Date(doc.createdAt) : new Date()),
+      updatedAt: doc.updatedAt?.toDate?.() ? doc.updatedAt.toDate() : (doc.updatedAt ? new Date(doc.updatedAt) : new Date())
+    }));
+  },
+
+  // Get items by shop
+  async getByShop(shopId: string): Promise<Item[]> {
+    const result = await firebaseDb.getAll(ITEMS_COLLECTION, [
+      where('shopId', '==', shopId)
+    ]);
+    if (result.error) return [];
+    return (result.data || []).map((doc: any) => ({
+      ...doc,
+      createdAt: doc.createdAt?.toDate?.() ? doc.createdAt.toDate() : (doc.createdAt ? new Date(doc.createdAt) : new Date()),
+      updatedAt: doc.updatedAt?.toDate?.() ? doc.updatedAt.toDate() : (doc.updatedAt ? new Date(doc.updatedAt) : new Date())
+    }));
+  },
+
+  // Update item
+  async update(id: string, data: Partial<Item>): Promise<{ success: boolean; error?: string }> {
+    const updateData: any = { ...data, updatedAt: new Date() };
+    delete updateData.id;
+    const result = await firebaseDb.update(ITEMS_COLLECTION, id, updateData);
+    return { success: !result.error, error: result.error };
+  },
+
+  // Delete item
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.delete(ITEMS_COLLECTION, id);
+    return { success: !result.error, error: result.error };
+  }
+};
+
+// Nomination Items collection helper functions for Firestore
+const NOMINATION_ITEMS_COLLECTION = 'nominationItems';
+
+export const firebaseNominationItems = {
+  // Create a new nomination item
+  async create(item: NominationItem): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      const result = await firebaseDb.set(NOMINATION_ITEMS_COLLECTION, item.id, {
+        ...item,
+        createdAt: item.createdAt?.toISOString?.() || item.createdAt,
+        updatedAt: item.updatedAt?.toISOString?.() || item.updatedAt
+      });
+      return { success: !result.error, id: item.id, error: result.error };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get all nomination items
+  async getAll(): Promise<NominationItem[]> {
+    const result = await firebaseDb.getAll(NOMINATION_ITEMS_COLLECTION, []);
+    if (result.error) {
+      console.error('Error fetching nomination items:', result.error);
+      return [];
+    }
+    return (result.data || []).map((doc: any) => ({
+      ...doc,
+      createdAt: doc.createdAt?.toDate?.() ? doc.createdAt.toDate() : (doc.createdAt ? new Date(doc.createdAt) : new Date()),
+      updatedAt: doc.updatedAt?.toDate?.() ? doc.updatedAt.toDate() : (doc.updatedAt ? new Date(doc.updatedAt) : new Date())
+    }));
+  },
+
+  // Get nomination items by shop
+  async getByShop(shopId: string): Promise<NominationItem[]> {
+    const result = await firebaseDb.getAll(NOMINATION_ITEMS_COLLECTION, [
+      where('shopId', '==', shopId)
+    ]);
+    if (result.error) return [];
+    return (result.data || []).map((doc: any) => ({
+      ...doc,
+      createdAt: doc.createdAt?.toDate?.() ? doc.createdAt.toDate() : (doc.createdAt ? new Date(doc.createdAt) : new Date()),
+      updatedAt: doc.updatedAt?.toDate?.() ? doc.updatedAt.toDate() : (doc.updatedAt ? new Date(doc.updatedAt) : new Date())
+    }));
+  },
+
+  // Update nomination item
+  async update(id: string, data: Partial<NominationItem>): Promise<{ success: boolean; error?: string }> {
+    const updateData: any = { ...data, updatedAt: new Date() };
+    delete updateData.id;
+    const result = await firebaseDb.update(NOMINATION_ITEMS_COLLECTION, id, updateData);
+    return { success: !result.error, error: result.error };
+  },
+
+  // Delete nomination item
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.delete(NOMINATION_ITEMS_COLLECTION, id);
+    return { success: !result.error, error: result.error };
+  }
+};
+
+// Customer Nominations collection helper functions for Firestore
+const CUSTOMER_NOMINATIONS_COLLECTION = 'customerNominations';
+
+export const firebaseCustomerNominations = {
+  // Create a new customer nomination
+  async create(nomination: CustomerNomination): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      const result = await firebaseDb.set(CUSTOMER_NOMINATIONS_COLLECTION, nomination.id, {
+        ...nomination,
+        timestamp: nomination.timestamp?.toISOString?.() || nomination.timestamp
+      });
+      return { success: !result.error, id: nomination.id, error: result.error };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Get all customer nominations
+  async getAll(): Promise<CustomerNomination[]> {
+    const result = await firebaseDb.getAll(CUSTOMER_NOMINATIONS_COLLECTION, []);
+    if (result.error) {
+      console.error('Error fetching customer nominations:', result.error);
+      return [];
+    }
+    return (result.data || []).map((doc: any) => ({
+      ...doc,
+      timestamp: doc.timestamp?.toDate?.() ? doc.timestamp.toDate() : (doc.timestamp ? new Date(doc.timestamp) : new Date())
+    }));
+  },
+
+  // Get nominations by shop
+  async getByShop(shopId: string): Promise<CustomerNomination[]> {
+    const result = await firebaseDb.getAll(CUSTOMER_NOMINATIONS_COLLECTION, [
+      where('shopId', '==', shopId)
+    ]);
+    if (result.error) return [];
+    return (result.data || []).map((doc: any) => ({
+      ...doc,
+      timestamp: doc.timestamp?.toDate?.() ? doc.timestamp.toDate() : (doc.timestamp ? new Date(doc.timestamp) : new Date())
+    }));
+  },
+
+  // Update customer nomination
+  async update(id: string, data: Partial<CustomerNomination>): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.update(CUSTOMER_NOMINATIONS_COLLECTION, id, data);
+    return { success: !result.error, error: result.error };
+  },
+
+  // Delete customer nomination
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    const result = await firebaseDb.delete(CUSTOMER_NOMINATIONS_COLLECTION, id);
+    return { success: !result.error, error: result.error };
   }
 };

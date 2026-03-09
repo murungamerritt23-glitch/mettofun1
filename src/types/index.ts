@@ -144,6 +144,8 @@ export interface Item {
   isActive: boolean;
   shopId: string;
   order: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // Item of the Day - global marketing banner controlled by Super Admin
@@ -264,12 +266,19 @@ export interface AppSettings {
 }
 
 // Sync Types
+export type SyncItemType = 'attempt' | 'item' | 'shop' | 'nominationItem' | 'customerNomination';
+export type SyncOperation = 'create' | 'update' | 'delete';
+
 export interface SyncQueue {
   id: string;
-  type: 'attempt' | 'shop_update' | 'item_update' | 'settings_update';
-  data: any;
-  timestamp: Date;
+  type: SyncItemType;
+  operation: SyncOperation;
+  data: string; // JSON stringified data
   status: 'pending' | 'synced' | 'failed';
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  retryCount?: number;
+  lastError?: string;
 }
 
 // Subscription Types
