@@ -305,9 +305,9 @@ export default function GameMode() {
   };
 
   const handleRefresh = () => {
-    // Clear test mode on refresh to ensure shop admins are not affected by super admin's test mode
-    clearTestData();
-    // Clear phone and purchase amount fields
+    // Clear phone and purchase amount fields only
+    // Note: Test mode is controlled ONLY by super admin in AdminDashboard
+    // Shop admins cannot affect test mode - it runs independently
     setPhoneNumber('');
     setPurchaseAmount('');
     // Reset all game state for a fresh session

@@ -94,9 +94,6 @@ export default function LoginPage() {
           
           setAdmin(demoAdmin);
           
-          // Clear test mode on login to ensure each admin starts fresh
-          clearTestData();
-          
           // Auto-select shop for shop admins based on device ID and email match
           if (demoAdmin.level === 'shop_admin') {
             const currentDeviceId = getDeviceId();
@@ -176,9 +173,6 @@ export default function LoginPage() {
         }
         
         setAdmin(admin);
-        
-        // Clear test mode on login to ensure each admin starts fresh
-        clearTestData();
         
         // Auto-select shop for shop admins based on device ID and email match
         if (admin.level === 'shop_admin') {
