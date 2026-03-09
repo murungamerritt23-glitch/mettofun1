@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Gift, Heart } from 'lucide-react';
+import { ArrowLeft, Gift, Heart, Search } from 'lucide-react';
 import { useGameStore, useShopStore } from '@/store';
 import { localNominationItems, localCustomerNominations } from '@/lib/local-db';
 import type { NominationItem } from '@/types';
@@ -12,6 +12,7 @@ export default function NominationScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const { 
     language, 
@@ -100,7 +101,8 @@ export default function NominationScreen() {
       selectPrompt: 'Tap an item to nominate it',
       alreadyNominated: 'You have already nominated this attempt',
       thankYou: 'Thank you for your feedback!',
-      exit: 'Exit'
+      exit: 'Exit',
+      searchPlaceholder: 'Search items...'
     },
     sw: {
       title: 'Wakati wa Maoni!',
@@ -112,7 +114,8 @@ export default function NominationScreen() {
       selectPrompt: 'Gusa kitufe kuchagua',
       alreadyNominated: 'Tayari umependekeza katika jaribio hili',
       thankYou: 'Asante kwa maoni yako!',
-      exit: 'Toka'
+      exit: 'Toka',
+      searchPlaceholder: 'Search items...'
     }
   };
 
@@ -197,9 +200,13 @@ export default function NominationScreen() {
     );
   }
 
-  // Only show active items, sorted by nomination count
+  // Only show active items, sorted by nomination count (filtered by search if query exists)
   const activeItems = items
     .filter(item => item.isActive)
+    .filter(item => 
+      searchQuery.trim() === '' || 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     .sort((a, b) => b.nominationCount - a.nominationCount);
 
   return (
@@ -231,6 +238,28 @@ export default function NominationScreen() {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="max-w-md mx-auto mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={t.searchPlaceholder}
+            className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-gold-500"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Item Grid */}
       <div className="max-w-md mx-auto">
         <p className="text-gray-500 text-sm text-center mb-3">
@@ -238,58 +267,65 @@ export default function NominationScreen() {
         </p>
         
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 max-h-[50vh] overflow-y-auto">
-          {activeItems.map((item, index) => (
-            <motion.button
-              key={item.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.02 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleNominate(item)}
-              disabled={isSaving}
-              className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center ${
-                isSaving ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {/* Rank badge for top items */}
-              {index < 3 && (
-                <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                  index === 0 ? 'bg-yellow-500 text-black' :
-                  index === 1 ? 'bg-gray-400 text-black' :
-                  'bg-amber-700 text-white'
-                }`}>
-                  {index + 1}
-                </div>
-              )}
-              
-              {item.imageUrl ? (
-                <img 
-                  src={item.imageUrl} 
-                  alt={item.name}
-                  className="w-8 h-8 object-cover rounded mb-1"
-                />
-              ) : (
-                <Gift className="w-6 h-6 sm:w-8 sm:h-8 mb-1 text-gold-400" />
-              )}
-              
-              <span className="text-xs font-medium truncate w-full text-center">
-                {item.name}
-              </span>
-              
-              <span className="text-[10px] text-gold-400">
-                KSh {item.value.toLocaleString()}
-              </span>
-              
-              {/* Nomination count */}
-              <div className="flex items-center gap-1 mt-1">
-                <Heart className="w-3 h-3 text-pink-500" />
-                <span className="text-[10px] text-pink-400">
-                  {item.nominationCount}
+          {activeItems.length === 0 ? (
+            <div className="col-span-full text-center py-8 text-gray-400">
+              {searchQuery 
+                ? (language === 'sw' ? 'Hakuna matokeo yapatikana' : 'No items found')
+                : (language === 'sw' ? 'Hakuna vyakula vya kuonyesha' : 'No items available')
+              }
+            </div>
+          ) : activeItems.map((item, index) => (
+              <motion.button
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.02 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleNominate(item)}
+                disabled={isSaving}
+                className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center ${
+                  isSaving ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {/* Rank badge for top items */}
+                {index < 3 && (
+                  <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    index === 0 ? 'bg-yellow-500 text-black' :
+                    index === 1 ? 'bg-gray-400 text-black' :
+                    'bg-amber-700 text-white'
+                  }`}>
+                    {index + 1}
+                  </div>
+                )}
+                
+                {item.imageUrl ? (
+                  <img 
+                    src={item.imageUrl} 
+                    alt={item.name}
+                    className="w-8 h-8 object-cover rounded mb-1"
+                  />
+                ) : (
+                  <Gift className="w-6 h-6 sm:w-8 sm:h-8 mb-1 text-gold-400" />
+                )}
+                
+                <span className="text-xs font-medium truncate w-full text-center">
+                  {item.name}
                 </span>
-              </div>
-            </motion.button>
-          ))}
+                
+                <span className="text-[10px] text-gold-400">
+                  KSh {item.value.toLocaleString()}
+                </span>
+                
+                {/* Nomination count */}
+                <div className="flex items-center gap-1 mt-1">
+                  <Heart className="w-3 h-3 text-pink-500" />
+                  <span className="text-[10px] text-pink-400">
+                    {item.nominationCount}
+                  </span>
+                </div>
+              </motion.button>
+            ))}
         </div>
       </div>
 
