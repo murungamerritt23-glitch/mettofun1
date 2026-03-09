@@ -168,23 +168,26 @@ export default function AdminDashboard() {
 
   // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
   const isShopAdmin = admin?.level === 'shop_admin';
+  const isSuperAdmin = admin?.level === 'super_admin';
+  const isAgentAdmin = admin?.level === 'agent_admin';
   const isAdmin = admin?.level === 'super_admin' || admin?.level === 'agent_admin';
+  const needsPassword = isShopAdmin || isSuperAdmin || isAgentAdmin;
 
-  // Default password for shop_admin (can be changed)
+  // Default password for all admin types (can be changed)
   const DEFAULT_PASSWORD = '0000';
 
-  // Handle password verification for shop_admin
+  // Handle password verification for all admin types
   const handlePasswordSubmit = () => {
     const storedPassword = admin?.dashboardPassword || DEFAULT_PASSWORD;
     if (passwordInput === storedPassword) {
       setIsPasswordVerified(true);
       setPasswordError('');
     } else {
-      setPasswordError(isShopAdmin ? 'Incorrect PIN' : 'Invalid password');
+      setPasswordError('Incorrect PIN');
     }
   };
 
-  // Handle password change for shop_admin
+  // Handle password change for all admin types
   const handlePasswordChange = async () => {
     if (newPassword.length !== 4 || !/^\d{4}$/.test(newPassword)) {
       alert('PIN must be exactly 4 digits');
@@ -424,8 +427,8 @@ export default function AdminDashboard() {
     return (permissions as any)[tab.requiredPermission];
   });
 
-  // Password protection for shop_admin
-  if (isShopAdmin && !isPasswordVerified) {
+  // Password protection for all admin types (super_admin, agent_admin, shop_admin)
+  if (needsPassword && !isPasswordVerified) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="card-gold max-w-md w-full">
