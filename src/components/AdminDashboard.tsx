@@ -1131,6 +1131,7 @@ export default function AdminDashboard() {
                             onClick={() => {
                               setCurrentShop(shop);
                               loadItems();
+                              loadAttempts();
                             }}
                             className="w-full card hover:border-gold-500 text-left"
                           >
@@ -1208,6 +1209,7 @@ export default function AdminDashboard() {
                               // Always save locally
                               await localShops.save(updatedShop);
                               setCurrentShop(updatedShop);
+                              loadAttempts();
                               
                               // Only re-fetch from Firebase if save was successful
                               if (saveResult.success) {
@@ -1988,6 +1990,7 @@ export default function AdminDashboard() {
                           // Always save locally
                           await localShops.save(updatedShop);
                           setCurrentShop(updatedShop);
+                          loadAttempts();
                           
                           // Only re-fetch from Firebase if save was successful
                           if (saveResult.success) {

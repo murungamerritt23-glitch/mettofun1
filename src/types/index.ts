@@ -94,7 +94,7 @@ export const ADMIN_PERMISSIONS: Record<AdminLevel, AdminPermissions> = {
     canAssignShops: false,
     canEditQualifyingPurchase: true,
     canEditItems: true,
-    canViewAnalytics: false,
+    canViewAnalytics: true,
     canViewGlobalAnalytics: false,
     canEditTermsHelp: false,
     canManageVersions: false,
