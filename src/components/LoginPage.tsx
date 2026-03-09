@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, Lock, Eye, EyeOff, Loader2, FileText, CheckCircle } from 'lucide-react';
-import { useAuthStore, useUIStore, useShopStore } from '@/store';
+import { useAuthStore, useUIStore, useShopStore, useGameStore } from '@/store';
 import { firebaseAuth, firebaseSettings, firebaseShops } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
@@ -24,6 +24,7 @@ export default function LoginPage() {
   const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
   const { setCurrentView } = useUIStore();
   const { currentShop, setCurrentShop } = useShopStore();
+  const { clearTestData } = useGameStore();
 
   // Simple demo login - auto-detects admin type
 
@@ -92,6 +93,9 @@ export default function LoginPage() {
           }
           
           setAdmin(demoAdmin);
+          
+          // Clear test mode on login to ensure each admin starts fresh
+          clearTestData();
           
           // Auto-select shop for shop admins based on device ID and email match
           if (demoAdmin.level === 'shop_admin') {
@@ -172,6 +176,9 @@ export default function LoginPage() {
         }
         
         setAdmin(admin);
+        
+        // Clear test mode on login to ensure each admin starts fresh
+        clearTestData();
         
         // Auto-select shop for shop admins based on device ID and email match
         if (admin.level === 'shop_admin') {
