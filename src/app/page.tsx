@@ -5,6 +5,7 @@ import SplashScreen from '@/components/SplashScreen';
 import LoginPage from '@/components/LoginPage';
 import GameMode from '@/components/GameMode';
 import AdminDashboard from '@/components/AdminDashboard';
+import { SyncStatus } from '@/components/SyncStatus';
 import { useUIStore, useShopStore } from '@/store';
 import type { Shop } from '@/types';
 import { firebaseShops } from '@/lib/firebase';
@@ -98,9 +99,19 @@ export default function Home() {
     case 'login':
       return <LoginPage />;
     case 'customer':
-      return <GameMode />;
+      return (
+        <>
+          <GameMode />
+          <SyncStatus />
+        </>
+      );
     case 'admin':
-      return <AdminDashboard />;
+      return (
+        <>
+          <AdminDashboard />
+          <SyncStatus />
+        </>
+      );
     default:
       return <LoginPage />;
   }

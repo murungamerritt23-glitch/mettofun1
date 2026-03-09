@@ -1,31 +1,121 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings, NominationItem, ItemOfTheDay } from '@/types';
+import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings, NominationItem, ItemOfTheDay, SyncQueue } from '@/types';
 import { localShops, localItems, localAttempts, localSessions, localSettings, getDeviceId } from '@/lib/local-db';
 
-// Auth Store
+// Auth Store with Security Features
 interface AuthState {
   admin: Admin | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  // Security: Session tracking
+  lastActivity: number;
+  sessionTimeout: number; // Session timeout in milliseconds (default 30 minutes)
+  // Security: Rate limiting
+  failedAttempts: number;
+  lockoutUntil: number | null;
+  // Security: PIN attempts
+  pinAttempts: number;
+  pinLockoutUntil: number | null;
   setAdmin: (admin: Admin | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  updateActivity: () => void;
+  checkSession: () => boolean;
+  recordFailedAttempt: () => void;
+  resetFailedAttempts: () => void;
+  recordPinAttempt: (success: boolean) => void;
   logout: () => void;
 }
 
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_PIN_ATTEMPTS = 3;
+const PIN_LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
+
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       admin: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      setAdmin: (admin) => set({ admin, isAuthenticated: !!admin }),
+      lastActivity: Date.now(),
+      sessionTimeout: SESSION_TIMEOUT_MS,
+      failedAttempts: 0,
+      lockoutUntil: null,
+      pinAttempts: 0,
+      pinLockoutUntil: null,
+      setAdmin: (admin) => set({ admin, isAuthenticated: !!admin, lastActivity: Date.now() }),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
-      logout: () => set({ admin: null, isAuthenticated: false, error: null })
+      updateActivity: () => set({ lastActivity: Date.now() }),
+      checkSession: () => {
+        const state = get();
+        const now = Date.now();
+        // Check if locked out
+        if (state.lockoutUntil && now < state.lockoutUntil) {
+          return false;
+        }
+        // Clear lockout if expired
+        if (state.lockoutUntil && now >= state.lockoutUntil) {
+          set({ lockoutUntil: null, failedAttempts: 0 });
+        }
+        // Check session timeout
+        if (now - state.lastActivity > state.sessionTimeout) {
+          set({ admin: null, isAuthenticated: false });
+          return false;
+        }
+        return state.isAuthenticated;
+      },
+      recordFailedAttempt: () => {
+        const state = get();
+        const newAttempts = state.failedAttempts + 1;
+        if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+          set({ 
+            failedAttempts: newAttempts, 
+            lockoutUntil: Date.now() + LOCKOUT_DURATION_MS,
+            error: `Too many failed attempts. Please try again in ${LOCKOUT_DURATION_MS / 60000} minutes.`
+          });
+        } else {
+          set({ 
+            failedAttempts: newAttempts,
+            error: `Invalid credentials. ${MAX_FAILED_ATTEMPTS - newAttempts} attempts remaining.`
+          });
+        }
+      },
+      resetFailedAttempts: () => set({ failedAttempts: 0, lockoutUntil: null, error: null }),
+      recordPinAttempt: (success) => {
+        if (success) {
+          set({ pinAttempts: 0, pinLockoutUntil: null });
+        } else {
+          const newAttempts = get().pinAttempts + 1;
+          if (newAttempts >= MAX_PIN_ATTEMPTS) {
+            set({ 
+              pinAttempts: newAttempts, 
+              pinLockoutUntil: Date.now() + PIN_LOCKOUT_MS,
+              error: `Too many PIN attempts. Please try again in ${PIN_LOCKOUT_MS / 60000} minutes.`
+            });
+          } else {
+            set({ 
+              pinAttempts: newAttempts,
+              error: `Invalid PIN. ${MAX_PIN_ATTEMPTS - newAttempts} attempts remaining.`
+            });
+          }
+        }
+      },
+      logout: () => set({ 
+        admin: null, 
+        isAuthenticated: false, 
+        error: null,
+        lastActivity: Date.now(),
+        failedAttempts: 0,
+        lockoutUntil: null,
+        pinAttempts: 0,
+        pinLockoutUntil: null
+      })
     }),
     {
       name: 'metofun-auth'
@@ -202,28 +292,91 @@ export const useGameStore = create<GameState>()(
   )
 );
 
-// UI Store
+// UI Store with Theme Support
 interface UIState {
   isOnline: boolean;
   showSplash: boolean;
   currentView: 'login' | 'admin' | 'customer' | 'shop-select';
+  theme: 'dark' | 'light';
   setOnline: (online: boolean) => void;
   setShowSplash: (show: boolean) => void;
   setCurrentView: (view: 'login' | 'admin' | 'customer' | 'shop-select') => void;
+  setTheme: (theme: 'dark' | 'light') => void;
+  toggleTheme: () => void;
 }
 
 export const useUIStore = create<UIState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       isOnline: true,
       showSplash: true,
       currentView: 'login',
+      theme: 'dark',
       setOnline: (isOnline) => set({ isOnline }),
       setShowSplash: (showSplash) => set({ showSplash }),
-      setCurrentView: (currentView) => set({ currentView })
+      setCurrentView: (currentView) => set({ currentView }),
+      setTheme: (theme) => {
+        document.documentElement.classList.toggle('light', theme === 'light');
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        set({ theme });
+      },
+      toggleTheme: () => {
+        const newTheme = get().theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.classList.toggle('light', newTheme === 'light');
+        document.documentElement.classList.toggle('dark', newTheme === 'dark');
+        set({ theme: newTheme });
+      }
     }),
     {
       name: 'metofun-ui'
+    }
+  )
+);
+
+// Sync Queue Store - Tracks pending offline sync items
+export interface SyncQueueItem extends SyncQueue {
+  retryCount: number;
+  lastError?: string;
+}
+
+interface SyncState {
+  queue: SyncQueueItem[];
+  isSyncing: boolean;
+  lastSyncTime: Date | null;
+  addToQueue: (item: Omit<SyncQueueItem, 'id' | 'retryCount'>) => void;
+  removeFromQueue: (id: string) => void;
+  updateQueueItem: (id: string, updates: Partial<SyncQueueItem>) => void;
+  clearQueue: () => void;
+  setSyncing: (syncing: boolean) => void;
+  setLastSyncTime: (time: Date | null) => void;
+  getPendingCount: () => number;
+}
+
+export const useSyncStore = create<SyncState>()(
+  persist(
+    (set, get) => ({
+      queue: [],
+      isSyncing: false,
+      lastSyncTime: null,
+      addToQueue: (item) => set((state) => ({
+        queue: [...state.queue, { ...item, id: crypto.randomUUID(), retryCount: 0 }]
+      })),
+      removeFromQueue: (id) => set((state) => ({
+        queue: state.queue.filter(item => item.id !== id)
+      })),
+      updateQueueItem: (id, updates) => set((state) => ({
+        queue: state.queue.map(item => 
+          item.id === id ? { ...item, ...updates } : item
+        )
+      })),
+      clearQueue: () => set({ queue: [] }),
+      setSyncing: (isSyncing) => set({ isSyncing }),
+      setLastSyncTime: (lastSyncTime) => set({ lastSyncTime }),
+      getPendingCount: () => get().queue.filter(item => item.status === 'pending').length
+    }),
+    {
+      name: 'metofun-sync',
+      partialize: (state) => ({ queue: state.queue, lastSyncTime: state.lastSyncTime })
     }
   )
 );
