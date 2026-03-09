@@ -45,11 +45,11 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Removed the "Customer Mode →" button from the login page
   - This prevents customers from accessing customer mode through the admin login screen
 
-- [x] Add 4-digit password protection to shop admin dashboard
-  - Added dashboardPassword field to Admin type
+- [x] Add 4-digit password protection to admin dashboard (super_admin, agent_admin, shop_admin)
   - Default PIN is "0000"
-  - Password prompt shown when shop_admin accesses dashboard
+  - Password prompt shown when any admin accesses dashboard
   - Password change functionality available in Settings tab
+  - Added "Back to Login" button for super_admin and agent_admin on password prompt
 
 - [x] Fix shop_admin activate/deactivate button in super admin
   - Issue: shop_admin couldn't see the activate/deactivate button for their shop
