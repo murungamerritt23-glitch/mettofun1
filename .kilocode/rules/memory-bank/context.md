@@ -8,6 +8,17 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix test mode to only affect super_admin in customer mode
+  - Issue: Test mode was affecting shop_admin customer mode, causing likes/nominations not to count
+  - Solution: 
+    1. Added isSuperAdminTestMode check - true only when isTestMode is true AND admin.level === 'super_admin'
+    2. Phone formatting: only adds TEST prefix for super_admin test mode
+    3. Game attempts: saved as real data (isTest: false) for shop_admin
+    4. Likes: always increment for shop_admin (only skipped for super_admin test mode)
+    5. Nominations: always count for shop_admin (only skipped for super_admin test mode)
+    6. Test mode indicator: only shown for super_admin
+  - Now super_admin can test while shop admins serve real customers with real analytics
+
 - [x] Fix Test Mode affecting real data
   - Issue: Test Mode was updating real nomination counts, likes, and analytics
   - Root cause: No checks to prevent saving test data to real analytics
