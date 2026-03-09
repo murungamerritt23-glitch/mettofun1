@@ -2449,8 +2449,8 @@ export default function AdminDashboard() {
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">Settings</h1>
             
             <div className="space-y-4">
-              {/* Dashboard PIN - Only for shop_admin */}
-              {isShopAdmin && (
+              {/* Dashboard PIN - Available for all admin types */}
+              {needsPassword && (
                 <div className="card">
                   <div className="flex items-center justify-between mb-4">
                     <div>
