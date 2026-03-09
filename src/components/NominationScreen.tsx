@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Gift, Heart, Search } from 'lucide-react';
-import { useGameStore, useShopStore } from '@/store';
+import { useGameStore, useShopStore, useAuthStore } from '@/store';
 import { localNominationItems, localCustomerNominations } from '@/lib/local-db';
 import type { NominationItem } from '@/types';
 
@@ -26,6 +26,10 @@ export default function NominationScreen() {
   } = useGameStore();
   
   const { currentShop } = useShopStore();
+  const { admin } = useAuthStore();
+
+  // Test mode should only affect super_admin - shop_admin always uses real mode
+  const isSuperAdminTestMode = isTestMode && admin?.level === 'super_admin';
 
   // Load nomination items on mount
   useEffect(() => {
@@ -61,8 +65,8 @@ export default function NominationScreen() {
       // Save the nomination
       await localCustomerNominations.save(nomination);
       
-      // Increment the item's nomination count ONLY if NOT in test mode
-      if (!isTestMode) {
+      // Increment the item's nomination count ONLY if NOT in super admin test mode
+      if (!isSuperAdminTestMode) {
         await localNominationItems.incrementNominationCount(item.id);
       }
       

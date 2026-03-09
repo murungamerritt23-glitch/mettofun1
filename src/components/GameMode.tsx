@@ -63,6 +63,10 @@ export default function GameMode() {
   const { setCurrentView } = useUIStore();
   const { admin, logout } = useAuthStore();
 
+  // Test mode should only apply for super_admin in customer mode
+  // For shop_admin and agent_admin, always use real mode (test mode doesn't affect them)
+  const isSuperAdminTestMode = isTestMode && admin?.level === 'super_admin';
+
   // Load Item of the Day on mount
   useEffect(() => {
     const loadItemOfDay = async () => {
@@ -166,8 +170,8 @@ export default function GameMode() {
     // Simulate authorization
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Use test phone prefix if in test mode
-    const formattedPhone = isTestMode 
+    // Use test phone prefix only if super admin has test mode enabled
+    const formattedPhone = isSuperAdminTestMode 
       ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}` 
       : formatPhoneNumber(phoneNumber);
     
@@ -229,7 +233,7 @@ export default function GameMode() {
       setSelectedItem(item || null);
     }
     
-    // Save attempt - mark as test if in test mode
+    // Save attempt - mark as test only if super admin has test mode enabled
     const attempt = createGameAttempt(
       currentShop?.id || 'demo',
       customerSession?.phoneNumber || phoneNumber,
@@ -239,7 +243,7 @@ export default function GameMode() {
       correctNumber,
       won,
       winningItem || undefined,
-      isTestMode // Pass test flag
+      isSuperAdminTestMode // Pass test flag
     );
     
     localAttempts.save(attempt);
@@ -448,8 +452,8 @@ export default function GameMode() {
             </div>
           )}
 
-          {/* Test Mode Indicator */}
-          {isTestMode && (
+          {/* Test Mode Indicator - only shown for super_admin */}
+          {isSuperAdminTestMode && (
             <div className="bg-red-900/50 border border-red-500 rounded-lg p-3 mb-6 text-center">
               <span className="text-red-400 font-bold">🔴 TEST MODE</span>
               <p className="text-red-300 text-xs mt-1">
@@ -656,7 +660,10 @@ export default function GameMode() {
                 <button
                   onClick={() => {
                     if (!hasLikedItemOfDay) {
-                      incrementItemOfDayLikes();
+                      // Only skip incrementing likes in super admin test mode
+                      if (!isSuperAdminTestMode) {
+                        incrementItemOfDayLikes();
+                      }
                       setHasLikedItemOfDay(true);
                     }
                   }}
