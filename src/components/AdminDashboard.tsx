@@ -247,20 +247,36 @@ export default function AdminDashboard() {
       
       // Function to auto-select first shop if none selected
       const autoSelectShop = async (shopList: Shop[]) => {
-        if (!storedCurrentShop && shopList.length > 0) {
-          setCurrentShop(shopList[0]);
-          // Load attempts for the selected shop
-          const shopAttempts = await localAttempts.getByShop(shopList[0].id);
-          setAttempts(shopAttempts);
-        } else if (storedCurrentShop) {
-          // Always update currentShop with fresh data from Firebase/local storage
-          // This ensures qualifying purchase and other fields are up-to-date
-          const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
-          if (updatedShop) {
-            setCurrentShop(updatedShop);
-            // Load attempts for the current shop
-            const shopAttempts = await localAttempts.getByShop(updatedShop.id);
+        // For super_admin and agent_admin, load all attempts (grouped by shop)
+        if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
+          if (!storedCurrentShop && shopList.length > 0) {
+            setCurrentShop(shopList[0]);
+          } else if (storedCurrentShop) {
+            const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
+            if (updatedShop) {
+              setCurrentShop(updatedShop);
+            }
+          }
+          // Load ALL attempts for super admin/agent admin
+          const allAttempts = await localAttempts.getAll();
+          setAttempts(allAttempts);
+        } else {
+          // shop_admin: load attempts for selected shop only
+          if (!storedCurrentShop && shopList.length > 0) {
+            setCurrentShop(shopList[0]);
+            // Load attempts for the selected shop
+            const shopAttempts = await localAttempts.getByShop(shopList[0].id);
             setAttempts(shopAttempts);
+          } else if (storedCurrentShop) {
+            // Always update currentShop with fresh data from Firebase/local storage
+            // This ensures qualifying purchase and other fields are up-to-date
+            const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
+            if (updatedShop) {
+              setCurrentShop(updatedShop);
+              // Load attempts for the current shop
+              const shopAttempts = await localAttempts.getByShop(updatedShop.id);
+              setAttempts(shopAttempts);
+            }
           }
         }
       };
@@ -515,6 +531,12 @@ export default function AdminDashboard() {
       const shopAttempts = await localAttempts.getByShop(currentShop.id);
       setAttempts(shopAttempts);
     }
+  };
+
+  // Load all attempts (for super admin to view all shops)
+  const loadAllAttempts = async () => {
+    const allAttempts = await localAttempts.getAll();
+    setAttempts(allAttempts);
   };
 
   const loadItems = async () => {
@@ -2058,6 +2080,28 @@ export default function AdminDashboard() {
 
   // Attempts view
   if (activeTab === 'attempts') {
+    // For super_admin/agent_admin, group attempts by shop
+    const isSuperOrAgent = admin?.level === 'super_admin' || admin?.level === 'agent_admin';
+    
+    let attemptsByShop: { [shopId: string]: typeof attempts } = {};
+    let shopNames: { [shopId: string]: string } = {};
+    
+    if (isSuperOrAgent && attempts.length > 0) {
+      // Group attempts by shopId
+      attempts.forEach((attempt) => {
+        const shopId = attempt.shopId || 'unknown';
+        if (!attemptsByShop[shopId]) {
+          attemptsByShop[shopId] = [];
+        }
+        attemptsByShop[shopId].push(attempt);
+      });
+      
+      // Get shop names
+      shops.forEach((shop) => {
+        shopNames[shop.id] = shop.shopName;
+      });
+    }
+
     return (
       <div className="min-h-screen flex">
         <AdminSidebar 
@@ -2074,7 +2118,51 @@ export default function AdminDashboard() {
           <div className="max-w-6xl mx-auto">
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">Game Attempts</h1>
             
-            {currentShop ? (
+            {isSuperOrAgent ? (
+              // Super admin/agent admin: show all attempts grouped by shop
+              <div className="space-y-6">
+                {Object.keys(attemptsByShop).length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users size={48} className="mx-auto text-gray-600 mb-4" />
+                    <p className="text-gray-500">No attempts yet</p>
+                  </div>
+                ) : (
+                  Object.entries(attemptsByShop).map(([shopId, shopAttempts]) => (
+                    <div key={shopId}>
+                      <h2 className="text-xl font-semibold text-gold-400 mb-3 flex items-center gap-2">
+                        <Store size={20} />
+                        {shopNames[shopId] || 'Unknown Shop'}
+                        <span className="text-gray-500 text-sm">({shopAttempts.length} attempts)</span>
+                      </h2>
+                      <div className="space-y-3">
+                        {shopAttempts.map((attempt) => (
+                          <div key={attempt.id} className="card flex items-center justify-between">
+                            <div>
+                              <p className="text-white font-medium">{attempt.phoneNumber}</p>
+                              <p className="text-gray-400 text-sm">
+                                Purchase: KSh {attempt.purchaseAmount.toLocaleString()} | 
+                                Selected: Box {attempt.selectedBox}
+                              </p>
+                              <p className="text-gray-500 text-xs">
+                                {new Date(attempt.timestamp).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className={`px-3 py-1 rounded ${
+                              attempt.won 
+                                ? 'bg-green-900/50 text-green-400' 
+                                : 'bg-red-900/50 text-red-400'
+                            }`}>
+                              {attempt.won ? 'WIN' : 'LOSE'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : currentShop ? (
+              // Shop admin: show attempts for their shop only
               <div className="space-y-3">
                 {attempts.length === 0 ? (
                   <div className="text-center py-12">
