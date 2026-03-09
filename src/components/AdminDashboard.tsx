@@ -468,12 +468,20 @@ export default function AdminDashboard() {
               Unlock
             </button>
             
-            {isShopAdmin && (
+            {/* Back navigation based on admin type */}
+            {isShopAdmin ? (
               <button
                 onClick={() => setCurrentView('customer')}
                 className="text-gray-400 hover:text-gold-400 text-sm w-full text-center"
               >
                 ← Back to Customer Mode
+              </button>
+            ) : (
+              <button
+                onClick={logout}
+                className="text-gray-400 hover:text-gold-400 text-sm w-full text-center"
+              >
+                ← Back to Login
               </button>
             )}
           </div>
