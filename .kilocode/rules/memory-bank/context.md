@@ -214,10 +214,11 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Solution: Added conditional check to only show Active Shops card for super_admin and agent_admin
   - Now shop_admin doesn't see Active Shops metric in their dashboard
 
-- [x] Hide "total attempts" and "win rate" in agent admin dashboard
-  - Issue: Agent admin was seeing Total Attempts and Win Rate metrics
-  - Solution: Added conditional checks to hide these two cards for agent_admin
-  - Now agent_admin only sees Active Shops and Active Items metrics
+- [x] Hide all analytics from agent admin dashboard
+  - Issue: Agent admin was seeing Active Shops, Total Attempts, Win Rate, and Active Items metrics
+  - Solution: Wrapped all analytics cards in `{admin?.level !== 'agent_admin' && (...)}` conditional
+  - Now agent_admin sees only the action buttons (Customer Mode, Manage Items)
+  - Active Shops now only visible to super_admin
   - shop_admin and super_admin still see all metrics
 
 ## Current Structure
@@ -304,3 +305,4 @@ export async function GET() {
 | Today | Replace custom SVG logo with user's custom image from Google Photos |
 | Today | Improve nomination screen UX - tap to nominate, exit button resets session |
 | Today | Add refresh button on customer mode to reset session - clears phone and purchase amount fields for new customer |
+| Today | Hide all analytics from agent admin dashboard - only sees action buttons, not metrics |
