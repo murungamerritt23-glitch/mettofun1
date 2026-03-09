@@ -137,13 +137,19 @@ export default function GameMode() {
     
     const qualifyingPurchase = Number(currentShop?.qualifyingPurchase) || 0;
     
-    // Strict validation - purchase amount must be equal or above qualifying purchase
+    // If qualifying purchase is set, enforce minimum
     if (qualifyingPurchase > 0 && amount < qualifyingPurchase) {
       alert(
         language === 'sw'
           ? `Kiwango cha chini ni KSh ${qualifyingPurchase.toLocaleString()}. Tafadhali ingiza kiwango cha juu au sawa na ${qualifyingPurchase.toLocaleString()}.`
           : `Minimum purchase is KSh ${qualifyingPurchase.toLocaleString()}. Please enter an amount equal to or above ${qualifyingPurchase.toLocaleString()}.`
       );
+      return;
+    }
+
+    // Validate that shop is available
+    if (!currentShop) {
+      alert(language === 'sw' ? 'Hakuna duka lililochaguliwa' : 'No shop selected');
       return;
     }
 
@@ -218,7 +224,7 @@ export default function GameMode() {
     setShowNumberPicker(true);
   };
 
-  const handleNumberSelect = (number: number) => {
+  const handleNumberSelect = async (number: number) => {
     if (selectedNumber !== null || !correctNumber) return;
     
     setSelectedNumber(number);
@@ -234,22 +240,27 @@ export default function GameMode() {
     }
     
     // Save attempt - mark as test only if super admin has test mode enabled
-    const attempt = createGameAttempt(
-      currentShop?.id || 'demo',
-      customerSession?.phoneNumber || phoneNumber,
-      parseFloat(purchaseAmount),
-      currentShop?.qualifyingPurchase || 0,
-      selectedBox || 0,
-      correctNumber,
-      won,
-      winningItem || undefined,
-      isSuperAdminTestMode // Pass test flag
-    );
-    
-    localAttempts.save(attempt);
-    
-    // Store the attempt ID for nomination tracking
-    setCurrentGameAttemptId(attempt.id);
+    try {
+      const attempt = createGameAttempt(
+        currentShop?.id || 'demo',
+        customerSession?.phoneNumber || phoneNumber,
+        parseFloat(purchaseAmount),
+        currentShop?.qualifyingPurchase || 0,
+        selectedBox || 0,
+        correctNumber,
+        won,
+        winningItem || undefined,
+        isSuperAdminTestMode // Pass test flag
+      );
+      
+      await localAttempts.save(attempt);
+      
+      // Store the attempt ID for nomination tracking
+      setCurrentGameAttemptId(attempt.id);
+    } catch (error) {
+      console.error('Error saving game attempt:', error);
+      // Continue anyway - don't block the game result
+    }
     
     setShowResult(true);
     setGameStatus(won ? 'won' : 'lost');

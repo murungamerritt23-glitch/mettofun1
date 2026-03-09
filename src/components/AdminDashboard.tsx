@@ -248,88 +248,122 @@ export default function AdminDashboard() {
   // Load shops on mount
   useEffect(() => {
     const loadShops = async () => {
-      // Get current shop from store first
-      const storedCurrentShop = useShopStore.getState().currentShop;
-      
-      // Check if this is a shop_admin with assigned shops
-      const isShopAdmin = admin?.level === 'shop_admin';
-      const assignedShopIds = admin?.assignedShops || [];
-      
-      // Function to filter shops by assigned shops for shop_admin
-      const filterByAssignedShops = (shopList: Shop[]): Shop[] => {
-        if (isShopAdmin && assignedShopIds.length > 0) {
-          return shopList.filter(s => assignedShopIds.includes(s.id));
-        }
-        return shopList;
-      };
-      
-      // Function to auto-select first shop if none selected
-      const autoSelectShop = async (shopList: Shop[]) => {
-        // For super_admin and agent_admin, load all attempts (grouped by shop)
-        if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
-          if (!storedCurrentShop && shopList.length > 0) {
-            setCurrentShop(shopList[0]);
-          } else if (storedCurrentShop) {
-            const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
-            if (updatedShop) {
-              setCurrentShop(updatedShop);
+      try {
+        // Get current shop from store first
+        const storedCurrentShop = useShopStore.getState().currentShop;
+        
+        // Check if this is a shop_admin with assigned shops
+        const isShopAdmin = admin?.level === 'shop_admin';
+        const assignedShopIds = admin?.assignedShops || [];
+        
+        // Function to filter shops by assigned shops for shop_admin
+        const filterByAssignedShops = (shopList: Shop[]): Shop[] => {
+          if (isShopAdmin && assignedShopIds.length > 0) {
+            return shopList.filter(s => assignedShopIds.includes(s.id));
+          }
+          return shopList;
+        };
+        
+        // Function to auto-select first shop if none selected
+        const autoSelectShop = async (shopList: Shop[]) => {
+          // For super_admin and agent_admin, load all attempts (grouped by shop)
+          if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
+            if (!storedCurrentShop && shopList.length > 0) {
+              setCurrentShop(shopList[0]);
+            } else if (storedCurrentShop) {
+              const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
+              if (updatedShop) {
+                setCurrentShop(updatedShop);
+              }
+            }
+            // Load ALL attempts for super admin/agent admin
+            try {
+              const allAttempts = await localAttempts.getAll();
+              setAttempts(allAttempts);
+            } catch (error) {
+              console.error('Error loading attempts:', error);
+            }
+          } else {
+            // shop_admin: load attempts for selected shop only
+            if (!storedCurrentShop && shopList.length > 0) {
+              setCurrentShop(shopList[0]);
+              // Load attempts for the selected shop
+              try {
+                const shopAttempts = await localAttempts.getByShop(shopList[0].id);
+                setAttempts(shopAttempts);
+              } catch (error) {
+                console.error('Error loading shop attempts:', error);
+              }
+            } else if (storedCurrentShop) {
+              // Always update currentShop with fresh data from Firebase/local storage
+              // This ensures qualifying purchase and other fields are up-to-date
+              const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
+              if (updatedShop) {
+                setCurrentShop(updatedShop);
+                // Load attempts for the current shop
+                try {
+                  const shopAttempts = await localAttempts.getByShop(updatedShop.id);
+                  setAttempts(shopAttempts);
+                } catch (error) {
+                  console.error('Error loading shop attempts:', error);
+                }
+              }
             }
           }
-          // Load ALL attempts for super admin/agent admin
-          const allAttempts = await localAttempts.getAll();
-          setAttempts(allAttempts);
-        } else {
-          // shop_admin: load attempts for selected shop only
-          if (!storedCurrentShop && shopList.length > 0) {
-            setCurrentShop(shopList[0]);
-            // Load attempts for the selected shop
-            const shopAttempts = await localAttempts.getByShop(shopList[0].id);
-            setAttempts(shopAttempts);
-          } else if (storedCurrentShop) {
-            // Always update currentShop with fresh data from Firebase/local storage
-            // This ensures qualifying purchase and other fields are up-to-date
-            const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
-            if (updatedShop) {
-              setCurrentShop(updatedShop);
-              // Load attempts for the current shop
-              const shopAttempts = await localAttempts.getByShop(updatedShop.id);
-              setAttempts(shopAttempts);
+        };
+        
+        // admin sees all shops (including inactive)
+        if (admin?.level === 'super_admin') {
+          try {
+            const allShops = await firebaseShops.getAll();
+            if (allShops.length > 0) {
+              setShops(allShops);
+              autoSelectShop(allShops);
+            } else {
+              const localShopList = await localShops.getAll();
+              setShops(localShopList);
+              autoSelectShop(localShopList);
             }
+          } catch (error) {
+            console.error('Error loading shops from Firebase:', error);
+            // Fallback to local
+            const localShopList = await localShops.getAll();
+            setShops(localShopList);
+            autoSelectShop(localShopList);
+          }
+        } else {
+          // Other admins (agent_admin, shop_admin) see only active shops
+          try {
+            const fbShops = await firebaseShops.getAllActive();
+            // Filter by assigned shops for shop_admin
+            const filteredFbShops = filterByAssignedShops(fbShops);
+            if (filteredFbShops.length > 0) {
+              setShops(filteredFbShops);
+              autoSelectShop(filteredFbShops);
+            } else {
+              // Fallback to local if Firebase has no shops
+              const localShopList = await localShops.getAll();
+              const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
+              const filteredLocalShops = filterByAssignedShops(activeLocalShops);
+              setShops(filteredLocalShops);
+              autoSelectShop(filteredLocalShops);
+            }
+          } catch (error) {
+            console.error('Error loading shops:', error);
+            // Fallback to local
+            const localShopList = await localShops.getAll();
+            const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
+            const filteredLocalShops = filterByAssignedShops(activeLocalShops);
+            setShops(filteredLocalShops);
+            autoSelectShop(filteredLocalShops);
           }
         }
-      };
-      
-      // admin sees all shops (including inactive)
-      if (admin?.level === 'super_admin') {
-        const allShops = await firebaseShops.getAll();
-        if (allShops.length > 0) {
-          setShops(allShops);
-          autoSelectShop(allShops);
-        } else {
-          const localShopList = await localShops.getAll();
-          setShops(localShopList);
-          autoSelectShop(localShopList);
-        }
-      } else {
-        // Other admins (agent_admin, shop_admin) see only active shops
-        const fbShops = await firebaseShops.getAllActive();
-        // Filter by assigned shops for shop_admin
-        const filteredFbShops = filterByAssignedShops(fbShops);
-        if (filteredFbShops.length > 0) {
-          setShops(filteredFbShops);
-          autoSelectShop(filteredFbShops);
-        } else {
-          // Fallback to local if Firebase has no shops
-          const localShopList = await localShops.getAll();
-          const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
-          const filteredLocalShops = filterByAssignedShops(activeLocalShops);
-          setShops(filteredLocalShops);
-          autoSelectShop(filteredLocalShops);
-        }
+      } catch (error) {
+        console.error('Error in loadShops:', error);
       }
     };
     loadShops();
-    localAdmins.getAll().then(setAdmins);
+    localAdmins.getAll().then(setAdmins).catch(console.error);
   }, [admin]);
 
   // Load terms content for admin

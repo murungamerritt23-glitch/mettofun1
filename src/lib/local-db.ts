@@ -539,7 +539,7 @@ export const localNominationItems = {
     const database = await initDB();
     const item = await database.get('nominationItems', id);
     if (item) {
-      item.nominationCount += 1;
+      item.nominationCount = (item.nominationCount || 0) + 1;
       item.updatedAt = new Date();
       await database.put('nominationItems', item);
     }
@@ -606,11 +606,16 @@ export const localCustomerNominations = {
   },
 
   async save(nomination: CustomerNomination): Promise<void> {
+    if (!nomination.phoneNumber || !nomination.itemId || !nomination.gameAttemptId) {
+      console.error('Invalid nomination data:', nomination);
+      return;
+    }
     const database = await initDB();
     await database.put('customerNominations', nomination);
   },
 
   async hasNominatedThisAttempt(phoneNumber: string, gameAttemptId: string): Promise<boolean> {
+    if (!phoneNumber || !gameAttemptId) return false;
     const database = await initDB();
     const nominations = await database.getAllFromIndex('customerNominations', 'by-attempt', gameAttemptId);
     return nominations.some(n => n.phoneNumber === phoneNumber);

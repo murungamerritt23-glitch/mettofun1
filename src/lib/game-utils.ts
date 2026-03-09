@@ -5,6 +5,11 @@ import type { Item, GameAttempt, BoxConfiguration } from '@/types';
 // Always 17 boxes, but winning threshold changes based on purchase
 // Higher purchase = lower threshold = easier to win
 export const calculateBoxConfiguration = (purchaseAmount: number, qualifyingAmount: number): BoxConfiguration => {
+  // Guard against division by zero - if qualifying amount is 0, use default threshold
+  if (qualifyingAmount <= 0) {
+    return { boxCount: 17, threshold: 1, ratio: '0' };
+  }
+  
   const ratio = (purchaseAmount / qualifyingAmount) * 100;
   
   // Threshold determines winning probability (lower = easier to win)
@@ -71,6 +76,10 @@ export const getWinningItem = (randomNumber: number, items: Item[]): Item | null
 
 // Validate item price against qualifying purchase (60% rule)
 export const validateItemPrice = (itemValue: number, qualifyingPurchase: number): boolean => {
+  // If no qualifying purchase set, allow any item value
+  if (qualifyingPurchase <= 0) {
+    return true;
+  }
   return itemValue <= qualifyingPurchase * 0.6;
 };
 
@@ -83,10 +92,16 @@ export const generateDefaultItems = (shopId: string): Item[] => {
     'Prize Pack', 'Surprise Item', 'Bonus Gift', 'Mystery Reward', 'Grand Prize'
   ];
   
+  // Default values ranging from 1000 to 17000 (realistic prize values)
+  const defaultValues = [
+    1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500,
+    5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 17000
+  ];
+  
   return defaultNames.map((name, index) => ({
     id: `${shopId}-item-${index + 1}`,
     name,
-    value: 0,
+    value: defaultValues[index] || (index + 1) * 1000,
     imageUrl: undefined,
     stockStatus: 'unlimited' as const,
     isActive: true,
