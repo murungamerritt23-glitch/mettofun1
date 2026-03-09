@@ -65,6 +65,21 @@ export default function AdminDashboard() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Collapsible shop groups in attempts view
+  const [expandedShops, setExpandedShops] = useState<Set<string>>(new Set());
+  
+  const toggleShopExpanded = (shopId: string) => {
+    setExpandedShops(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(shopId)) {
+        newSet.delete(shopId);
+      } else {
+        newSet.add(shopId);
+      }
+      return newSet;
+    });
+  };
 
   const { admin, logout } = useAuthStore();
   const { currentShop, setCurrentShop } = useShopStore();
@@ -2129,34 +2144,52 @@ export default function AdminDashboard() {
                 ) : (
                   Object.entries(attemptsByShop).map(([shopId, shopAttempts]) => (
                     <div key={shopId}>
-                      <h2 className="text-xl font-semibold text-gold-400 mb-3 flex items-center gap-2">
-                        <Store size={20} />
-                        {shopNames[shopId] || 'Unknown Shop'}
-                        <span className="text-gray-500 text-sm">({shopAttempts.length} attempts)</span>
-                      </h2>
-                      <div className="space-y-3">
-                        {shopAttempts.map((attempt) => (
-                          <div key={attempt.id} className="card flex items-center justify-between">
-                            <div>
-                              <p className="text-white font-medium">{attempt.phoneNumber}</p>
-                              <p className="text-gray-400 text-sm">
-                                Purchase: KSh {attempt.purchaseAmount.toLocaleString()} | 
-                                Selected: Box {attempt.selectedBox}
-                              </p>
-                              <p className="text-gray-500 text-xs">
-                                {new Date(attempt.timestamp).toLocaleString()}
-                              </p>
-                            </div>
-                            <div className={`px-3 py-1 rounded ${
-                              attempt.won 
-                                ? 'bg-green-900/50 text-green-400' 
-                                : 'bg-red-900/50 text-red-400'
-                            }`}>
-                              {attempt.won ? 'WIN' : 'LOSE'}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <button
+                        onClick={() => toggleShopExpanded(shopId)}
+                        className="w-full text-left mb-2"
+                      >
+                        <h2 className="text-xl font-semibold text-gold-400 flex items-center gap-2 hover:text-gold-300 transition-colors">
+                          <Store size={20} />
+                          {shopNames[shopId] || 'Unknown Shop'}
+                          <span className="text-gray-500 text-sm">({shopAttempts.length} attempts)</span>
+                          <span className="ml-auto text-gray-500">
+                            {expandedShops.has(shopId) ? '▼' : '▶'}
+                          </span>
+                        </h2>
+                      </button>
+                      <AnimatePresence>
+                        {expandedShops.has(shopId) && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="space-y-3 overflow-hidden"
+                          >
+                            {shopAttempts.map((attempt) => (
+                              <div key={attempt.id} className="card flex items-center justify-between">
+                                <div>
+                                  <p className="text-white font-medium">{attempt.phoneNumber}</p>
+                                  <p className="text-gray-400 text-sm">
+                                    Purchase: KSh {attempt.purchaseAmount.toLocaleString()} | 
+                                    Selected: Box {attempt.selectedBox}
+                                  </p>
+                                  <p className="text-gray-500 text-xs">
+                                    {new Date(attempt.timestamp).toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className={`px-3 py-1 rounded ${
+                                  attempt.won 
+                                    ? 'bg-green-900/50 text-green-400' 
+                                    : 'bg-red-900/50 text-red-400'
+                                }`}>
+                                  {attempt.won ? 'WIN' : 'LOSE'}
+                                </div>
+                              </div>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   ))
                 )}
