@@ -54,7 +54,8 @@ export default function GameMode() {
     hasLikedItemOfDay,
     setHasLikedItemOfDay,
     incrementItemOfDayLikes,
-    resetGame 
+    resetGame,
+    clearTestData
   } = useGameStore();
   
   const { currentShop } = useShopStore();
@@ -304,6 +305,8 @@ export default function GameMode() {
   };
 
   const handleRefresh = () => {
+    // Clear test mode on refresh to ensure shop admins are not affected by super admin's test mode
+    clearTestData();
     // Clear phone and purchase amount fields
     setPhoneNumber('');
     setPurchaseAmount('');
