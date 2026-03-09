@@ -209,11 +209,10 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Shows "No items found" message when search has no results
   - Both English and Swahili placeholders supported
 
-- [x] Add password protection to super admin and agent admin dashboards
-  - Extended existing shop_admin password protection to also cover super_admin and agent_admin
-  - Default PIN is "0000" (same as shop_admin)
-  - All admin types must enter 4-digit PIN to access dashboard
-  - Password can be changed in Settings tab
+- [x] Hide "active shops" in shop admin dashboard
+  - Issue: Active Shops card was showing in shop_admin dashboard analytics
+  - Solution: Added conditional check to only show Active Shops card for super_admin and agent_admin
+  - Now shop_admin doesn't see Active Shops metric in their dashboard
 
 ## Current Structure
 
