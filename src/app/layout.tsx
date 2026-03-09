@@ -1,3 +1,5 @@
+"use client";
+
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { useEffect } from "react";
