@@ -8,6 +8,18 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Enhance offline feature for extended operation (hours/days offline)
+  - Add automatic periodic sync (every 5 minutes) when online
+  - Implement exponential backoff for failed sync retries (2s base, max 5min)
+  - Add queue size limits (max 1000 items) to prevent overflow
+  - Add stale queue item cleanup (items older than 7 days are cleaned)
+  - Add queue management with batch processing (50 items per sync cycle)
+  - Track time offline and show in sync status UI
+  - Add background sync registration for Chrome/Edge
+  - Enhanced service worker with better caching strategies
+  - Add push notification handlers for future use
+  - Fixed TypeScript types for retryCount handling
+
 - [x] Add anti-tamper protection for game attempts
   - Added integrityHash and hashSeed fields to GameAttempt type
   - Generate SHA256 integrity hash when game attempt is created
