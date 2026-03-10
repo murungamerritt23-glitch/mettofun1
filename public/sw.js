@@ -1,5 +1,5 @@
-// Service Worker for METOFUN PWA - Enhanced Offline Support
-const CACHE_NAME = 'metofun-v2';
+// Service Worker for ETO FUN PWA - Enhanced Offline Support
+const CACHE_NAME = 'etofun-v2';
 const STATIC_CACHE = 'metofun-static-v2';
 const DYNAMIC_CACHE = 'metofun-dynamic-v2';
 
@@ -7,9 +7,9 @@ const DYNAMIC_CACHE = 'metofun-dynamic-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/metofun-logo.png',
   '/icon-192.svg',
   '/icon-512.svg',
+  '/metofun-logo.svg',
   '/favicon.ico',
 ];
 

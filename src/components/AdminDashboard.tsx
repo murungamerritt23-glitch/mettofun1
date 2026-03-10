@@ -2877,8 +2877,8 @@ function AdminSidebar({
         <div className="p-6">
           <div className="mb-8">
             <img 
-              src="/metofun-logo.png" 
-              alt="METOFUN" 
+              src="/metofun-logo.svg" 
+              alt="ETO FUN" 
               className="w-32 h-auto"
             />
           </div>

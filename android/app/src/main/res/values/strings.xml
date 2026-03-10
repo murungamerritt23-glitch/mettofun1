@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">METOFUN</string>
-    <string name="title_activity_main">METOFUN</string>
+    <string name="app_name">ETO FUN</string>
+    <string name="title_activity_main">ETO FUN</string>
     <string name="package_name">com.metofun.app</string>
     <string name="custom_url_scheme">com.metofun.app</string>
 </resources>

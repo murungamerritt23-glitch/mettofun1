@@ -3,7 +3,7 @@ import "./globals.css";
 import { SyncProvider } from "@/components/SyncProvider";
 
 export const metadata: Metadata = {
-  title: "MetoFun - Win Amazing Rewards!",
+  title: "EtoFun - Win Amazing Rewards!",
   description: "Promotional reward game - Play lucky number games and win exciting prizes!",
   manifest: "/manifest.json",
   other: {

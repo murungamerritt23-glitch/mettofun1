@@ -84,11 +84,11 @@
     <animate attributeName="stroke-width" values="12;14;12" dur="1.5s" repeatCount="indefinite"/>
   </path>
   
-  <!-- METO FUN text on curved path -->
+  <!-- ETO FUN text on curved path (M removed) -->
   <path id="textCurve" d="M 95 380 A 161 161 0 0 1 417 380" fill="none"/>
   <text fill="url(#goldLinear)" font-family="Arial Black, sans-serif" font-size="32" font-weight="bold" filter="url(#glow)">
     <textPath href="#textCurve" startOffset="50%" text-anchor="middle">
-      METO FUN
+      ETO FUN
       <animate attributeName="fill" values="#FFD700;#FFEC8B;#FFD700" dur="2s" repeatCount="indefinite"/>
     </textPath>
   </text>

@@ -75,9 +75,9 @@
     <animate attributeName="stroke-width" values="4;5;4" dur="1.5s" repeatCount="indefinite"/>
   </path>
   
-  <!-- METO FUN text -->
+  <!-- ETO FUN text (M removed) -->
   <text x="96" y="158" text-anchor="middle" fill="url(#goldLinear)" font-family="Arial Black, sans-serif" font-size="14" font-weight="bold" filter="url(#glow)">
-    METO FUN
+    ETO FUN
     <animate attributeName="fill" values="#FFD700;#FFEC8B;#FFD700" dur="2s" repeatCount="indefinite"/>
   </text>
   

@@ -368,7 +368,7 @@ export default function GameMode() {
 
   const translations = {
     en: {
-      title: 'MetoFun',
+      title: 'EtoFun',
       subtitle: 'Win Amazing Rewards!',
       qualifyingPurchase: 'Qualifying Purchase',
       enterPhone: 'Enter Phone Number',
@@ -387,7 +387,7 @@ export default function GameMode() {
       skipNominate: 'Skip'
     },
     sw: {
-      title: 'MetoFun',
+      title: 'EtoFun',
       subtitle: 'Shinda Ajira Za Kushangaza!',
       qualifyingPurchase: 'Manunuzi Yanayokubali',
       enterPhone: 'Weka Nambari ya Simu',
@@ -455,8 +455,8 @@ export default function GameMode() {
           {currentShop && (
             <div className="card text-center mb-6">
               <img 
-                src="/metofun-logo.png" 
-                alt="METOFUN" 
+                src="/metofun-logo.svg" 
+                alt="ETO FUN" 
                 className="w-32 h-auto mx-auto mb-3"
               />
               <h2 className="gold-gradient-text text-2xl font-bold">{currentShop.shopName}</h2>
