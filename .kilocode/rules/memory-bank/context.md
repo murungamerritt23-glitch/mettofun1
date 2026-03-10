@@ -1,10 +1,10 @@
-# Active Context: METOFUN - Promotional Reward Game App
+# Active Context: ETO FUN - Promotional Reward Game App
 
 ## Current State
 
 **Project Status**: ✅ Live and operational
 
-METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeScript, Firebase, and Capacitor for Android APK.
+ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeScript, Firebase, and Capacitor for Android APK.
 
 ## Recently Completed
 
@@ -230,6 +230,16 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Active Shops now only visible to super_admin
   - shop_admin and super_admin still see all metrics
 
+- [x] Update branding from METOFUN to ETO FUN
+  - Removed "M" from logo text - now shows "ETO FUN" instead of "METO FUN"
+  - Updated all logo files: metofun-logo.svg, icon-192.svg, icon-512.svg
+  - Updated manifest.json to use SVG icons and new name
+  - Updated service worker to use new SVG icons
+  - Updated all React components: SplashScreen, LoginPage, AdminDashboard, GameMode
+  - Updated layout.tsx metadata title
+  - Updated Android strings.xml app name
+  - Updated capacitor.config.ts appName
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
@@ -316,3 +326,4 @@ export async function GET() {
 | Today | Add refresh button on customer mode to reset session - clears phone and purchase amount fields for new customer |
 | Today | Hide all analytics from agent admin dashboard - only sees action buttons, not metrics |
 | Today | Fix nomination count not updating in Firebase - get fresh item from IndexedDB after incrementing |
+| Today | Update branding from METOFUN to ETO FUN - remove M from logo and app name |
