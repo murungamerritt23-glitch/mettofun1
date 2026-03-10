@@ -8,6 +8,15 @@ METOFUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Add anti-tamper protection for game attempts
+  - Added integrityHash and hashSeed fields to GameAttempt type
+  - Generate SHA256 integrity hash when game attempt is created
+  - Verify integrity hash when loading attempts from IndexedDB
+  - Add tamperedCount to ShopAnalytics for admin monitoring
+  - Show Tampered count in analytics dashboard
+  - Add getTamperedAttempts and getTamperedCount functions
+  - Old game attempts (without hash) are marked as unverified
+
 - [x] Fix test mode to only affect super_admin in customer mode
   - Issue: Test mode was affecting shop_admin customer mode, causing likes/nominations not to count
   - Solution: 
