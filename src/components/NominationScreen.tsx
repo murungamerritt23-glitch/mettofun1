@@ -69,9 +69,12 @@ export default function NominationScreen() {
       // Increment the item's nomination count ONLY if NOT in super admin test mode
       if (!isSuperAdminTestMode) {
         await localNominationItems.incrementNominationCount(item.id);
-        // Sync the updated item to Firebase if online
-        const updatedItem = { ...item, nominationCount: (item.nominationCount || 0) + 1, updatedAt: new Date() };
-        await saveNominationItemWithSync(updatedItem, false);
+        // Get the fresh item from DB to get the updated nomination count
+        const freshItem = await localNominationItems.get(item.id);
+        if (freshItem) {
+          // Sync the updated item to Firebase if online
+          await saveNominationItemWithSync(freshItem, false);
+        }
       }
       
       // Mark that this customer has nominated this attempt
