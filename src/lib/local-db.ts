@@ -699,22 +699,27 @@ export const localDB = {
   },
 
   // Update sync item status
-  async updateSyncItemStatus(id: string, status: 'pending' | 'synced' | 'failed', lastError?: string): Promise<void> {
+  async updateSyncItemStatus(id: string, status: 'pending' | 'synced' | 'failed', retryCount?: number): Promise<void> {
     const database = await initDB();
     const item = await database.get('syncQueue', id);
     if (item) {
       item.status = status;
       item.updatedAt = new Date().toISOString();
-      if (lastError) {
-        item.lastError = lastError;
-      }
-      if (item.retryCount !== undefined) {
+      if (retryCount !== undefined) {
+        item.retryCount = retryCount;
+      } else if (item.retryCount !== undefined) {
         item.retryCount += 1;
       } else {
         item.retryCount = 1;
       }
       await database.put('syncQueue', item);
     }
+  },
+
+  // Delete a sync queue item (for cleanup)
+  async deleteSyncItem(id: string): Promise<void> {
+    const database = await initDB();
+    await database.delete('syncQueue', id);
   },
 
   // Clear all sync queue items

@@ -1,7 +1,7 @@
 // Service Worker for ETO FUN PWA - Enhanced Offline Support
-const CACHE_NAME = 'etofun-v2';
-const STATIC_CACHE = 'metofun-static-v2';
-const DYNAMIC_CACHE = 'metofun-dynamic-v2';
+const CACHE_NAME = 'etofun-v3';
+const STATIC_CACHE = 'metofun-static-v3';
+const DYNAMIC_CACHE = 'metofun-dynamic-v3';
 
 // Assets to cache immediately on install
 const STATIC_ASSETS = [
@@ -60,7 +60,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets - cache first
+  // Static assets - cache first with network fallback
   if (isStaticAsset(url.pathname)) {
     event.respondWith(cacheFirst(request));
     return;
@@ -81,10 +81,12 @@ function isStaticAsset(pathname) {
   return /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2)$/.test(pathname);
 }
 
-// Cache first strategy
+// Cache first strategy - serves from cache, falls back to network
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) {
+    // Return cached immediately, then update cache in background
+    updateCacheInBackground(request);
     return cached;
   }
   try {
@@ -95,11 +97,24 @@ async function cacheFirst(request) {
     }
     return response;
   } catch (error) {
-    return new Response('Offline', { status: 503 });
+    return new Response('Offline - Resource not available', { status: 503 });
   }
 }
 
-// Network first with cache fallback
+// Update cache in background without blocking
+async function updateCacheInBackground(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(STATIC_CACHE);
+      cache.put(request, response.clone());
+    }
+  } catch (error) {
+    // Silently fail - we already have cached version
+  }
+}
+
+// Network first with cache fallback - tries network, falls back to cache
 async function networkFirstWithCache(request) {
   try {
     const response = await fetch(request);
@@ -115,13 +130,13 @@ async function networkFirstWithCache(request) {
     }
     // Return offline page for navigation requests
     if (request.mode === 'navigate') {
-      return caches.match('/');
+      return caches.match('/') || new Response('Offline - Please check your connection', { status: 503 });
     }
     return new Response('Offline', { status: 503 });
   }
 }
 
-// Stale while revalidate strategy
+// Stale while revalidate - serves cached version while updating
 async function staleWhileRevalidate(request) {
   const cached = await caches.match(request);
   
@@ -165,7 +180,62 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'CACHE_URLS') {
     const { urls } = event.data;
     caches.open(DYNAMIC_CACHE).then((cache) => {
-      cache.addAll(urls);
+      cache.addAll(urls).catch(err => {
+        console.log('[SW] Some URLs could not be cached:', err);
+      });
     });
   }
+  
+  // Handle cache clear request
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    caches.delete(STATIC_CACHE).then(() => {
+      caches.open(STATIC_CACHE);
+    });
+    caches.delete(DYNAMIC_CACHE).then(() => {
+      caches.open(DYNAMIC_CACHE);
+    });
+  }
+  
+  // Handle pre-cache request for specific pages
+  if (event.data && event.data.type === 'PRECACHE_PAGES') {
+    const { pages } = event.data;
+    caches.open(DYNAMIC_CACHE).then((cache) => {
+      pages.forEach(url => {
+        fetch(url).then(response => {
+          if (response.ok) {
+            cache.put(url, response);
+          }
+        }).catch(() => {});
+      });
+    });
+  }
+});
+
+// Push notifications handler (for future use)
+self.addEventListener('push', (event) => {
+  if (event.data) {
+    const data = event.data.json();
+    const options = {
+      body: data.body || 'New update available',
+      icon: '/icon-192.svg',
+      badge: '/icon-192.svg',
+      vibrate: [100, 50, 100],
+      data: {
+        dateOfArrival: Date.now(),
+        primaryKey: data.id || '1',
+      },
+    };
+    
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'ETO FUN', options)
+    );
+  }
+});
+
+// Notification click handler
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.openWindow('/')
+  );
 });

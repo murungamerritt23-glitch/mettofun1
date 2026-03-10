@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
-import { initSyncService, processSyncQueue } from "@/lib/sync-service";
+import { initSyncService, processSyncQueue, cleanStaleQueueItems, getSyncStatus } from "@/lib/sync-service";
+import { useUIStore } from "@/store";
 
 export function SyncProvider() {
+  const { setOnline } = useUIStore();
+  
   useEffect(() => {
     // Initialize sync service
     const cleanup = initSyncService();
+    
+    // Initial sync status check
+    getSyncStatus().then(status => {
+      setOnline(status.isOnline);
+    });
     
     // Listen for custom sync events
     const handleSyncRequested = () => {
@@ -16,7 +24,10 @@ export function SyncProvider() {
     
     const handleOnline = () => {
       console.log('[Layout] Back online, triggering sync');
-      processSyncQueue();
+      // Clean stale items first
+      cleanStaleQueueItems().then(() => {
+        processSyncQueue();
+      });
     };
     
     window.addEventListener('app-sync-requested', handleSyncRequested);
@@ -37,6 +48,7 @@ export function SyncProvider() {
                   if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                     // New version available
                     console.log('New version available');
+                    // Optionally notify user to refresh
                   }
                 });
               }
@@ -60,11 +72,13 @@ export function SyncProvider() {
     // Handle online/offline events
     window.addEventListener('online', () => {
       console.log('Back online');
+      setOnline(true);
       window.dispatchEvent(new CustomEvent('app-online'));
     });
     
     window.addEventListener('offline', () => {
       console.log('Gone offline');
+      setOnline(false);
       window.dispatchEvent(new CustomEvent('app-offline'));
     });
     
@@ -73,7 +87,7 @@ export function SyncProvider() {
       window.removeEventListener('app-sync-requested', handleSyncRequested);
       window.removeEventListener('app-online', handleOnline);
     };
-  }, []);
+  }, [setOnline]);
   
   return null;
 }

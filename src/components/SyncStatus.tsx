@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useSyncStore } from '@/store';
 import { useUIStore } from '@/store';
-import { RefreshCw, Wifi, WifiOff, AlertCircle, Check, Trash2 } from 'lucide-react';
+import { RefreshCw, Wifi, WifiOff, AlertCircle, Check, Trash2, Clock } from 'lucide-react';
+import { getSyncStatus, triggerSync } from '@/lib/sync-service';
 
 interface SyncStatusProps {
   onManualSync?: () => void;
@@ -13,6 +14,7 @@ export function SyncStatus({ onManualSync }: SyncStatusProps) {
   const { queue, isSyncing, lastSyncTime, removeFromQueue, clearQueue, getPendingCount } = useSyncStore();
   const { isOnline, setOnline } = useUIStore();
   const [showDetails, setShowDetails] = useState(false);
+  const [timeOffline, setTimeOffline] = useState<number | null>(null);
 
   const pendingCount = getPendingCount();
   const failedCount = queue.filter(item => item.status === 'failed').length;
@@ -34,19 +36,59 @@ export function SyncStatus({ onManualSync }: SyncStatusProps) {
     };
   }, [setOnline]);
 
+  // Update time offline periodically
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    
+    if (!isOnline) {
+      interval = setInterval(async () => {
+        const status = await getSyncStatus();
+        setTimeOffline(status.timeSinceLastOnline);
+      }, 60000); // Update every minute
+      
+      // Initial check
+      getSyncStatus().then(status => {
+        setTimeOffline(status.timeSinceLastOnline);
+      });
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+      setTimeOffline(null);
+    };
+  }, [isOnline]);
+
   const formatTime = (date: Date | null) => {
     if (!date) return 'Never';
     return new Date(date).toLocaleTimeString();
   };
 
+  const formatTimeOffline = (ms: number | null) => {
+    if (ms === null) return '';
+    const minutes = Math.floor(ms / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) return `${days}d ${hours % 24}h offline`;
+    if (hours > 0) return `${hours}h ${minutes % 60}m offline`;
+    if (minutes > 0) return `${minutes}m offline`;
+    return 'Just went offline';
+  };
+
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'attempt': return 'Game Attempt';
-      case 'shop_update': return 'Shop Update';
-      case 'item_update': return 'Item Update';
-      case 'settings_update': return 'Settings';
+      case 'shop': return 'Shop';
+      case 'item': return 'Item';
+      case 'nominationItem': return 'Nomination Item';
+      case 'customerNomination': return 'Nomination';
       default: return type;
     }
+  };
+
+  const handleSync = async () => {
+    onManualSync?.();
+    await triggerSync();
   };
 
   if (pendingCount === 0 && isOnline) {
@@ -81,6 +123,12 @@ export function SyncStatus({ onManualSync }: SyncStatusProps) {
               Last sync: {formatTime(lastSyncTime)}
             </span>
           )}
+          {timeOffline && (
+            <span className="text-xs opacity-80 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {formatTimeOffline(timeOffline)}
+            </span>
+          )}
         </div>
 
         {pendingCount > 0 && (
@@ -101,7 +149,7 @@ export function SyncStatus({ onManualSync }: SyncStatusProps) {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onManualSync?.();
+                    handleSync();
                   }}
                   disabled={isSyncing}
                   className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
@@ -114,7 +162,7 @@ export function SyncStatus({ onManualSync }: SyncStatusProps) {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm('Clear all pending items?')) {
+                    if (confirm('Clear all pending items? This cannot be undone.')) {
                       clearQueue();
                     }
                   }}
@@ -154,6 +202,9 @@ export function SyncStatus({ onManualSync }: SyncStatusProps) {
                       {item.lastError && (
                         <p className="text-xs text-red-500 mt-1">{item.lastError}</p>
                       )}
+                      {item.retryCount && item.retryCount > 0 && (
+                        <p className="text-xs text-amber-500 mt-1">Retries: {item.retryCount}</p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 ml-2">
                       {item.status === 'pending' && (
@@ -188,7 +239,10 @@ export function SyncStatus({ onManualSync }: SyncStatusProps) {
 
           {/* Footer */}
           <div className="bg-gray-50 dark:bg-gray-700 px-4 py-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>{isOnline ? 'Online' : 'Offline'}</span>
+            <span className="flex items-center gap-1">
+              {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+              {isOnline ? 'Online' : 'Offline'}
+            </span>
             <span>{failedCount > 0 && `${failedCount} failed`}</span>
           </div>
         </div>
