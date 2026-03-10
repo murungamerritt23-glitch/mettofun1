@@ -1,5 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import type { Shop, Item, GameAttempt, Admin, SyncQueue, CustomerSession, PendingCustomer, AdminLevel, NominationItem, CustomerNomination } from '@/types';
+import { verifyGameAttemptIntegrity } from './game-utils';
 
 interface MetoFunDB extends DBSchema {
   shops: {
@@ -238,33 +239,47 @@ export const localItems = {
 
 // Attempt operations
 export const localAttempts = {
+  // Helper function to verify integrity of attempts
+  async verifyIntegrity(attempts: GameAttempt[]): Promise<GameAttempt[]> {
+    return attempts.map(attempt => {
+      // Skip verification if no hash (old data from before anti-tamper)
+      if (!attempt.integrityHash) {
+        return { ...attempt, integrityVerified: false };
+      }
+      
+      // Verify the hash
+      const isValid = verifyGameAttemptIntegrity(attempt, attempt.integrityHash);
+      return { ...attempt, integrityVerified: isValid };
+    });
+  },
+
   async getAll(includeTest = false): Promise<GameAttempt[]> {
     const database = await initDB();
     const attempts = await database.getAll('attempts');
-    if (includeTest) return attempts;
-    return attempts.filter(a => a.isTest !== true);
+    let filtered = includeTest ? attempts : attempts.filter(a => a.isTest !== true);
+    return this.verifyIntegrity(filtered);
   },
 
   async getByShop(shopId: string, includeTest = false): Promise<GameAttempt[]> {
     const database = await initDB();
     const attempts = await database.getAllFromIndex('attempts', 'by-shop', shopId);
-    if (includeTest) return attempts;
-    return attempts.filter(a => a.isTest !== true);
+    let filtered = includeTest ? attempts : attempts.filter(a => a.isTest !== true);
+    return this.verifyIntegrity(filtered);
   },
 
   async getByPhone(phoneNumber: string, includeTest = false): Promise<GameAttempt[]> {
     const database = await initDB();
     const attempts = await database.getAllFromIndex('attempts', 'by-phone', phoneNumber);
-    if (includeTest) return attempts;
-    return attempts.filter(a => a.isTest !== true);
+    let filtered = includeTest ? attempts : attempts.filter(a => a.isTest !== true);
+    return this.verifyIntegrity(filtered);
   },
 
   async getUnsynced(includeTest = false): Promise<GameAttempt[]> {
     const database = await initDB();
     const all = await database.getAll('attempts');
     const unsynced = all.filter(a => !a.synced);
-    if (includeTest) return unsynced;
-    return unsynced.filter(a => a.isTest !== true);
+    let filtered = includeTest ? unsynced : unsynced.filter(a => a.isTest !== true);
+    return this.verifyIntegrity(filtered);
   },
 
   async save(attempt: GameAttempt): Promise<void> {
@@ -303,13 +318,27 @@ export const localAttempts = {
   async getTestAttempts(): Promise<GameAttempt[]> {
     const database = await initDB();
     const all = await database.getAll('attempts');
-    return all.filter(a => a.isTest === true);
+    const filtered = all.filter(a => a.isTest === true);
+    return this.verifyIntegrity(filtered);
   },
 
   async getRealAttempts(): Promise<GameAttempt[]> {
     const database = await initDB();
     const all = await database.getAll('attempts');
-    return all.filter(a => a.isTest !== true);
+    const filtered = all.filter(a => a.isTest !== true);
+    return this.verifyIntegrity(filtered);
+  },
+
+  // Get all attempts with tampered integrity (for admin review)
+  async getTamperedAttempts(): Promise<GameAttempt[]> {
+    const all = await this.getRealAttempts();
+    return all.filter(a => a.integrityVerified === false);
+  },
+
+  // Get count of tampered attempts for a shop
+  async getTamperedCount(shopId: string): Promise<number> {
+    const shopAttempts = await this.getByShop(shopId);
+    return shopAttempts.filter(a => a.integrityVerified === false).length;
   },
 
   async deleteTestAttempts(): Promise<void> {

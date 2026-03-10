@@ -785,7 +785,7 @@ export default function AdminDashboard() {
   if (activeTab === 'dashboard') {
     // Filter out test attempts from analytics
     const realAttempts = attempts.filter(a => a.isTest !== true);
-    const analytics = realAttempts.length > 0 ? calculateShopAnalytics(realAttempts) : null;
+    const analytics = realAttempts.length > 0 ? calculateShopAnalytics(realAttempts, currentShop?.id || '') : null;
     
     return (
       <div className="min-h-screen flex">
@@ -2292,7 +2292,7 @@ export default function AdminDashboard() {
 
   // Analytics view
   if (activeTab === 'analytics') {
-    const analytics = attempts.length > 0 ? calculateShopAnalytics(attempts) : null;
+    const analytics = attempts.length > 0 ? calculateShopAnalytics(attempts, currentShop?.id || '') : null;
     
     return (
       <div className="min-h-screen flex">
@@ -2312,7 +2312,7 @@ export default function AdminDashboard() {
             
             {analytics && currentShop ? (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="card text-center">
                     <p className="text-gray-400 text-sm">Total Attempts</p>
                     <p className="text-4xl font-bold text-gold-400">{analytics.totalAttempts}</p>
@@ -2324,6 +2324,10 @@ export default function AdminDashboard() {
                   <div className="card text-center">
                     <p className="text-gray-400 text-sm">Win Rate</p>
                     <p className="text-4xl font-bold text-blue-400">{analytics.winRate.toFixed(1)}%</p>
+                  </div>
+                  <div className="card text-center">
+                    <p className="text-gray-400 text-sm">Tampered</p>
+                    <p className="text-4xl font-bold text-red-400">{analytics.tamperedCount || 0}</p>
                   </div>
                 </div>
 

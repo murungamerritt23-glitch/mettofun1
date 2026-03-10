@@ -200,6 +200,10 @@ export interface GameAttempt {
   timestamp: Date;
   synced: boolean;
   isTest?: boolean; // Test mode flag - marks test attempts to exclude from real analytics
+  // Anti-tamper fields
+  integrityHash?: string;      // SHA256 hash of game data for integrity verification
+  integrityVerified?: boolean; // Whether the integrity has been verified
+  hashSeed?: string;           // Random seed used for generating the result
 }
 
 export interface CustomerSession {
@@ -241,6 +245,7 @@ export interface ShopAnalytics {
   totalAttempts: number;
   totalWins: number;
   winRate: number;
+  tamperedCount: number;  // Number of attempts with failed integrity check
   mostSelectedItems: { itemId: string; count: number }[];
   hourlyEngagement: { hour: number; attempts: number }[];
   dailyAttempts: { date: string; attempts: number; wins: number }[];

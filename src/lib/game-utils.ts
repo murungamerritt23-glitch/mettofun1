@@ -110,7 +110,7 @@ export const generateDefaultItems = (shopId: string): Item[] => {
   }));
 };
 
-// Create a game attempt record
+// Create a game attempt record with anti-tamper hash
 export const createGameAttempt = (
   shopId: string,
   phoneNumber: string,
@@ -122,6 +122,23 @@ export const createGameAttempt = (
   selectedItem?: Item,
   isTest?: boolean
 ): GameAttempt => {
+  const timestamp = new Date();
+  // Generate a random seed for this attempt (used in hash)
+  const seed = CryptoJS.lib.WordArray.random(16).toString();
+  
+  // Generate integrity hash
+  const integrityHash = generateGameAttemptHash(
+    shopId,
+    phoneNumber,
+    purchaseAmount,
+    qualifyingAmount,
+    selectedBox,
+    correctNumber,
+    won,
+    timestamp,
+    seed
+  );
+  
   return {
     id: crypto.randomUUID(),
     shopId,
@@ -132,9 +149,12 @@ export const createGameAttempt = (
     correctNumber,
     won,
     selectedItem,
-    timestamp: new Date(),
+    timestamp,
     synced: false,
-    isTest: isTest || false
+    isTest: isTest || false,
+    integrityHash,
+    integrityVerified: true, // Mark as verified since we just created it
+    hashSeed: seed
   };
 };
 
@@ -162,10 +182,13 @@ export const getCurrentDateString = (): string => {
 };
 
 // Calculate analytics from attempts
-export const calculateShopAnalytics = (attempts: GameAttempt[]) => {
+export const calculateShopAnalytics = (attempts: GameAttempt[], shopId: string = '') => {
   const totalAttempts = attempts.length;
   const totalWins = attempts.filter(a => a.won).length;
   const winRate = totalAttempts > 0 ? (totalWins / totalAttempts) * 100 : 0;
+  
+  // Count tampered attempts (failed integrity verification)
+  const tamperedCount = attempts.filter(a => a.integrityVerified === false).length;
   
   // Most selected items
   const itemCounts: Record<string, number> = {};
@@ -204,9 +227,11 @@ export const calculateShopAnalytics = (attempts: GameAttempt[]) => {
     .sort((a, b) => a.date.localeCompare(b.date));
   
   return {
+    shopId,
     totalAttempts,
     totalWins,
     winRate,
+    tamperedCount,
     mostSelectedItems,
     hourlyEngagement,
     dailyAttempts
@@ -236,5 +261,61 @@ export const generateIntegrityHash = (data: any): string => {
 
 export const verifyIntegrity = (data: any, expectedHash: string): boolean => {
   const actualHash = generateIntegrityHash(data);
+  return actualHash === expectedHash;
+};
+
+// Generate anti-tamper hash for a game attempt
+// This creates a hash of all game parameters to verify the result wasn't manipulated
+export const generateGameAttemptHash = (
+  shopId: string,
+  phoneNumber: string,
+  purchaseAmount: number,
+  qualifyingAmount: number,
+  selectedBox: number,
+  correctNumber: number,
+  won: boolean,
+  timestamp: Date,
+  seed: string
+): string => {
+  const data = {
+    shopId,
+    phoneNumber,
+    purchaseAmount,
+    qualifyingAmount,
+    selectedBox,
+    correctNumber,
+    won,
+    timestamp: timestamp.toISOString(),
+    seed
+  };
+  return generateIntegrityHash(data);
+};
+
+// Verify game attempt integrity
+export const verifyGameAttemptIntegrity = (
+  attempt: {
+    shopId: string;
+    phoneNumber: string;
+    purchaseAmount: number;
+    qualifyingAmount: number;
+    selectedBox: number;
+    correctNumber: number;
+    won: boolean;
+    timestamp: Date;
+    hashSeed?: string;
+  },
+  expectedHash: string
+): boolean => {
+  const actualHash = generateGameAttemptHash(
+    attempt.shopId,
+    attempt.phoneNumber,
+    attempt.purchaseAmount,
+    attempt.qualifyingAmount,
+    attempt.selectedBox,
+    attempt.correctNumber,
+    attempt.won,
+    attempt.timestamp,
+    attempt.hashSeed || ''
+  );
   return actualHash === expectedHash;
 };
