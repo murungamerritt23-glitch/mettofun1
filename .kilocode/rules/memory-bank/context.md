@@ -240,6 +240,10 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Updated Android strings.xml app name
   - Updated capacitor.config.ts appName
 
+- [x] Use custom PNG logo from Google Photos on all pages
+  - Replaced SVG logo with custom PNG (metofun-logo.png) on all components
+  - Updated: LoginPage, AdminDashboard, GameMode, SplashScreen
+
 ## Current Structure
 
 | File/Directory | Purpose | Status |
