@@ -417,7 +417,7 @@ export default function GameMode() {
   // Game not started - show authorization form
   if (gameStatus === 'idle') {
     return (
-      <div className="min-h-screen p-4 relative">
+      <div className="min-h-screen p-4 relative overflow-auto">
         {/* Header */}
         <div className="max-w-md mx-auto mb-6">
           <button
@@ -573,7 +573,7 @@ export default function GameMode() {
     const availableNumbers = endNumber - startNumber + 1;
     
     return (
-      <div className="min-h-screen p-4 flex flex-col">
+      <div className="min-h-screen p-4 flex flex-col overflow-auto">
         <div className="max-w-md mx-auto w-full">
           <h2 className="gold-gradient-text text-2xl font-bold text-center mb-2">
             {t.selectNumber}
@@ -627,7 +627,7 @@ export default function GameMode() {
     const activeItems = items.filter(i => i.isActive);
     
     return (
-      <div className="min-h-screen p-4 flex flex-col">
+      <div className="min-h-screen p-4 flex flex-col overflow-auto">
         <div className="max-w-md mx-auto w-full">
           <h2 className="gold-gradient-text text-2xl font-bold text-center mb-2">
             {language === 'sw' ? 'Chagua Ombi lako' : 'Select Your Prize'}
@@ -741,7 +741,7 @@ export default function GameMode() {
   // Result screen
   if (showResult) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center">
+      <div className="min-h-screen p-4 flex items-center justify-center overflow-auto">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -818,7 +818,7 @@ export default function GameMode() {
 
   // Main game screen - box selection
   return (
-    <div className="min-h-screen p-4">
+    <div className="min-h-screen p-4 overflow-auto">
       {/* Header */}
       <div className="max-w-2xl mx-auto mb-6">
         <div className="flex items-center justify-between mb-4">

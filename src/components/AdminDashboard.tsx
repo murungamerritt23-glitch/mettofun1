@@ -799,7 +799,7 @@ export default function AdminDashboard() {
           admin={admin}
         />
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-6xl mx-auto">
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">Dashboard</h1>
             
@@ -1199,7 +1199,7 @@ export default function AdminDashboard() {
           admin={admin}
         />
         
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-2xl mx-auto">
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">My Shop</h1>
             
@@ -1484,7 +1484,7 @@ export default function AdminDashboard() {
           admin={admin}
         />
         
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-4xl mx-auto">
             <div className="flex justify-between items-center mb-6">
               <h1 className="gold-gradient-text text-3xl font-bold">Customers</h1>
@@ -1697,7 +1697,7 @@ export default function AdminDashboard() {
           admin={admin}
         />
         
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-6">
               <h1 className="gold-gradient-text text-3xl font-bold">Shops</h1>
@@ -1872,7 +1872,7 @@ export default function AdminDashboard() {
           admin={admin}
         />
         
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-6xl mx-auto">
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">
               Items - {currentShop?.shopName || 'No Shop Selected'}
@@ -2002,7 +2002,7 @@ export default function AdminDashboard() {
             admin={admin}
           />
           
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-6 overflow-auto">
             <div className="max-w-2xl mx-auto text-center py-12">
               <Zap size={48} className="mx-auto text-gray-600 mb-4" />
               <p className="text-gray-500">Select a shop to manage qualifying purchase amount</p>
@@ -2030,7 +2030,7 @@ export default function AdminDashboard() {
           admin={admin}
         />
         
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-2xl mx-auto">
             <h1 className="gold-gradient-text text-3xl font-bold mb-2">
               Qualifying Purchase
@@ -2181,7 +2181,7 @@ export default function AdminDashboard() {
           admin={admin}
         />
         
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-6xl mx-auto">
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">Game Attempts</h1>
             
@@ -2385,7 +2385,7 @@ export default function AdminDashboard() {
           admin={admin}
         />
         
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-6xl mx-auto">
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">Staff Management</h1>
             
@@ -2477,7 +2477,7 @@ export default function AdminDashboard() {
           admin={admin}
         />
         
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-2xl mx-auto">
             <h1 className="gold-gradient-text text-3xl font-bold mb-6">Settings</h1>
             
