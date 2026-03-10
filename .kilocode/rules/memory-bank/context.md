@@ -306,3 +306,4 @@ export async function GET() {
 | Today | Improve nomination screen UX - tap to nominate, exit button resets session |
 | Today | Add refresh button on customer mode to reset session - clears phone and purchase amount fields for new customer |
 | Today | Hide all analytics from agent admin dashboard - only sees action buttons, not metrics |
+| Today | Fix nomination count not updating in Firebase - get fresh item from IndexedDB after incrementing |
