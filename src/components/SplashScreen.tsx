@@ -36,7 +36,7 @@ export default function SplashScreen() {
           {/* Animated ETO FUN Logo */}
           <div className="relative mb-8">
             <motion.img
-              src="/metofun-logo.svg"
+              src="/metofun-logo.png"
               alt="ETO FUN"
               className="w-64 h-auto"
               initial={{ scale: 0.8, opacity: 0 }}

@@ -318,7 +318,7 @@ export default function LoginPage() {
             className="inline-flex items-center justify-center mb-4"
           >
             <img 
-              src="/metofun-logo.svg" 
+              src="/metofun-logo.png" 
               alt="ETO FUN" 
               className="w-24 h-auto"
             />

@@ -455,7 +455,7 @@ export default function GameMode() {
           {currentShop && (
             <div className="card text-center mb-6">
               <img 
-                src="/metofun-logo.svg" 
+                src="/metofun-logo.png" 
                 alt="ETO FUN" 
                 className="w-32 h-auto mx-auto mb-3"
               />
