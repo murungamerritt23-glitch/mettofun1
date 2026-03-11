@@ -504,22 +504,14 @@ export default function AdminDashboard() {
               Unlock
             </button>
             
-            {/* Back navigation based on admin type */}
-            {isShopAdmin ? (
-              <button
-                onClick={() => setCurrentView('customer')}
-                className="text-gray-400 hover:text-gold-400 text-sm w-full text-center"
-              >
-                ← Back to Customer Mode
-              </button>
-            ) : (
-              <button
-                onClick={logout}
-                className="text-gray-400 hover:text-gold-400 text-sm w-full text-center"
-              >
-                ← Back to Login
-              </button>
-            )}
+            {/* Back navigation and logout - More prominent for all admin types */}
+            <button
+              onClick={logout}
+              className="mt-4 flex items-center justify-center gap-2 w-full py-2 px-3 bg-red-900/50 hover:bg-red-800/50 text-red-400 hover:text-red-300 rounded-lg text-sm transition-colors"
+            >
+              <LogOut size={16} />
+              Logout / Back to Login
+            </button>
           </div>
         </div>
       </div>
