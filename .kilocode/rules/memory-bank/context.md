@@ -343,3 +343,4 @@ export async function GET() {
 | Today | Hide all analytics from agent admin dashboard - only sees action buttons, not metrics |
 | Today | Fix nomination count not updating in Firebase - get fresh item from IndexedDB after incrementing |
 | Today | Update branding from METOFUN to ETO FUN - remove M from logo and app name |
+| Today | Enhance offline feature for extended operation - auto sync every 5 min, exponential backoff, queue limits, stale cleanup, batch processing, time offline tracking |
