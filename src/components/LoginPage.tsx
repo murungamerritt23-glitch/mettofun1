@@ -241,7 +241,7 @@ export default function LoginPage() {
     const demoAdmin: Admin = {
       id: 'demo-admin',
       email: 'demo@metofun.com',
-      phone: '+255123456789',
+      phone: '+254123456789',
       name: `Demo ${levelNames[adminLevel]}`,
       level: adminLevel,
       createdAt: new Date(),

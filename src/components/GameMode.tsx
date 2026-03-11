@@ -342,7 +342,7 @@ export default function GameMode() {
 
   const handleDemoMode = () => {
     setDemoMode(true);
-    setPhoneNumber('255700000000');
+    setPhoneNumber('254700000000');
     setPurchaseAmount('15000');
     handleAuthorize();
   };
@@ -508,7 +508,7 @@ export default function GameMode() {
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="input"
-                  placeholder="+255 700 000 000"
+                  placeholder="+254 700 000 000"
                 />
               </div>
               

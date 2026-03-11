@@ -200,7 +200,7 @@ describe('createGameAttempt', () => {
   it('should create a game attempt with required fields', () => {
     const attempt = createGameAttempt(
       'shop1',
-      '255123456789',
+      '254123456789',
       15000,
       10000,
       5,
@@ -211,7 +211,7 @@ describe('createGameAttempt', () => {
     );
 
     expect(attempt.shopId).toBe('shop1');
-    expect(attempt.phoneNumber).toBe('255123456789');
+    expect(attempt.phoneNumber).toBe('254123456789');
     expect(attempt.purchaseAmount).toBe(15000);
     expect(attempt.qualifyingAmount).toBe(10000);
     expect(attempt.selectedBox).toBe(5);
@@ -225,7 +225,7 @@ describe('createGameAttempt', () => {
   it('should handle test flag', () => {
     const attempt = createGameAttempt(
       'shop1',
-      '255123456789',
+      '254123456789',
       15000,
       10000,
       5,
@@ -241,7 +241,7 @@ describe('createGameAttempt', () => {
     const item = { id: '1', name: 'Prize', value: 5000, isActive: true } as any;
     const attempt = createGameAttempt(
       'shop1',
-      '255123456789',
+      '254123456789',
       15000,
       10000,
       5,
@@ -257,28 +257,28 @@ describe('createGameAttempt', () => {
 describe('formatPhoneNumber', () => {
   it('should remove leading zero and add country code', () => {
     const result = formatPhoneNumber('0712345678');
-    expect(result).toBe('255712345678');
+    expect(result).toBe('254712345678');
   });
 
   it('should add country code if not present', () => {
     const result = formatPhoneNumber('712345678');
-    expect(result).toBe('255712345678');
+    expect(result).toBe('254712345678');
   });
 
   it('should keep country code if already present', () => {
-    const result = formatPhoneNumber('255712345678');
-    expect(result).toBe('255712345678');
+    const result = formatPhoneNumber('254712345678');
+    expect(result).toBe('254712345678');
   });
 
   it('should remove non-digit characters', () => {
-    const result = formatPhoneNumber('+255-712-345-678');
-    expect(result).toBe('255712345678');
+    const result = formatPhoneNumber('+254-712-345-678');
+    expect(result).toBe('254712345678');
   });
 });
 
 describe('isValidPhoneNumber', () => {
   it('should return true for valid phone numbers', () => {
-    expect(isValidPhoneNumber('255712345678')).toBe(true);
+    expect(isValidPhoneNumber('254712345678')).toBe(true);
     expect(isValidPhoneNumber('712345678')).toBe(true);
     expect(isValidPhoneNumber('123456789')).toBe(true);
   });
@@ -302,7 +302,7 @@ describe('calculateShopAnalytics', () => {
     {
       id: '1',
       shopId: 'shop1',
-      phoneNumber: '255123456789',
+      phoneNumber: '254123456789',
       purchaseAmount: 10000,
       qualifyingAmount: 10000,
       selectedBox: 1,
@@ -316,7 +316,7 @@ describe('calculateShopAnalytics', () => {
     {
       id: '2',
       shopId: 'shop1',
-      phoneNumber: '255987654321',
+      phoneNumber: '254987654321',
       purchaseAmount: 15000,
       qualifyingAmount: 10000,
       selectedBox: 2,

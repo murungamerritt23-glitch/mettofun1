@@ -166,8 +166,8 @@ export const formatPhoneNumber = (phone: string): string => {
   // If starts with 0, remove it
   const cleaned = digits.startsWith('0') ? digits.substring(1) : digits;
   
-  // If doesn't have country code, add 255 (Tanzania)
-  return cleaned.startsWith('255') ? cleaned : `255${cleaned}`;
+  // If doesn't have country code, add 254 (Kenya)
+  return cleaned.startsWith('254') ? cleaned : `254${cleaned}`;
 };
 
 // Validate phone number format
