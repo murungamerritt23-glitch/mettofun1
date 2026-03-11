@@ -18,12 +18,14 @@ export interface SyncTask {
 
 // Configuration for offline support
 const SYNC_CONFIG = {
-  // Auto-sync interval in milliseconds (5 minutes)
+  // Initial sync delay in milliseconds (2 seconds after going online)
+  INITIAL_SYNC_DELAY: 2000,
+  // Auto-sync interval in milliseconds (5 minutes) - only while online
   AUTO_SYNC_INTERVAL: 5 * 60 * 1000,
   // Maximum retry attempts before giving up
-  MAX_RETRY_ATTEMPTS: 5,
-  // Base delay for exponential backoff (seconds)
-  BASE_RETRY_DELAY: 2,
+  MAX_RETRY_ATTEMPTS: 3,
+  // Base delay for exponential backoff (seconds) - wait longer between retries
+  BASE_RETRY_DELAY: 10,
   // Maximum queue size (older items will be dropped if exceeded)
   MAX_QUEUE_SIZE: 1000,
   // Maximum age of queued items before considered stale (7 days)
@@ -39,6 +41,7 @@ let syncInProgress = false;
 let onlineStatusListeners: Set<() => void> = new Set();
 let autoSyncInterval: ReturnType<typeof setInterval> | null = null;
 let lastOnlineTime: number | null = null;
+let hasInitialSyncBeenTriggered = false;
 
 // Check if online
 export const isOnline = (): boolean => {
@@ -52,10 +55,10 @@ export const getTimeSinceLastOnline = (): number | null => {
   return Date.now() - lastOnlineTime;
 };
 
-// Calculate exponential backoff delay
+// Calculate exponential backoff delay - much longer to avoid numerous attempts
 const getRetryDelay = (retryCount: number): number => {
   const delay = SYNC_CONFIG.BASE_RETRY_DELAY * Math.pow(2, retryCount);
-  // Cap at 5 minutes
+  // Cap at 5 minutes max
   return Math.min(delay * 1000, 5 * 60 * 1000);
 };
 
@@ -66,102 +69,8 @@ const isQueueFull = async (): Promise<boolean> => {
   return pendingItems.length >= SYNC_CONFIG.MAX_QUEUE_SIZE;
 };
 
-// Initialize online/offline detection
-export const initSyncService = (): (() => void) => {
-  if (typeof window === 'undefined') {
-    return () => {};
-  }
-
-  const handleOnline = () => {
-    console.log('[Sync] Back online - starting sync');
-    lastOnlineTime = Date.now();
-    useUIStore.getState().setOnline(true);
-    
-    // Clean stale queue items before syncing
-    cleanStaleQueueItems();
-    
-    // Trigger sync
-    processSyncQueue();
-    
-    // Start auto-sync
-    startAutoSync();
-  };
-
-  const handleOffline = () => {
-    console.log('[Sync] Gone offline');
-    useUIStore.getState().setOnline(false);
-    
-    // Stop auto-sync when offline
-    stopAutoSync();
-  };
-
-  // Set initial state
-  useUIStore.getState().setOnline(navigator.onLine);
-  lastOnlineTime = navigator.onLine ? Date.now() : null;
-
-  // Add event listeners
-  window.addEventListener('online', handleOnline);
-  window.addEventListener('offline', handleOffline);
-
-  // Start auto-sync if online
-  if (navigator.onLine) {
-    startAutoSync();
-  }
-
-  // Register background sync if available
-  registerBackgroundSync();
-
-  // Return cleanup function
-  return () => {
-    window.removeEventListener('online', handleOnline);
-    window.removeEventListener('offline', handleOffline);
-    stopAutoSync();
-  };
-};
-
-// Start automatic periodic sync
-const startAutoSync = (): void => {
-  if (autoSyncInterval) return;
-  
-  autoSyncInterval = setInterval(() => {
-    if (isOnline()) {
-      console.log('[Sync] Auto-sync triggered');
-      processSyncQueue();
-    }
-  }, SYNC_CONFIG.AUTO_SYNC_INTERVAL);
-  
-  console.log('[Sync] Auto-sync started with interval:', SYNC_CONFIG.AUTO_SYNC_INTERVAL, 'ms');
-};
-
-// Stop automatic periodic sync
-const stopAutoSync = (): void => {
-  if (autoSyncInterval) {
-    clearInterval(autoSyncInterval);
-    autoSyncInterval = null;
-    console.log('[Sync] Auto-sync stopped');
-  }
-};
-
-// Register for background sync (Chrome/Edge)
-const registerBackgroundSync = async (): Promise<void> => {
-  if (typeof window === 'undefined') return;
-  
-  try {
-    // Check if Background Sync is supported
-    if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
-      const registration = await navigator.serviceWorker.ready;
-      await (registration as any).sync.register('sync-game-data');
-      console.log('[Sync] Background sync registered');
-    } else {
-      console.log('[Sync] Background sync not supported, using interval-based sync');
-    }
-  } catch (error) {
-    console.log('[Sync] Background sync registration failed:', error);
-  }
-};
-
 // Clean stale queue items (older than MAX_QUEUE_AGE_MS)
-export const cleanStaleQueueItems = async (): Promise<void> => {
+const cleanStaleQueueItems = async (): Promise<void> => {
   const { localDB } = await import('./local-db');
   const pendingItems = await localDB.getPendingSyncItems();
   const now = Date.now();
@@ -180,30 +89,105 @@ export const cleanStaleQueueItems = async (): Promise<void> => {
   }
 };
 
-// Clean old synced data from IndexedDB
-export const cleanOldSyncedData = async (): Promise<number> => {
-  const { localAttempts } = await import('./local-db');
-  let cleaned = 0;
-  const now = Date.now();
-  
-  try {
-    // Get all synced attempts older than MAX_DATA_AGE_MS
-    const allAttempts = await localAttempts.getAll(true);
-    for (const attempt of allAttempts) {
-      if (attempt.synced) {
-        const attemptTime = new Date(attempt.timestamp).getTime();
-        if (now - attemptTime > SYNC_CONFIG.MAX_DATA_AGE_MS) {
-          // Keep attempts for analytics - just log for now
-          // In production, you might want to archive them differently
-          console.log('[Sync] Old synced attempt found:', attempt.id);
-        }
+// Initialize online/offline detection
+export const initSyncService = (): (() => void) => {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
+  const handleOnline = () => {
+    console.log('[Sync] Back online - starting sync');
+    lastOnlineTime = Date.now();
+    useUIStore.getState().setOnline(true);
+    
+    // Clean stale queue items before syncing
+    cleanStaleQueueItems();
+    
+    // Trigger immediate sync after 2 seconds
+    setTimeout(() => {
+      if (isOnline()) {
+        console.log('[Sync] Running delayed sync after 2 seconds');
+        processSyncQueue();
       }
-    }
-  } catch (error) {
-    console.error('[Sync] Error cleaning old data:', error);
+    }, SYNC_CONFIG.INITIAL_SYNC_DELAY);
+    
+    // Start periodic auto-sync while online
+    startAutoSync();
+  };
+
+  const handleOffline = () => {
+    console.log('[Sync] Gone offline');
+    useUIStore.getState().setOnline(false);
+    lastOnlineTime = Date.now();
+    
+    // Stop auto-sync when offline - NO MORE ATTEMPTS WHILE OFFLINE
+    stopAutoSync();
+  };
+
+  // Set initial state
+  useUIStore.getState().setOnline(navigator.onLine);
+  lastOnlineTime = navigator.onLine ? Date.now() : null;
+
+  // Add event listeners
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
+
+  // Trigger initial sync if already online
+  if (navigator.onLine && !hasInitialSyncBeenTriggered) {
+    hasInitialSyncBeenTriggered = true;
+    // Initial sync after 2 seconds
+    setTimeout(() => {
+      if (isOnline()) {
+        console.log('[Sync] Initial sync on app load');
+        processSyncQueue();
+      }
+    }, SYNC_CONFIG.INITIAL_SYNC_DELAY);
+  }
+
+  // Start auto-sync if online
+  if (navigator.onLine) {
+    startAutoSync();
+  }
+
+  // Return cleanup function
+  return () => {
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
+    stopAutoSync();
+  };
+};
+
+// Start automatic periodic sync - ONLY runs while online
+const startAutoSync = (): void => {
+  if (autoSyncInterval) return;
+  
+  // Don't start if offline
+  if (!isOnline()) {
+    console.log('[Sync] Not starting auto-sync - offline');
+    return;
   }
   
-  return cleaned;
+  autoSyncInterval = setInterval(() => {
+    if (isOnline()) {
+      console.log('[Sync] Auto-sync triggered');
+      processSyncQueue();
+    } else {
+      // Stop auto-sync if we go offline
+      console.log('[Sync] Auto-sync stopping - offline');
+      stopAutoSync();
+    }
+  }, SYNC_CONFIG.AUTO_SYNC_INTERVAL);
+  
+  console.log('[Sync] Auto-sync started with interval:', SYNC_CONFIG.AUTO_SYNC_INTERVAL, 'ms');
+};
+
+// Stop automatic periodic sync
+const stopAutoSync = (): void => {
+  if (autoSyncInterval) {
+    clearInterval(autoSyncInterval);
+    autoSyncInterval = null;
+    console.log('[Sync] Auto-sync stopped');
+  }
 };
 
 // Add item to sync queue (called when offline)
@@ -255,10 +239,16 @@ export const queueForSync = async (task: Omit<SyncTask, 'id' | 'timestamp' | 're
   return true;
 };
 
-// Process the sync queue
+// Process the sync queue - ONLY runs when online
 export const processSyncQueue = async (): Promise<void> => {
-  if (syncInProgress || !isOnline()) {
-    console.log('[Sync] Already syncing or offline, skipping');
+  // DON'T SYNC IF OFFLINE - wait for internet connection
+  if (!isOnline()) {
+    console.log('[Sync] Offline - not attempting sync, waiting for connection');
+    return;
+  }
+  
+  if (syncInProgress) {
+    console.log('[Sync] Already syncing, skipping');
     return;
   }
 
@@ -283,19 +273,19 @@ export const processSyncQueue = async (): Promise<void> => {
         break;
       }
       
-      // Skip if retry count exceeded
-      const retryCount = item.retryCount ?? 0;
-      if (retryCount >= SYNC_CONFIG.MAX_RETRY_ATTEMPTS) {
+      // Skip if retry count exceeded - don't keep trying failed items
+      const currentRetryCount = item.retryCount || 0;
+      if (currentRetryCount >= SYNC_CONFIG.MAX_RETRY_ATTEMPTS) {
         console.log(`[Sync] Skipping item ${item.id} - max retries exceeded`);
-        await localDB.updateSyncItemStatus(item.id, 'failed');
+        await localDB.updateSyncItemStatus(item.id, 'failed', currentRetryCount);
         failed++;
         continue;
       }
       
       // Check if we should wait before retrying (exponential backoff)
-      if (retryCount > 0 && item.updatedAt) {
+      if (currentRetryCount > 0 && item.updatedAt) {
         const lastAttempt = new Date(item.updatedAt).getTime();
-        const delay = getRetryDelay(retryCount);
+        const delay = getRetryDelay(currentRetryCount);
         if (Date.now() - lastAttempt < delay) {
           console.log(`[Sync] Skipping item ${item.id} - waiting for backoff`);
           continue;
@@ -317,7 +307,7 @@ export const processSyncQueue = async (): Promise<void> => {
         console.error(`[Sync] Error syncing ${item.type}:`, error);
         
         // Increment retry count
-        const newRetryCount = (item.retryCount || 0) + 1;
+        const newRetryCount = currentRetryCount + 1;
         await localDB.updateSyncItemStatus(item.id, 'pending', newRetryCount);
         useSyncStore.getState().updateQueueItem(item.id, { 
           status: 'pending',

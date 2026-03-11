@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { initSyncService, processSyncQueue, cleanStaleQueueItems, getSyncStatus } from "@/lib/sync-service";
+import { initSyncService, processSyncQueue, getSyncStatus } from "@/lib/sync-service";
 import { useUIStore } from "@/store";
 
 export function SyncProvider() {
@@ -24,10 +24,7 @@ export function SyncProvider() {
     
     const handleOnline = () => {
       console.log('[Layout] Back online, triggering sync');
-      // Clean stale items first
-      cleanStaleQueueItems().then(() => {
-        processSyncQueue();
-      });
+      processSyncQueue();
     };
     
     window.addEventListener('app-sync-requested', handleSyncRequested);
@@ -48,7 +45,6 @@ export function SyncProvider() {
                   if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                     // New version available
                     console.log('New version available');
-                    // Optionally notify user to refresh
                   }
                 });
               }
@@ -62,7 +58,6 @@ export function SyncProvider() {
         navigator.serviceWorker.addEventListener('message', (event) => {
           if (event.data && event.data.type === 'SYNC_REQUESTED') {
             console.log('Sync requested from SW');
-            // Trigger sync in the app
             window.dispatchEvent(new CustomEvent('app-sync-requested'));
           }
         });
