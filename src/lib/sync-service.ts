@@ -42,6 +42,7 @@ let onlineStatusListeners: Set<() => void> = new Set();
 let autoSyncInterval: ReturnType<typeof setInterval> | null = null;
 let lastOnlineTime: number | null = null;
 let hasInitialSyncBeenTriggered = false;
+let userIsActive = false; // Pause sync when user is actively editing
 
 // Check if online
 export const isOnline = (): boolean => {
@@ -168,6 +169,12 @@ const startAutoSync = (): void => {
   }
   
   autoSyncInterval = setInterval(() => {
+    // Don't sync if user is active
+    if (userIsActive) {
+      console.log('[Sync] Auto-sync skipped - user is active');
+      return;
+    }
+    
     if (isOnline()) {
       console.log('[Sync] Auto-sync triggered');
       processSyncQueue();
@@ -245,6 +252,12 @@ export const processSyncQueue = async (): Promise<void> => {
   // DON'T SYNC IF OFFLINE - wait for internet connection
   if (!isOnline()) {
     console.log('[Sync] Offline - not attempting sync, waiting for connection');
+    return;
+  }
+  
+  // DON'T SYNC IF USER IS ACTIVELY EDITING - pause for better UX
+  if (userIsActive) {
+    console.log('[Sync] User is active - pausing sync');
     return;
   }
   
@@ -620,3 +633,12 @@ export const getSyncStatus = async (): Promise<{
 
 // Export configuration for debugging
 export const getSyncConfig = () => SYNC_CONFIG;
+
+// Set user active state - sync will pause while user is editing
+export const setUserActive = (active: boolean): void => {
+  userIsActive = active;
+  console.log(`[Sync] User ${active ? 'active (sync paused)' : 'inactive (sync resumed)'}`);
+};
+
+// Check if user is active
+export const isUserActive = (): boolean => userIsActive;

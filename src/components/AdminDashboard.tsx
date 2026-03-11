@@ -11,7 +11,7 @@ import {
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
 import { firebaseShops, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
-import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline } from '@/lib/sync-service';
+import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier, ItemOfTheDay, NominationItem } from '@/types';
@@ -685,6 +685,7 @@ export default function AdminDashboard() {
     
     setEditingShop(null);
     setIsCreatingShop(false);
+    setUserActive(false);
     // Refresh from Firebase or local
     try {
       const fbShops = await firebaseShops.getAllActive();
@@ -756,6 +757,7 @@ export default function AdminDashboard() {
   const handleSaveItem = async (item: Item) => {
     await saveItemWithSync(item, !editingItem);
     setEditingItem(null);
+    setUserActive(false);
     loadItems();
   };
 
@@ -1703,7 +1705,10 @@ export default function AdminDashboard() {
               <h1 className="gold-gradient-text text-3xl font-bold">Shops</h1>
               {(permissions.canManageAllShops || permissions.canManageAssignedShops) && (
                 <button
-                  onClick={() => setIsCreatingShop(true)}
+                  onClick={() => {
+                    setIsCreatingShop(true);
+                    setUserActive(true);
+                  }}
                   className="btn-gold flex items-center gap-2"
                 >
                   <Plus size={20} />
@@ -1729,6 +1734,7 @@ export default function AdminDashboard() {
                     onCancel={() => {
                       setIsCreatingShop(false);
                       setEditingShop(null);
+                      setUserActive(false);
                     }}
                     isShopAdmin={isShopAdmin}
                     adminInfo={admin ? { id: admin.id, name: admin.name, level: admin.level } : null}
@@ -1830,7 +1836,10 @@ export default function AdminDashboard() {
                       {(permissions.canManageAllShops || permissions.canManageAssignedShops) && (
                         <>
                           <button
-                            onClick={() => setEditingShop(shop)}
+                            onClick={() => {
+                              setEditingShop(shop);
+                              setUserActive(true);
+                            }}
                             className="p-2 text-blue-500 hover:bg-blue-900/30 rounded"
                           >
                             <Edit size={20} />
@@ -1902,7 +1911,10 @@ export default function AdminDashboard() {
                         {permissions.canEditItems && (
                           <div className="flex gap-1">
                             <button
-                              onClick={() => setEditingItem(item)}
+                              onClick={() => {
+                                setEditingItem(item);
+                                setUserActive(true);
+                              }}
                               className="p-1 text-blue-500 hover:bg-blue-900/30 rounded"
                             >
                               <Edit size={16} />
@@ -1963,7 +1975,10 @@ export default function AdminDashboard() {
                         item={editingItem}
                         qualifyingPurchase={currentShop.qualifyingPurchase}
                         onSave={handleSaveItem}
-                        onCancel={() => setEditingItem(null)}
+                        onCancel={() => {
+                          setEditingItem(null);
+                          setUserActive(false);
+                        }}
                       />
                     </motion.div>
                   )}
