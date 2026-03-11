@@ -70,7 +70,7 @@ const isQueueFull = async (): Promise<boolean> => {
 };
 
 // Clean stale queue items (older than MAX_QUEUE_AGE_MS)
-const cleanStaleQueueItems = async (): Promise<void> => {
+export const cleanStaleQueueItems = async (): Promise<void> => {
   const { localDB } = await import('./local-db');
   const pendingItems = await localDB.getPendingSyncItems();
   const now = Date.now();
@@ -240,6 +240,7 @@ export const queueForSync = async (task: Omit<SyncTask, 'id' | 'timestamp' | 're
 };
 
 // Process the sync queue - ONLY runs when online
+// Uses setTimeout to avoid blocking user interactions
 export const processSyncQueue = async (): Promise<void> => {
   // DON'T SYNC IF OFFLINE - wait for internet connection
   if (!isOnline()) {
@@ -253,9 +254,12 @@ export const processSyncQueue = async (): Promise<void> => {
   }
 
   syncInProgress = true;
-  useSyncStore.getState().setSyncing(true);
 
   try {
+    // Use setTimeout to defer and not block the main thread
+    // This prevents UI freezing while user is entering data
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Get pending items from IndexedDB
     const { localDB } = await import('./local-db');
     let pendingItems = await localDB.getPendingSyncItems();
@@ -274,7 +278,7 @@ export const processSyncQueue = async (): Promise<void> => {
       }
       
       // Skip if retry count exceeded - don't keep trying failed items
-      const currentRetryCount = item.retryCount || 0;
+      const currentRetryCount = (item.retryCount ?? 0) as number;
       if (currentRetryCount >= SYNC_CONFIG.MAX_RETRY_ATTEMPTS) {
         console.log(`[Sync] Skipping item ${item.id} - max retries exceeded`);
         await localDB.updateSyncItemStatus(item.id, 'failed', currentRetryCount);
@@ -306,22 +310,26 @@ export const processSyncQueue = async (): Promise<void> => {
       } catch (error) {
         console.error(`[Sync] Error syncing ${item.type}:`, error);
         
-        // Increment retry count
+        // Increment retry count - just update IndexedDB, don't trigger UI updates
         const newRetryCount = currentRetryCount + 1;
         await localDB.updateSyncItemStatus(item.id, 'pending', newRetryCount);
-        useSyncStore.getState().updateQueueItem(item.id, { 
-          status: 'pending',
-          retryCount: newRetryCount,
-          lastError: error instanceof Error ? error.message : 'Unknown error'
-        });
+        // Don't update UI store here - causes re-renders!
+        failed++;
       }
+      
+      // Small delay between items to not block UI
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
 
+    // Update UI store only once at the end
     useSyncStore.getState().setLastSyncTime(new Date());
+    useSyncStore.getState().setSyncing(false);
     console.log(`[Sync] Sync complete: ${processed} processed, ${failed} failed, ${pendingItems.length - processed - failed} remaining`);
+  } catch (error) {
+    console.error('[Sync] Sync error:', error);
+    useSyncStore.getState().setSyncing(false);
   } finally {
     syncInProgress = false;
-    useSyncStore.getState().setSyncing(false);
   }
 };
 
