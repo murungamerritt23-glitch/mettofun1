@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [termsContent, setTermsContent] = useState('');
   const [showTerms, setShowTerms] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showRealLogin, setShowRealLogin] = useState(false);
   
   const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
   const { setCurrentView } = useUIStore();
@@ -398,25 +399,43 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-700">
-            <p className="text-gray-500 text-xs text-center mb-3">Demo Logins</p>
-            <button
-              onClick={() => handleDemoLogin('super_admin')}
-              className="btn-gold w-full mb-2"
-            >
-              Demo Login (Super Admin)
-            </button>
-            <button
-              onClick={() => handleDemoLogin('agent_admin')}
-              className="btn-gold-outline w-full mb-2"
-            >
-              Demo Login (Agent Admin)
-            </button>
-            <button
-              onClick={() => handleDemoLogin('shop_admin')}
-              className="text-gray-400 text-sm hover:text-gold-400 w-full text-center mb-3"
-            >
-              Demo Login (Shop Admin)
-            </button>
+            {showRealLogin ? (
+              <button
+                onClick={() => setShowRealLogin(false)}
+                className="text-gray-400 text-sm hover:text-gold-400 w-full text-center mb-3"
+              >
+                ← Back to Demo Logins
+              </button>
+            ) : (
+              <>
+                <p className="text-gray-500 text-xs text-center mb-3">Demo Logins</p>
+                <button
+                  onClick={() => handleDemoLogin('super_admin')}
+                  className="btn-gold w-full mb-2"
+                >
+                  Demo Login (Super Admin)
+                </button>
+                <button
+                  onClick={() => handleDemoLogin('agent_admin')}
+                  className="btn-gold-outline w-full mb-2"
+                >
+                  Demo Login (Agent Admin)
+                </button>
+                <button
+                  onClick={() => handleDemoLogin('shop_admin')}
+                  className="text-gray-400 text-sm hover:text-gold-400 w-full text-center mb-3"
+                >
+                  Demo Login (Shop Admin)
+                </button>
+
+                <button
+                  onClick={() => setShowRealLogin(true)}
+                  className="mt-4 text-gold-500 text-sm hover:text-gold-400 w-full text-center font-semibold"
+                >
+                  🔑 Use Real Credentials Instead
+                </button>
+              </>
+            )}
 
             {!isFirebaseConfigured && (
               <button
