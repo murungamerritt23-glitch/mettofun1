@@ -333,6 +333,21 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
+                Admin Role
+              </label>
+              <select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value as AdminLevel)}
+                className="input"
+              >
+                <option value="super_admin">Super Admin</option>
+                <option value="agent_admin">Agent Admin</option>
+                <option value="shop_admin">Shop Admin</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Email Address
               </label>
               <div className="relative">
