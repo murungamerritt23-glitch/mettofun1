@@ -320,11 +320,11 @@ export default function LoginPage() {
           >
             <img 
               src="/metofun-logo.png" 
-              alt="ETO FUN" 
+              alt="METOFUN" 
               className="w-24 h-auto"
             />
           </motion.div>
-          <h1 className="gold-gradient-text text-4xl font-bold">EtoFun</h1>
+          <h1 className="gold-gradient-text text-4xl font-bold">metofun</h1>
           <p className="text-gray-400 mt-2">Admin Login</p>
         </div>
 
