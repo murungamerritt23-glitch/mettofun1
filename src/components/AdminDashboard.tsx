@@ -2888,7 +2888,7 @@ function AdminSidebar({
           <div className="mb-8">
             <img 
               src="/metofun-logo.png" 
-              alt="ETO FUN" 
+              alt="METOFUN" 
               className="w-32 h-auto"
             />
           </div>
