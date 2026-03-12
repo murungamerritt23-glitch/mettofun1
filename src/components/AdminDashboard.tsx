@@ -506,7 +506,10 @@ export default function AdminDashboard() {
             
             {/* Back navigation and logout - More prominent for all admin types */}
             <button
-              onClick={logout}
+              onClick={() => {
+                logout();
+                setCurrentView('login');
+              }}
               className="mt-4 flex items-center justify-center gap-2 w-full py-2 px-3 bg-red-900/50 hover:bg-red-800/50 text-red-400 hover:text-red-300 rounded-lg text-sm transition-colors"
             >
               <LogOut size={16} />
