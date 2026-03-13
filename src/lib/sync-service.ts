@@ -536,6 +536,12 @@ export const saveShopWithSync = async (shop: Shop, isNew: boolean = true): Promi
   }
 };
 
+// Force sync (bypass user active check)
+export const forceSyncNow = async (): Promise<void> => {
+  userIsActive = false;
+  await processSyncQueue();
+};
+
 // Save nomination with offline support
 export const saveNominationWithSync = async (nomination: CustomerNomination): Promise<void> => {
   // Always save to local first

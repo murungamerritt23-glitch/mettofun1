@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSyncStore } from '@/store';
 import { useUIStore } from '@/store';
 import { RefreshCw, Wifi, WifiOff, AlertCircle, Check, Trash2, Clock } from 'lucide-react';
-import { getSyncStatus, triggerSync } from '@/lib/sync-service';
+import { getSyncStatus, triggerSync, forceSyncNow } from '@/lib/sync-service';
 
 interface SyncStatusProps {
   onManualSync?: () => void;
@@ -90,6 +90,11 @@ export function SyncStatus({ onManualSync }: SyncStatusProps) {
     onManualSync?.();
     await triggerSync();
   };
+  
+  const handleForceSync = async () => {
+    onManualSync?.();
+    await forceSyncNow();
+  };
 
   if (pendingCount === 0 && isOnline) {
     return null; // Don't show if everything is synced and online
@@ -145,15 +150,15 @@ export function SyncStatus({ onManualSync }: SyncStatusProps) {
           <div className="bg-gray-100 dark:bg-gray-700 px-4 py-3 flex items-center justify-between">
             <h3 className="font-semibold text-gray-800 dark:text-white">Sync Queue</h3>
             <div className="flex items-center gap-2">
-              {isOnline && pendingCount > 0 && (
+              {isOnline && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleSync();
+                    handleForceSync();
                   }}
                   disabled={isSyncing}
-                  className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                  title="Sync Now"
+                  className="p-1.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-xs"
+                  title="Force Sync (bypass user active)"
                 >
                   <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
                 </button>
