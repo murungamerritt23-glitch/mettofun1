@@ -3,88 +3,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
+    // Helper functions for metofun admin roles
     function isAuthenticated() {
       return request.auth != null;
     }
     
     function isSuperAdmin() {
-      return isAuthenticated() && request.auth.token.role == 'super_admin';
+      return isAuthenticated() && request.auth.token.adminLevel == 'super_admin';
     }
     
     function isAgentAdmin() {
-      return isAuthenticated() && request.auth.token.role == 'agent_admin';
+      return isAuthenticated() && request.auth.token.adminLevel == 'agent_admin';
     }
     
     function isShopAdmin() {
-      return isAuthenticated() && request.auth.token.role == 'shop_admin';
+      return isAuthenticated() && request.auth.token.adminLevel == 'shop_admin';
     }
     
-    function isAdmin() {
+    function isAnyAdmin() {
       return isSuperAdmin() || isAgentAdmin() || isShopAdmin();
     }
     
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    // Catch-all rule - require authentication
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
     
-    function isShopOwner(shopId) {
-      return isAuthenticated() && request.auth.token.shopId == shopId;
-    }
-    
-    // Admin collection - only super admins can manage
-    match /admins/{adminId} {
-      allow read: if isAuthenticated();
-      allow write: if isSuperAdmin();
-    }
-    
-    // Shops collection
-    match /shops/{shopId} {
-      // Anyone can read shops (public info)
-      allow read: if true;
-      // Only admins can create/update
-      allow create: if isSuperAdmin() || isAgentAdmin();
-      allow update: if isSuperAdmin() || isAgentAdmin() || isShopOwner(shopId);
-      allow delete: if isSuperAdmin();
-    }
-    
-    // Items collection - shop-specific
-    match /shops/{shopId}/items/{itemId} {
-      allow read: if true;
-      allow write: if isSuperAdmin() || isAgentAdmin() || isShopOwner(shopId);
-    }
-    
-    // Customers collection - shop-specific
-    match /shops/{shopId}/customers/{customerId} {
-      allow read: if isAdmin();
-      allow write: if isSuperAdmin() || isAgentAdmin() || isShopOwner(shopId);
-    }
-    
-    // Game attempts - shop-specific
-    // Only allow create if authenticated AND shop exists and is active
-    match /shops/{shopId}/attempts/{attemptId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated() && 
-        resource == null &&
-        get(/databases/$(database)/documents/shops/$(shopId)).data.isActive == true;
-      allow write: if isSuperAdmin() || isAgentAdmin() || isShopOwner(shopId);
-    }
-    
-    // Staff collection - shop-specific
-    match /shops/{shopId}/staff/{staffId} {
-      allow read: if isAdmin();
-      allow write: if isSuperAdmin() || isAgentAdmin() || isShopOwner(shopId);
-    }
-    
-    // Subscriptions collection - only super admins
-    match /subscriptions/{subscriptionId} {
-      allow read: if isAuthenticated();
-      allow write: if isSuperAdmin();
-    }
-    
-    // Sync queue for offline support - user-specific
-    match /syncQueue/{userId} {
-      allow read, write: if isOwner(userId);
-    }
   }
 }
