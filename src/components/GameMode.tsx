@@ -569,8 +569,14 @@ export default function GameMode() {
   if (showNumberPicker && !showResult) {
     const threshold = thresholdNumber || 1;
     const startNumber = 1;
-    const endNumber = 18 - threshold; // 12-17 based on ratio
+    const endNumber = Math.max(1, 18 - threshold); // Ensure at least 1 number
     const availableNumbers = endNumber - startNumber + 1;
+    
+    // Guard: if no numbers available, go back
+    if (availableNumbers <= 0) {
+      setShowNumberPicker(false);
+      return null;
+    }
     
     return (
       <div className="min-h-screen p-4 flex flex-col overflow-auto">
@@ -625,6 +631,13 @@ export default function GameMode() {
   // Item picker - customer selects an item before picking number
   if (showItemPicker && !showResult && gameStatus === 'playing') {
     const activeItems = items.filter(i => i.isActive);
+    
+    // If no active items, skip to number picker
+    if (activeItems.length === 0) {
+      setShowItemPicker(false);
+      setShowNumberPicker(true);
+      return null;
+    }
     
     return (
       <div className="min-h-screen p-4 flex flex-col overflow-auto">
