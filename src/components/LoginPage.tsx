@@ -21,6 +21,12 @@ export default function LoginPage() {
   const [showTerms, setShowTerms] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showRealLogin, setShowRealLogin] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
+  const [setupName, setSetupName] = useState('');
+  const [setupEmail, setSetupEmail] = useState('');
+  const [setupPassword, setSetupPassword] = useState('');
+  const [setupConfirmPassword, setSetupConfirmPassword] = useState('');
+  const [setupRole, setSetupRole] = useState<AdminLevel>('super_admin');
   
   const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
   const { setCurrentView } = useUIStore();
@@ -429,6 +435,13 @@ export default function LoginPage() {
             >
               🔑 Use Real Credentials Instead
             </button>
+
+            <button
+              onClick={() => setShowSetup(true)}
+              className="mt-4 text-blue-400 text-sm hover:text-blue-300 w-full text-center"
+            >
+              ⚙️ Setup New Admin
+            </button>
           </div>
         </div>
 
@@ -504,6 +517,142 @@ export default function LoginPage() {
             >
               Cancel
             </button>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Setup Admin Modal */}
+      {showSetup && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowSetup(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            className="bg-gray-900 rounded-xl p-6 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="gold-gradient-text text-2xl font-bold mb-2 text-center">Setup Admin</h2>
+            <p className="text-gray-400 text-sm mb-6 text-center">Create your admin account</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                <input
+                  type="text"
+                  value={setupName}
+                  onChange={(e) => setSetupName(e.target.value)}
+                  className="input"
+                  placeholder="Your name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                <input
+                  type="email"
+                  value={setupEmail}
+                  onChange={(e) => setSetupEmail(e.target.value)}
+                  className="input"
+                  placeholder="admin@example.com"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                <input
+                  type="password"
+                  value={setupPassword}
+                  onChange={(e) => setSetupPassword(e.target.value)}
+                  className="input"
+                  placeholder="Password"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={setupConfirmPassword}
+                  onChange={(e) => setSetupConfirmPassword(e.target.value)}
+                  className="input"
+                  placeholder="Confirm password"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Admin Role</label>
+                <select
+                  value={setupRole}
+                  onChange={(e) => setSetupRole(e.target.value as AdminLevel)}
+                  className="input"
+                >
+                  <option value="super_admin">Super Admin</option>
+                  <option value="agent_admin">Agent Admin</option>
+                  <option value="shop_admin">Shop Admin</option>
+                </select>
+              </div>
+              
+              {error && (
+                <p className="text-red-400 text-sm">{error}</p>
+              )}
+              
+              <button
+                onClick={async () => {
+                  if (!setupName || !setupEmail || !setupPassword) {
+                    setError('Please fill all fields');
+                    return;
+                  }
+                  if (setupPassword !== setupConfirmPassword) {
+                    setError('Passwords do not match');
+                    return;
+                  }
+                  if (setupPassword.length < 6) {
+                    setError('Password must be at least 6 characters');
+                    return;
+                  }
+                  
+                  setIsLoading(true);
+                  try {
+                    const admin: Admin = {
+                      id: `admin-${Date.now()}`,
+                      email: setupEmail.toLowerCase(),
+                      phone: '',
+                      name: setupName,
+                      level: setupRole,
+                      createdAt: new Date(),
+                      lastLogin: new Date(),
+                      isActive: true,
+                      region: 'Default Region',
+                      deviceLocked: false
+                    };
+                    
+                    await localAdmins.save(admin);
+                    setAdmin(admin);
+                    setShowSetup(false);
+                    setCurrentView('admin');
+                  } catch (err: any) {
+                    setError(err.message || 'Failed to create admin');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                disabled={isLoading}
+                className="btn-gold w-full"
+              >
+                {isLoading ? <Loader2 className="animate-spin" /> : 'Create Admin'}
+              </button>
+              
+              <button
+                onClick={() => setShowSetup(false)}
+                className="w-full text-center text-gray-400 text-sm mt-2 hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
           </motion.div>
         </motion.div>
       )}
