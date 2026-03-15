@@ -27,6 +27,24 @@ import {
   serverTimestamp,
   connectFirestoreEmulator
 } from 'firebase/firestore';
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  push,
+  update,
+  remove,
+  onValue,
+  off,
+  query as rtdbQuery,
+  orderByChild,
+  equalTo,
+  limitToFirst,
+  limitToLast,
+  Database,
+  connectDatabaseEmulator
+} from 'firebase/database';
 import type { Shop, Subscription, SubscriptionTier, Admin, GameAttempt, Item, NominationItem, CustomerNomination } from '@/types';
 import { localSettings } from './local-db';
 
@@ -37,18 +55,21 @@ const firebaseConfig = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "demo-project",
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "demo-project.appspot.com",
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:123456789:web:abcdef"
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:123456789:web:abcdef",
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "https://demo-project-default-rtdb.firebaseio.com"
 };
 
 // Initialize Firebase
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
+let rtdb: Database;
 
 if (typeof window !== 'undefined') {
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  rtdb = getDatabase(app);
   
   // Connect to emulators only if explicitly set to 'true'
   // Default is production (safer default)
@@ -59,6 +80,7 @@ if (typeof window !== 'undefined') {
     if (process.env.NODE_ENV === 'development') {
       connectAuthEmulator(auth, "http://localhost:9099");
       connectFirestoreEmulator(db, 'localhost', 8080);
+      connectDatabaseEmulator(rtdb, 'localhost', 9000);
       console.log('🔧 Using Firebase emulators (explicitly enabled)');
     } else {
       console.warn('⚠️ Cannot use emulators in production! Set NEXT_PUBLIC_USE_EMULATORS=false');
@@ -70,6 +92,7 @@ if (typeof window !== 'undefined') {
       console.warn('⚠️ Firebase not configured! Set NEXT_PUBLIC_FIREBASE_* env vars.');
     } else {
       console.log('🔗 Using production Firebase project:', projectId);
+      console.log('📡 Using Realtime Database');
     }
   }
 }
@@ -891,5 +914,411 @@ export const firebaseCustomerNominations = {
   async delete(id: string): Promise<{ success: boolean; error?: string }> {
     const result = await firebaseDb.delete(CUSTOMER_NOMINATIONS_COLLECTION, id);
     return { success: !result.error, error: result.error };
+  }
+};
+
+// ============================================
+// REALTIME DATABASE FUNCTIONS
+// ============================================
+
+const convertToSerializable = (obj: any): any => {
+  if (obj === null || obj === undefined) return null;
+  if (obj instanceof Date) return obj.toISOString();
+  if (Array.isArray(obj)) return obj.map(convertToSerializable);
+  if (typeof obj === 'object') {
+    const result: any = {};
+    for (const key in obj) {
+      result[key] = convertToSerializable(obj[key]);
+    }
+    return result;
+  }
+  return obj;
+};
+
+const serializeForRTDB = (data: any): any => {
+  const serialized = convertToSerializable(data);
+  if (serialized && serialized.createdAt) {
+    serialized.createdAt = typeof serialized.createdAt === 'string' 
+      ? serialized.createdAt 
+      : serialized.createdAt.toISOString();
+  }
+  if (serialized && serialized.updatedAt) {
+    serialized.updatedAt = typeof serialized.updatedAt === 'string'
+      ? serialized.updatedAt
+      : serialized.updatedAt.toISOString();
+  }
+  return serialized;
+};
+
+// Shops - Realtime Database
+export const rtdbShops = {
+  async getAllActive(): Promise<Shop[]> {
+    try {
+      const snapshot = await get(ref(rtdb, 'shops'));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data)
+        .filter(([_, shop]: [string, any]) => shop.isActive)
+        .map(([id, shop]: [string, any]) => ({ ...shop, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching shops:', error);
+      return [];
+    }
+  },
+
+  async getAll(): Promise<Shop[]> {
+    try {
+      const snapshot = await get(ref(rtdb, 'shops'));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data).map(([id, shop]: [string, any]) => ({ ...shop, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching all shops:', error);
+      return [];
+    }
+  },
+
+  async get(id: string): Promise<Shop | null> {
+    try {
+      const snapshot = await get(ref(rtdb, `shops/${id}`));
+      if (!snapshot.exists()) return null;
+      return { ...snapshot.val(), id };
+    } catch (error) {
+      console.error('RTDB Error fetching shop:', error);
+      return null;
+    }
+  },
+
+  async save(shop: Shop): Promise<{ success: boolean; error?: string }> {
+    try {
+      await set(ref(rtdb, `shops/${shop.id}`), serializeForRTDB(shop));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async update(id: string, data: Partial<Shop>): Promise<{ success: boolean; error?: string }> {
+    try {
+      await update(ref(rtdb, `shops/${id}`), { ...serializeForRTDB(data), updatedAt: new Date().toISOString() });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await remove(ref(rtdb, `shops/${id}`));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+// Items - Realtime Database
+export const rtdbItems = {
+  async getAll(): Promise<Item[]> {
+    try {
+      const snapshot = await get(ref(rtdb, 'items'));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data).map(([id, item]: [string, any]) => ({ ...item, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching items:', error);
+      return [];
+    }
+  },
+
+  async getByShop(shopId: string): Promise<Item[]> {
+    try {
+      const q = rtdbQuery(ref(rtdb, 'items'), equalTo('shopId', shopId));
+      const snapshot = await get(q);
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data).map(([id, item]: [string, any]) => ({ ...item, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching items by shop:', error);
+      return [];
+    }
+  },
+
+  async get(id: string): Promise<Item | null> {
+    try {
+      const snapshot = await get(ref(rtdb, `items/${id}`));
+      if (!snapshot.exists()) return null;
+      return { ...snapshot.val(), id };
+    } catch (error) {
+      console.error('RTDB Error fetching item:', error);
+      return null;
+    }
+  },
+
+  async create(item: Item): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      const newRef = push(ref(rtdb, 'items'));
+      await set(newRef, serializeForRTDB(item));
+      return { success: true, id: newRef.key || item.id };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async update(id: string, data: Partial<Item>): Promise<{ success: boolean; error?: string }> {
+    try {
+      await update(ref(rtdb, `items/${id}`), { ...serializeForRTDB(data), updatedAt: new Date().toISOString() });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await remove(ref(rtdb, `items/${id}`));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+// Attempts - Realtime Database
+export const rtdbAttempts = {
+  async create(attempt: GameAttempt): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      const newRef = push(ref(rtdb, 'attempts'));
+      await set(newRef, serializeForRTDB(attempt));
+      return { success: true, id: newRef.key || attempt.id };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getAll(): Promise<GameAttempt[]> {
+    try {
+      const snapshot = await get(ref(rtdb, 'attempts'));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data).map(([id, attempt]: [string, any]) => ({ ...attempt, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching attempts:', error);
+      return [];
+    }
+  },
+
+  async getByShop(shopId: string): Promise<GameAttempt[]> {
+    try {
+      const q = rtdbQuery(ref(rtdb, 'attempts'), equalTo('shopId', shopId));
+      const snapshot = await get(q);
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data).map(([id, attempt]: [string, any]) => ({ ...attempt, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching attempts by shop:', error);
+      return [];
+    }
+  },
+
+  async update(id: string, data: Partial<GameAttempt>): Promise<{ success: boolean; error?: string }> {
+    try {
+      await update(ref(rtdb, `attempts/${id}`), serializeForRTDB(data));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await remove(ref(rtdb, `attempts/${id}`));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+// Nomination Items - Realtime Database
+export const rtdbNominationItems = {
+  async getAll(): Promise<NominationItem[]> {
+    try {
+      const snapshot = await get(ref(rtdb, 'nominationItems'));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data).map(([id, item]: [string, any]) => ({ ...item, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching nomination items:', error);
+      return [];
+    }
+  },
+
+  async create(item: NominationItem): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      const newRef = push(ref(rtdb, 'nominationItems'));
+      await set(newRef, serializeForRTDB(item));
+      return { success: true, id: newRef.key || item.id };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async update(id: string, data: Partial<NominationItem>): Promise<{ success: boolean; error?: string }> {
+    try {
+      await update(ref(rtdb, `nominationItems/${id}`), serializeForRTDB(data));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await remove(ref(rtdb, `nominationItems/${id}`));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+// Customer Nominations - Realtime Database
+export const rtdbCustomerNominations = {
+  async getAll(): Promise<CustomerNomination[]> {
+    try {
+      const snapshot = await get(ref(rtdb, 'customerNominations'));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data).map(([id, nom]: [string, any]) => ({ ...nom, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching nominations:', error);
+      return [];
+    }
+  },
+
+  async getByShop(shopId: string): Promise<CustomerNomination[]> {
+    try {
+      const q = rtdbQuery(ref(rtdb, 'customerNominations'), equalTo('shopId', shopId));
+      const snapshot = await get(q);
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data).map(([id, nom]: [string, any]) => ({ ...nom, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching nominations by shop:', error);
+      return [];
+    }
+  },
+
+  async create(nomination: CustomerNomination): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      const newRef = push(ref(rtdb, 'customerNominations'));
+      await set(newRef, serializeForRTDB(nomination));
+      return { success: true, id: newRef.key || nomination.id };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async update(id: string, data: Partial<CustomerNomination>): Promise<{ success: boolean; error?: string }> {
+    try {
+      await update(ref(rtdb, `customerNominations/${id}`), serializeForRTDB(data));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await remove(ref(rtdb, `customerNominations/${id}`));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+// Admins - Realtime Database
+export const rtdbAdmins = {
+  async getAll(): Promise<Admin[]> {
+    try {
+      const snapshot = await get(ref(rtdb, 'admins'));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data).map(([id, admin]: [string, any]) => ({ ...admin, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching admins:', error);
+      return [];
+    }
+  },
+
+  async get(id: string): Promise<Admin | null> {
+    try {
+      const snapshot = await get(ref(rtdb, `admins/${id}`));
+      if (!snapshot.exists()) return null;
+      return { ...snapshot.val(), id };
+    } catch (error) {
+      console.error('RTDB Error fetching admin:', error);
+      return null;
+    }
+  },
+
+  async save(admin: Admin): Promise<{ success: boolean; error?: string }> {
+    try {
+      await set(ref(rtdb, `admins/${admin.id}`), serializeForRTDB(admin));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async update(id: string, data: Partial<Admin>): Promise<{ success: boolean; error?: string }> {
+    try {
+      await update(ref(rtdb, `admins/${id}`), { ...serializeForRTDB(data), updatedAt: new Date().toISOString() });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await remove(ref(rtdb, `admins/${id}`));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+};
+
+// Settings - Realtime Database
+export const rtdbSettings = {
+  async get(key: string): Promise<any> {
+    try {
+      const snapshot = await get(ref(rtdb, `settings/${key}`));
+      return snapshot.exists() ? snapshot.val() : null;
+    } catch (error) {
+      console.error('RTDB Error fetching setting:', error);
+      return null;
+    }
+  },
+
+  async set(key: string, value: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      await set(ref(rtdb, `settings/${key}`), convertToSerializable(value));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async update(key: string, value: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      await update(ref(rtdb, `settings/${key}`), convertToSerializable(value));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
   }
 };

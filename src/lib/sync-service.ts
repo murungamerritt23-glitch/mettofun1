@@ -1,6 +1,6 @@
 import { useUIStore, useSyncStore } from '@/store';
 import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations, localSettings } from './local-db';
-import { firebaseAttempts, firebaseItems, firebaseShops, firebaseNominationItems, firebaseCustomerNominations } from './firebase';
+import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations } from './firebase';
 import type { GameAttempt, Item, Shop, NominationItem, CustomerNomination } from '@/types';
 
 // Sync service types
@@ -369,85 +369,85 @@ const syncItem = async (type: SyncItemType, operation: SyncOperation, data: any)
 
 // Sync game attempt
 const syncAttempt = async (operation: SyncOperation, data: GameAttempt): Promise<void> => {
-  const { firebaseAttempts } = await import('./firebase');
+  const { rtdbAttempts } = await import('./firebase');
   
   switch (operation) {
     case 'create':
-      await firebaseAttempts.create(data);
+      await rtdbAttempts.create(data);
       break;
     case 'update':
-      await firebaseAttempts.update(data.id, data);
+      await rtdbAttempts.update(data.id, data);
       break;
     case 'delete':
-      await firebaseAttempts.delete(data.id);
+      await rtdbAttempts.delete(data.id);
       break;
   }
 };
 
 // Sync item
 const syncItemData = async (operation: SyncOperation, data: Item): Promise<void> => {
-  const { firebaseItems } = await import('./firebase');
+  const { rtdbItems } = await import('./firebase');
   
   switch (operation) {
     case 'create':
-      await firebaseItems.create(data);
+      await rtdbItems.create(data);
       break;
     case 'update':
-      await firebaseItems.update(data.id, data);
+      await rtdbItems.update(data.id, data);
       break;
     case 'delete':
-      await firebaseItems.delete(data.id);
+      await rtdbItems.delete(data.id);
       break;
   }
 };
 
 // Sync shop
 const syncShop = async (operation: SyncOperation, data: Shop): Promise<void> => {
-  const { firebaseShops } = await import('./firebase');
+  const { rtdbShops } = await import('./firebase');
   
   switch (operation) {
     case 'create':
-      await firebaseShops.save(data);
+      await rtdbShops.save(data);
       break;
     case 'update':
-      await firebaseShops.update(data.id, data);
+      await rtdbShops.update(data.id, data);
       break;
     case 'delete':
-      await firebaseShops.delete(data.id);
+      await rtdbShops.delete(data.id);
       break;
   }
 };
 
 // Sync nomination item
 const syncNominationItem = async (operation: SyncOperation, data: NominationItem): Promise<void> => {
-  const { firebaseNominationItems } = await import('./firebase');
+  const { rtdbNominationItems } = await import('./firebase');
   
   switch (operation) {
     case 'create':
-      await firebaseNominationItems.create(data);
+      await rtdbNominationItems.create(data);
       break;
     case 'update':
-      await firebaseNominationItems.update(data.id, data);
+      await rtdbNominationItems.update(data.id, data);
       break;
     case 'delete':
-      await firebaseNominationItems.delete(data.id);
+      await rtdbNominationItems.delete(data.id);
       break;
   }
 };
 
 // Sync customer nomination
 const syncCustomerNomination = async (operation: SyncOperation, data: CustomerNomination): Promise<void> => {
-  const { firebaseCustomerNominations } = await import('./firebase');
+  const { rtdbCustomerNominations } = await import('./firebase');
   
   switch (operation) {
     case 'create':
-      await firebaseCustomerNominations.create(data);
+      await rtdbCustomerNominations.create(data);
       break;
     case 'update':
-      await firebaseCustomerNominations.update(data.id, data);
+      await rtdbCustomerNominations.update(data.id, data);
       break;
     case 'delete':
-      await firebaseCustomerNominations.delete(data.id);
+      await rtdbCustomerNominations.delete(data.id);
       break;
   }
 };
@@ -459,11 +459,11 @@ export const saveAttemptWithSync = async (attempt: GameAttempt): Promise<void> =
 
   if (isOnline()) {
     try {
-      const { firebaseAttempts } = await import('./firebase');
-      await firebaseAttempts.create(attempt);
-      console.log('[Sync] Attempt synced to Firebase');
+      const { rtdbAttempts } = await import('./firebase');
+      await rtdbAttempts.create(attempt);
+      console.log('[Sync] Attempt synced to Realtime Database');
     } catch (error) {
-      console.error('[Sync] Error syncing attempt to Firebase, queuing:', error);
+      console.error('[Sync] Error syncing attempt to Realtime Database, queuing:', error);
       await queueForSync({ type: 'attempt', operation: 'create', data: attempt });
     }
   } else {
@@ -479,15 +479,15 @@ export const saveItemWithSync = async (item: Item, isNew: boolean = true): Promi
 
   if (isOnline()) {
     try {
-      const { firebaseItems } = await import('./firebase');
+      const { rtdbItems } = await import('./firebase');
       if (isNew) {
-        await firebaseItems.create(item);
+        await rtdbItems.create(item);
       } else {
-        await firebaseItems.update(item.id, item);
+        await rtdbItems.update(item.id, item);
       }
-      console.log('[Sync] Item synced to Firebase');
+      console.log('[Sync] Item synced to Realtime Database');
     } catch (error) {
-      console.error('[Sync] Error syncing item to Firebase, queuing:', error);
+      console.error('[Sync] Error syncing item to Realtime Database, queuing:', error);
       await queueForSync({ 
         type: 'item', 
         operation: isNew ? 'create' : 'update', 
@@ -511,15 +511,15 @@ export const saveShopWithSync = async (shop: Shop, isNew: boolean = true): Promi
 
   if (isOnline()) {
     try {
-      const { firebaseShops } = await import('./firebase');
+      const { rtdbShops } = await import('./firebase');
       if (isNew) {
-        await firebaseShops.save(shop);
+        await rtdbShops.save(shop);
       } else {
-        await firebaseShops.update(shop.id, shop);
+        await rtdbShops.update(shop.id, shop);
       }
-      console.log('[Sync] Shop synced to Firebase');
+      console.log('[Sync] Shop synced to Realtime Database');
     } catch (error) {
-      console.error('[Sync] Error syncing shop to Firebase, queuing:', error);
+      console.error('[Sync] Error syncing shop to Realtime Database, queuing:', error);
       await queueForSync({ 
         type: 'shop', 
         operation: isNew ? 'create' : 'update', 
@@ -549,11 +549,11 @@ export const saveNominationWithSync = async (nomination: CustomerNomination): Pr
 
   if (isOnline()) {
     try {
-      const { firebaseCustomerNominations } = await import('./firebase');
-      await firebaseCustomerNominations.create(nomination);
-      console.log('[Sync] Nomination synced to Firebase');
+      const { rtdbCustomerNominations } = await import('./firebase');
+      await rtdbCustomerNominations.create(nomination);
+      console.log('[Sync] Nomination synced to Realtime Database');
     } catch (error) {
-      console.error('[Sync] Error syncing nomination to Firebase, queuing:', error);
+      console.error('[Sync] Error syncing nomination to Realtime Database, queuing:', error);
       await queueForSync({ type: 'customerNomination', operation: 'create', data: nomination });
     }
   } else {
@@ -569,15 +569,15 @@ export const saveNominationItemWithSync = async (item: NominationItem, isNew: bo
 
   if (isOnline()) {
     try {
-      const { firebaseNominationItems } = await import('./firebase');
+      const { rtdbNominationItems } = await import('./firebase');
       if (isNew) {
-        await firebaseNominationItems.create(item);
+        await rtdbNominationItems.create(item);
       } else {
-        await firebaseNominationItems.update(item.id, item);
+        await rtdbNominationItems.update(item.id, item);
       }
-      console.log('[Sync] Nomination item synced to Firebase');
+      console.log('[Sync] Nomination item synced to Realtime Database');
     } catch (error) {
-      console.error('[Sync] Error syncing nomination item to Firebase, queuing:', error);
+      console.error('[Sync] Error syncing nomination item to Realtime Database, queuing:', error);
       await queueForSync({ 
         type: 'nominationItem', 
         operation: isNew ? 'create' : 'update', 
