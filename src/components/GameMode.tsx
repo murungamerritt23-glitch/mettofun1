@@ -594,8 +594,8 @@ export default function GameMode() {
           <div className="text-center mb-4 p-2 bg-gold-900/30 rounded-lg">
             <p className="text-gold-400 text-sm">
               {language === 'sw' 
-                ? `Muujiza: ${config.ratio} ya kiwango`
-                : `Odds: ${config.ratio} of qualifying amount`}
+                ? `Muujiza: ${threshold} nambari hushinda`
+                : `${threshold} number${threshold > 1 ? 's' : ''} can win`}
             </p>
             <p className="text-gray-500 text-xs mt-1">
               {language === 'sw'
