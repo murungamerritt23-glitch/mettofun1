@@ -240,7 +240,7 @@ export default function GameMode() {
       setSelectedItem(item || null);
     }
     
-    // Save attempt - mark as test only if super admin has test mode enabled
+    // Save attempt in background - don't await to avoid blocking
     try {
       const attempt = createGameAttempt(
         currentShop?.id || 'demo',
@@ -251,16 +251,16 @@ export default function GameMode() {
         correctNumber,
         won,
         winningItem || undefined,
-        isSuperAdminTestMode // Pass test flag
+        isSuperAdminTestMode
       );
       
-      await saveAttemptWithSync(attempt);
+      // Fire and forget - don't await
+      saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
       
       // Store the attempt ID for nomination tracking
       setCurrentGameAttemptId(attempt.id);
     } catch (error) {
       console.error('Error saving game attempt:', error);
-      // Continue anyway - don't block the game result
     }
     
     setShowResult(true);
