@@ -63,98 +63,94 @@ export default function LoginPage() {
       const result = await firebaseAuth.signIn(email, password);
       
       if (result.error) {
-        // For demo/offline mode, use local authentication
-        if (email && password) {
-          // Check if admin exists in local DB with device settings
-          const storedAdmin = await fetchAdminSettings(email);
-          
-          // Demo login - in production this would validate against Firebase
-          const demoAdmin = {
-            id: storedAdmin?.id || 'demo-admin',
-            email,
-            phone: storedAdmin?.phone || '',
-            name: storedAdmin?.name || email.split('@')[0],
-            level: storedAdmin?.level || selectedRole,
-            createdAt: storedAdmin?.createdAt || new Date(),
-            lastLogin: new Date(),
-            isActive: storedAdmin?.isActive ?? true,
-            region: storedAdmin?.region || 'Demo Region',
-            assignedShops: storedAdmin?.assignedShops,
-            deviceId: storedAdmin?.deviceId,
-            deviceLocked: storedAdmin?.deviceLocked ?? false
-          };
-          
-          // Check device authorization
-          const deviceError = checkDeviceAuthorization(demoAdmin);
-          if (deviceError) {
-            setError(deviceError);
-            setIsLoading(false);
-            setLoading(false);
-            return;
+        // Firebase login failed - check local DB
+        const storedAdmin = await fetchAdminSettings(email);
+        
+        // Only allow login if admin exists in local database
+        if (!storedAdmin) {
+          setError('Invalid credentials. Admin not found.');
+          setIsLoading(false);
+          setLoading(false);
+          return;
+        }
+        
+        // Use stored admin data
+        const admin: Admin = {
+          id: storedAdmin.id || 'unknown',
+          email: storedAdmin.email || email,
+          phone: storedAdmin.phone || '',
+          name: storedAdmin.name || email.split('@')[0],
+          level: storedAdmin.level || 'super_admin',
+          createdAt: storedAdmin.createdAt || new Date(),
+          lastLogin: new Date(),
+          isActive: storedAdmin.isActive ?? true,
+          region: storedAdmin.region || 'Demo Region',
+          assignedShops: storedAdmin.assignedShops,
+          deviceId: storedAdmin.deviceId,
+          deviceLocked: storedAdmin.deviceLocked ?? false
+        };
+        
+        // Check device authorization
+        const deviceError = checkDeviceAuthorization(admin);
+        if (deviceError) {
+          setError(deviceError);
+          setIsLoading(false);
+          setLoading(false);
+          return;
+        }
+        
+        setAdmin(admin);
+        
+        // Auto-select shop for shop admins based on device ID and email match
+        if (admin.level === 'shop_admin') {
+          const currentDeviceId = getDeviceId();
+          let shop = await localShops.getByDeviceId(currentDeviceId);
+          if (!shop) {
+            const allShops = await localShops.getAll();
+            shop = allShops.find(s => 
+              s.adminEmail?.toLowerCase() === email.toLowerCase()
+            );
           }
-          
-          setAdmin(demoAdmin);
-          
-          // Auto-select shop for shop admins based on device ID and email match
-          if (demoAdmin.level === 'shop_admin') {
-            const currentDeviceId = getDeviceId();
-            // First try to find shop by device ID (backward compatibility)
-            let shop = await localShops.getByDeviceId(currentDeviceId);
-            // If not found by device, try to find by email match in local shops
-            if (!shop) {
-              const allShops = await localShops.getAll();
-              shop = allShops.find(s => 
-                s.adminEmail?.toLowerCase() === email.toLowerCase()
-              );
-            }
-            // If still not found, try to find by email in Firebase
-            if (!shop) {
-              try {
-                const firebaseShop = await firebaseShops.getByEmail(email);
-                shop = firebaseShop || undefined;
-                // If found in Firebase, save to local storage for offline access
-                if (shop) {
-                  await localShops.save(shop);
-                }
-              } catch (e) {
-                console.error('Error fetching shop from Firebase:', e);
+          if (!shop) {
+            try {
+              const firebaseShop = await firebaseShops.getByEmail(email);
+              shop = firebaseShop || undefined;
+              if (shop) {
+                await localShops.save(shop);
               }
+            } catch (e) {
+              console.error('Error fetching shop from Firebase:', e);
             }
-            if (shop) {
-              // Verify email matches (security check)
-              if (shop.adminEmail && shop.adminEmail.toLowerCase() !== email.toLowerCase()) {
-                setError('This device is not authorized for your account. Please contact support.');
-                setIsLoading(false);
-                setLoading(false);
-                return;
-              }
-              // Set the shop as the ONLY assigned shop for this shop_admin (permanent assignment)
-              const updatedAdmin = { ...demoAdmin, assignedShops: [shop.id] };
-              setAdmin(updatedAdmin);
-              setCurrentShop(shop);
-            } else {
-              setError('No shop assigned to this device or email. Please contact your administrator.');
+          }
+          if (shop) {
+            if (shop.adminEmail && shop.adminEmail.toLowerCase() !== email.toLowerCase()) {
+              setError('This device is not authorized for your account. Please contact support.');
               setIsLoading(false);
               setLoading(false);
               return;
             }
-            // Shop admin goes directly to customer mode
-            setCurrentView('customer');
+            const updatedAdmin = { ...admin, assignedShops: [shop.id] };
+            setAdmin(updatedAdmin);
+            setCurrentShop(shop);
           } else {
-            setCurrentView('admin');
+            setError('No shop assigned to this device or email. Please contact your administrator.');
+            setIsLoading(false);
+            setLoading(false);
+            return;
           }
+          setCurrentView('customer');
         } else {
-          setError(result.error);
+          setCurrentView('admin');
         }
       } else if (result.user) {
-        // Create admin record from Firebase user
+        // Firebase login successful
         const storedAdmin = await fetchAdminSettings(email);
-        const admin = {
+        const admin: Admin = {
           id: result.user.uid,
           email: result.user.email || '',
           phone: result.user.phoneNumber || '',
           name: result.user.displayName || email.split('@')[0],
-          level: storedAdmin?.level || selectedRole, // Would be fetched from Firestore
+          level: storedAdmin?.level || selectedRole,
           createdAt: storedAdmin?.createdAt || new Date(),
           lastLogin: new Date(),
           isActive: storedAdmin?.isActive ?? true,
@@ -175,24 +171,20 @@ export default function LoginPage() {
         
         setAdmin(admin);
         
-        // Auto-select shop for shop admins based on device ID and email match
+        // Auto-select shop for shop admins
         if (admin.level === 'shop_admin') {
           const currentDeviceId = getDeviceId();
-          // First try to find shop by device ID (backward compatibility)
           let shop = await localShops.getByDeviceId(currentDeviceId);
-          // If not found by device, try to find by email match in local shops
           if (!shop) {
             const allShops = await localShops.getAll();
             shop = allShops.find(s => 
               s.adminEmail?.toLowerCase() === email.toLowerCase()
             );
           }
-          // If still not found, try to find by email in Firebase
           if (!shop) {
             try {
               const firebaseShop = await firebaseShops.getByEmail(email);
               shop = firebaseShop || undefined;
-              // If found in Firebase, save to local storage for offline access
               if (shop) {
                 await localShops.save(shop);
               }
@@ -201,14 +193,12 @@ export default function LoginPage() {
             }
           }
           if (shop) {
-            // Verify email matches (security check)
             if (shop.adminEmail && shop.adminEmail.toLowerCase() !== email.toLowerCase()) {
               setError('This device is not authorized for your account. Please contact support.');
               setIsLoading(false);
               setLoading(false);
               return;
             }
-            // Set the shop as the ONLY assigned shop for this shop_admin (permanent assignment)
             const updatedAdmin = { ...admin, assignedShops: [shop.id] };
             setAdmin(updatedAdmin);
             setCurrentShop(shop);
@@ -218,7 +208,6 @@ export default function LoginPage() {
             setLoading(false);
             return;
           }
-          // Shop admin goes directly to customer mode
           setCurrentView('customer');
         } else {
           setCurrentView('admin');
