@@ -1,0 +1,39 @@
+{
+  "rules": {
+    // Allow anyone to read shops and items (public info for customers)
+    "shops": {
+      ".read": true,
+      ".write": "auth != null && auth.uid != null"
+    },
+    "items": {
+      ".read": true,
+      ".write": "auth != null && auth.uid != null"
+    },
+    // Game attempts - anyone can create, only admins can read
+    "attempts": {
+      ".read": "auth != null && auth.uid != null",
+      ".write": true
+    },
+    // Nominations - anyone can create, only admins can read
+    "customerNominations": {
+      ".read": "auth != null && auth.uid != null",
+      ".write": true
+    },
+    "nominationItems": {
+      ".read": true,
+      ".write": "auth != null && auth.uid != null"
+    },
+    // Admins and settings - only authenticated admins can access
+    "admins": {
+      ".read": "auth != null && auth.uid != null",
+      ".write": "auth != null && auth.uid != null"
+    },
+    "settings": {
+      ".read": true,
+      ".write": "auth != null && auth.uid != null"
+    },
+    // Default deny
+    ".read": false,
+    ".write": false
+  }
+}
