@@ -2425,7 +2425,16 @@ export default function AdminDashboard() {
             </AnimatePresence>
 
             <div className="card">
-              <h3 className="font-semibold mb-4">Staff List</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Staff List</h3>
+                <button
+                  onClick={handleAddStaff}
+                  className="btn-gold flex items-center gap-2"
+                >
+                  <Plus size={16} />
+                  Add Staff
+                </button>
+              </div>
               <div className="space-y-3">
                 {admins.length === 0 ? (
                   <p className="text-gray-500 text-sm text-center py-4">No staff members yet</p>
