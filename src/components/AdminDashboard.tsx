@@ -3257,9 +3257,11 @@ function AdminForm({
         />
       </div>
 
-      {formData.level === 'shop_admin' && (
+      {(formData.level === 'shop_admin' || formData.level === 'agent_admin') && (
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Assigned Shops</label>
+          <label className="block text-sm text-gray-400 mb-2">
+            {formData.level === 'agent_admin' ? 'Shops to Oversee' : 'Assigned Shops'}
+          </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto bg-gray-800 rounded-lg p-3">
             {shops.length === 0 ? (
               <p className="text-gray-500 text-sm">No shops available</p>
