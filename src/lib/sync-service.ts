@@ -456,14 +456,16 @@ const syncCustomerNomination = async (operation: SyncOperation, data: CustomerNo
 export const saveAttemptWithSync = async (attempt: GameAttempt): Promise<void> => {
   // Always save to local first
   await localAttempts.save(attempt);
+  console.log('[Sync] Attempt saved locally');
 
   if (isOnline()) {
+    console.log('[Sync] Online - attempting to sync...');
     try {
       const { rtdbAttempts } = await import('./firebase');
-      await rtdbAttempts.create(attempt);
-      console.log('[Sync] Attempt synced to Realtime Database');
+      const result = await rtdbAttempts.create(attempt);
+      console.log('[Sync] Attempt synced to Realtime Database:', result);
     } catch (error) {
-      console.error('[Sync] Error syncing attempt to Realtime Database, queuing:', error);
+      console.error('[Sync] Error syncing attempt to Realtime Database:', error);
       await queueForSync({ type: 'attempt', operation: 'create', data: attempt });
     }
   } else {
