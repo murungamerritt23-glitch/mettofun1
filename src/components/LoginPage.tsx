@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, Lock, Eye, EyeOff, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { useAuthStore, useUIStore, useShopStore, useGameStore } from '@/store';
@@ -27,6 +27,16 @@ export default function LoginPage() {
   const [setupPassword, setSetupPassword] = useState('');
   const [setupConfirmPassword, setSetupConfirmPassword] = useState('');
   const [setupRole, setSetupRole] = useState<AdminLevel>('super_admin');
+  const [hasAdmin, setHasAdmin] = useState<boolean | null>(null);
+  
+  // Check if admin exists on mount
+  useEffect(() => {
+    const checkAdminExists = async () => {
+      const admins = await localAdmins.getAll();
+      setHasAdmin(admins.length > 0);
+    };
+    checkAdminExists();
+  }, []);
   
   const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
   const { setCurrentView } = useUIStore();
@@ -436,12 +446,15 @@ export default function LoginPage() {
               🔑 Use Real Credentials Instead
             </button>
 
-            <button
-              onClick={() => setShowSetup(true)}
-              className="mt-4 text-blue-400 text-sm hover:text-blue-300 w-full text-center"
-            >
-              ⚙️ Setup New Admin
-            </button>
+            {/* Only show Setup Admin button if no admin exists - first time setup */}
+            {hasAdmin === false && (
+              <button
+                onClick={() => setShowSetup(true)}
+                className="mt-4 text-blue-400 text-sm hover:text-blue-300 w-full text-center"
+              >
+                ⚙️ Setup New Admin
+              </button>
+            )}
           </div>
         </div>
 
