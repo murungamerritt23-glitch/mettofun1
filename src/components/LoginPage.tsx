@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, Lock, Eye, EyeOff, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { useAuthStore, useUIStore, useShopStore, useGameStore } from '@/store';
-import { firebaseAuth, firebaseSettings, firebaseShops } from '@/lib/firebase';
+import { firebaseAuth, rtdbShops } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
 import type { AdminLevel, Admin } from '@/types';
@@ -119,7 +119,7 @@ export default function LoginPage() {
           }
           if (!shop) {
             try {
-              const firebaseShop = await firebaseShops.getByEmail(email);
+              const firebaseShop = await rtdbShops.getByEmail(email);
               shop = firebaseShop || undefined;
               if (shop) {
                 await localShops.save(shop);
@@ -189,7 +189,7 @@ export default function LoginPage() {
           }
           if (!shop) {
             try {
-              const firebaseShop = await firebaseShops.getByEmail(email);
+              const firebaseShop = await rtdbShops.getByEmail(email);
               shop = firebaseShop || undefined;
               if (shop) {
                 await localShops.save(shop);

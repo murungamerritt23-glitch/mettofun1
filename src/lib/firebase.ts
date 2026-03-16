@@ -966,6 +966,20 @@ export const rtdbShops = {
     }
   },
 
+  async getByEmail(email: string): Promise<Shop | null> {
+    try {
+      const snapshot = await get(ref(rtdb, 'shops'));
+      if (!snapshot.exists()) return null;
+      const data = snapshot.val();
+      const shops = Object.entries(data).map(([id, shop]: [string, any]) => ({ ...shop, id }));
+      const shop = shops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
+      return shop || null;
+    } catch (error) {
+      console.error('RTDB Error fetching shop by email:', error);
+      return null;
+    }
+  },
+
   async getAll(): Promise<Shop[]> {
     try {
       const snapshot = await get(ref(rtdb, 'shops'));
@@ -1008,6 +1022,15 @@ export const rtdbShops = {
   },
 
   async delete(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await remove(ref(rtdb, `shops/${id}`));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async hardDelete(id: string): Promise<{ success: boolean; error?: string }> {
     try {
       await remove(ref(rtdb, `shops/${id}`));
       return { success: true };

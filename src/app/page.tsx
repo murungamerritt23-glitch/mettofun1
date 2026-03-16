@@ -6,7 +6,7 @@ import LoginPage from '@/components/LoginPage';
 import { SyncStatus } from '@/components/SyncStatus';
 import { useUIStore, useShopStore } from '@/store';
 import type { Shop } from '@/types';
-import { firebaseShops } from '@/lib/firebase';
+import { rtdbShops } from '@/lib/firebase';
 import { initDB } from '@/lib/local-db';
 import { getDeviceId } from '@/lib/device';
 
@@ -49,7 +49,7 @@ export default function Home() {
         
         // Then fetch from Firebase in background (with timeout)
         try {
-          const loadShopsPromise = firebaseShops.getAllActive();
+          const loadShopsPromise = rtdbShops.getAllActive();
           const timeoutPromise = new Promise((resolve) => 
             setTimeout(() => resolve([]), 3000) // 3 second timeout (reduced from 5)
           );

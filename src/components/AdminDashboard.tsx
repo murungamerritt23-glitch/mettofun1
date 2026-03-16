@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
-import { firebaseShops, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
+import { rtdbShops, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
 import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
@@ -317,7 +317,7 @@ export default function AdminDashboard() {
         // admin sees all shops (including inactive)
         if (admin?.level === 'super_admin') {
           try {
-            const allShops = await firebaseShops.getAll();
+            const allShops = await rtdbShops.getAll();
             if (allShops.length > 0) {
               setShops(allShops);
               autoSelectShop(allShops);
@@ -336,7 +336,7 @@ export default function AdminDashboard() {
         } else {
           // Other admins (agent_admin, shop_admin) see only active shops
           try {
-            const fbShops = await firebaseShops.getAllActive();
+            const fbShops = await rtdbShops.getAllActive();
             // Filter by assigned shops for shop_admin
             const filteredFbShops = filterByAssignedShops(fbShops);
             if (filteredFbShops.length > 0) {
@@ -640,7 +640,7 @@ export default function AdminDashboard() {
     
     // Also check Firebase for duplicates (in case other devices added shops)
     try {
-      const allFbShops = await firebaseShops.getAll();
+      const allFbShops = await rtdbShops.getAll();
       const fbDuplicateByCode = allFbShops.find(s => 
         s.shopCode.toLowerCase() === shop.shopCode.toLowerCase() && 
         s.id !== shop.id
@@ -683,7 +683,7 @@ export default function AdminDashboard() {
     setUserActive(false);
     // Refresh from Firebase or local
     try {
-      const fbShops = await firebaseShops.getAllActive();
+      const fbShops = await rtdbShops.getAllActive();
       setShops(fbShops);
     } catch (e) {
       // If Firebase fails, load from local
@@ -697,16 +697,16 @@ export default function AdminDashboard() {
     await saveShopWithSync(updatedShop, false);
     // Reload shops
     if (admin?.level === 'super_admin') {
-      const allShops = await firebaseShops.getAll();
+      const allShops = await rtdbShops.getAll();
       setShops(allShops);
     } else {
-      const fbShops = await firebaseShops.getAllActive();
+      const fbShops = await rtdbShops.getAllActive();
       setShops(fbShops);
     }
   };
 
   const handleUpdateSubscription = async (shopId: string, subscriptionTier: 'basic' | 'medium' | 'pro') => {
-    await firebaseShops.update(shopId, { 
+    await rtdbShops.update(shopId, { 
       subscriptionTier, 
       subscriptionStatus: 'active' as const 
     });
@@ -717,10 +717,10 @@ export default function AdminDashboard() {
     });
     // Reload shops
     if (admin?.level === 'super_admin') {
-      const allShops = await firebaseShops.getAll();
+      const allShops = await rtdbShops.getAll();
       setShops(allShops);
     } else {
-      const fbShops = await firebaseShops.getAllActive();
+      const fbShops = await rtdbShops.getAllActive();
       setShops(fbShops);
     }
   };
@@ -734,16 +734,16 @@ export default function AdminDashboard() {
     
     if (confirm('Are you sure you want to DELETE this shop permanently? This cannot be undone!')) {
       // Hard delete from Firebase
-      await firebaseShops.hardDelete(shopId);
+      await rtdbShops.hardDelete(shopId);
       // Delete from local
       await localShops.delete(shopId);
       await localItems.deleteByShop(shopId);
       // Refresh
       if (admin?.level === 'super_admin') {
-        const allShops = await firebaseShops.getAll();
+        const allShops = await rtdbShops.getAll();
         setShops(allShops);
       } else {
-        const fbShops = await firebaseShops.getAllActive();
+        const fbShops = await rtdbShops.getAllActive();
         setShops(fbShops);
       }
     }
@@ -1290,7 +1290,7 @@ export default function AdminDashboard() {
                               const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
                               
                               // Try to save to Firebase, but don't fail if Firebase is unavailable
-                              const saveResult = await firebaseShops.save(updatedShop);
+                              const saveResult = await rtdbShops.save(updatedShop);
                               
                               // Always save locally
                               await localShops.save(updatedShop);
@@ -1299,7 +1299,7 @@ export default function AdminDashboard() {
                               
                               // Only re-fetch from Firebase if save was successful
                               if (saveResult.success) {
-                                const fbShops = await firebaseShops.getAllActive();
+                                const fbShops = await rtdbShops.getAllActive();
                                 setShops(fbShops);
                               } else {
                                 // Firebase save failed (likely not configured), update local list
@@ -2084,7 +2084,7 @@ export default function AdminDashboard() {
                           const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
                           
                           // Try to save to Firebase, but don't fail if Firebase is unavailable
-                          const saveResult = await firebaseShops.save(updatedShop);
+                          const saveResult = await rtdbShops.save(updatedShop);
                           
                           // Always save locally
                           await localShops.save(updatedShop);
@@ -2093,7 +2093,7 @@ export default function AdminDashboard() {
                           
                           // Only re-fetch from Firebase if save was successful
                           if (saveResult.success) {
-                            const fbShops = await firebaseShops.getAllActive();
+                            const fbShops = await rtdbShops.getAllActive();
                             setShops(fbShops);
                           } else {
                             // Firebase save failed (likely not configured), update local list
