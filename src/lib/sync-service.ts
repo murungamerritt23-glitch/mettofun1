@@ -255,12 +255,6 @@ export const processSyncQueue = async (): Promise<void> => {
     return;
   }
   
-  // DON'T SYNC IF USER IS ACTIVELY EDITING - pause for better UX
-  if (userIsActive) {
-    console.log('[Sync] User is active - pausing sync');
-    return;
-  }
-  
   if (syncInProgress) {
     console.log('[Sync] Already syncing, skipping');
     return;
@@ -270,7 +264,6 @@ export const processSyncQueue = async (): Promise<void> => {
 
   try {
     // Use setTimeout to defer and not block the main thread
-    // This prevents UI freezing while user is entering data
     await new Promise(resolve => setTimeout(resolve, 100));
     
     // Get pending items from IndexedDB
@@ -299,7 +292,7 @@ export const processSyncQueue = async (): Promise<void> => {
         continue;
       }
       
-      // Check if we should wait before retrying (exponential backoff)
+      // Skip if retry count exceeded - don't keep trying failed items
       if (currentRetryCount > 0 && item.updatedAt) {
         const lastAttempt = new Date(item.updatedAt).getTime();
         const delay = getRetryDelay(currentRetryCount);

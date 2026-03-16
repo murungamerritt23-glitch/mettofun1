@@ -456,7 +456,7 @@ export default function GameMode() {
             <div className="card text-center mb-6">
               <img 
                 src="/metofun-logo.png" 
-                alt="METOFUN" 
+                alt="ETO FUN" 
                 className="w-32 h-auto mx-auto mb-3"
               />
               <h2 className="gold-gradient-text text-2xl font-bold">{currentShop.shopName}</h2>
