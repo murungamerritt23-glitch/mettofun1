@@ -33,15 +33,12 @@ export default function SplashScreen() {
           transition={{ duration: 0.5 }}
           className="splash-container"
         >
-          {/* Animated ETO FUN Logo */}
+          {/* Logo */}
           <div className="relative mb-8">
-            <motion.img
+            <img
               src="/metofun-logo.png"
-              alt="ETO FUN"
+              alt="METOFUN"
               className="w-64 h-auto"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5 }}
             />
           </div>
           
