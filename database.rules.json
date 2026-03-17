@@ -1,54 +1,41 @@
 {
   "rules": {
-    // Shops - readable by everyone, writable only by verified admins
     "shops": {
-      ".read": true,
-      ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
-      "$shopId": {
-        ".write": "auth != null && root.child('admins').child(auth.uid).exists() && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin' || (root.child('admins').child(auth.uid).child('level').val() === 'shop_admin' && root.child('admins').child(auth.uid).child('assignedShops').hasChild($shopId)))"
-      }
-    },
-
-    // Items - readable by everyone, writable only by admins
-    "items": {
       ".read": true,
       ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
     },
-
-    // Attempts - customers write (for game), admins read
+    "items": {
+      "$shopId": {
+        "$itemId": {
+          ".read": true,
+          ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+        }
+      }
+    },
     "attempts": {
-      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
-      ".write": true
+      "$shopId": {
+        ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+        ".write": true
+      }
     },
-
-    // Customer Nominations - customers write, admins read
     "customerNominations": {
-      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
-      ".write": true
+      "$shopId": {
+        ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+        ".write": true
+      }
     },
-
-    // Nomination Items - readable by everyone, writable only by admins
     "nominationItems": {
       ".read": true,
       ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
     },
-
-    // Admins - readable by admins, writable only by super_admin
     "admins": {
       ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
-      ".write": "auth != null && root.child('admins').child(auth.uid).exists() && root.child('admins').child(auth.uid).child('level').val() === 'super_admin'",
-      "$uid": {
-        ".write": "auth != null && auth.uid === $uid || (root.child('admins').child(auth.uid).exists() && root.child('admins').child(auth.uid).child('level').val() === 'super_admin')"
-      }
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists() && root.child('admins').child(auth.uid).child('level').val() === 'super_admin'"
     },
-
-    // Settings - readable by everyone, writable only by super_admin
     "settings": {
       ".read": true,
       ".write": "auth != null && root.child('admins').child(auth.uid).exists() && root.child('admins').child(auth.uid).child('level').val() === 'super_admin'"
     },
-
-    // Default deny
     ".read": false,
     ".write": false
   }
