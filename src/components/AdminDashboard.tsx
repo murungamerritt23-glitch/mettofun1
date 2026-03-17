@@ -438,6 +438,7 @@ export default function AdminDashboard() {
 
   // Filter tabs based on permissions
   const tabs = allTabs.filter(tab => {
+    // Settings tab is visible to everyone
     if (tab.requiredPermission === null) return true;
     
     // Handle shop_admin specific tabs
