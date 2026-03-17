@@ -2696,6 +2696,16 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              {/* View Terms & Conditions - All Admins */}
+              {admin?.level !== 'super_admin' && (
+                <div className="card">
+                  <h3 className="font-semibold text-white mb-4">Terms & Conditions</h3>
+                  <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 text-gray-300 text-sm max-h-64 overflow-y-auto">
+                    {termsContent || 'No terms and conditions defined. Contact your administrator.'}
+                  </div>
+                </div>
+              )}
+
               {/* Item of the Day - Super Admin Only */}
               {admin?.level === 'super_admin' && (
                 <div className="card border-amber-900/50">
