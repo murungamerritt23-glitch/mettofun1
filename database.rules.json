@@ -1,37 +1,50 @@
 {
   "rules": {
-    // Allow anyone to read shops and items (public info for customers)
+    // Shops - readable by everyone, writable by super_admin and agent_admin
     "shops": {
       ".read": true,
-      ".write": "auth != null && auth.uid != null"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin')",
+      "$shopId": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin' || (root.child('admins').child(auth.uid).child('level').val() === 'shop_admin' && root.child('admins').child(auth.uid).child('assignedShops').hasChild($shopId)))"
+      }
     },
+
+    // Items - readable by everyone, writable by admins
     "items": {
       ".read": true,
-      ".write": "auth != null && auth.uid != null"
+      ".write": "auth != null"
     },
-    // Game attempts - anyone can create, only admins can read
+
+    // Attempts - customers write, admins read
     "attempts": {
-      ".read": "auth != null && auth.uid != null",
+      ".read": "auth != null && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin' || root.child('admins').child(auth.uid).child('level').val() === 'shop_admin')",
       ".write": true
     },
-    // Nominations - anyone can create, only admins can read
+
+    // Customer Nominations - customers write, admins read
     "customerNominations": {
-      ".read": "auth != null && auth.uid != null",
+      ".read": "auth != null && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin' || root.child('admins').child(auth.uid).child('level').val() === 'shop_admin')",
       ".write": true
     },
+
+    // Nomination Items - readable by everyone, writable by admins
     "nominationItems": {
       ".read": true,
-      ".write": "auth != null && auth.uid != null"
+      ".write": "auth != null"
     },
-    // Admins and settings - only authenticated admins can access
+
+    // Admins - only super_admin can manage
     "admins": {
-      ".read": "auth != null && auth.uid != null",
-      ".write": "auth != null && auth.uid != null"
+      ".read": "auth != null && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin')",
+      ".write": "auth != null && root.child('admins').child(auth.uid).child('level').val() === 'super_admin'"
     },
+
+    // Settings - readable by everyone, writable by super_admin only
     "settings": {
       ".read": true,
-      ".write": "auth != null && auth.uid != null"
+      ".write": "auth != null && root.child('admins').child(auth.uid).child('level').val() === 'super_admin'"
     },
+
     // Default deny
     ".read": false,
     ".write": false
