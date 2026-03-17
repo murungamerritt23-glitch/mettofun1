@@ -1,48 +1,51 @@
 {
   "rules": {
-    // Shops - readable by everyone, writable by super_admin and agent_admin
+    // Shops - readable by everyone, writable only by verified admins
     "shops": {
       ".read": true,
-      ".write": "auth != null && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin')",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
       "$shopId": {
-        ".write": "auth != null && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin' || (root.child('admins').child(auth.uid).child('level').val() === 'shop_admin' && root.child('admins').child(auth.uid).child('assignedShops').hasChild($shopId)))"
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists() && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin' || (root.child('admins').child(auth.uid).child('level').val() === 'shop_admin' && root.child('admins').child(auth.uid).child('assignedShops').hasChild($shopId)))"
       }
     },
 
-    // Items - readable by everyone, writable by admins
+    // Items - readable by everyone, writable only by admins
     "items": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
     },
 
-    // Attempts - customers write, admins read
+    // Attempts - customers write (for game), admins read
     "attempts": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin' || root.child('admins').child(auth.uid).child('level').val() === 'shop_admin')",
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
       ".write": true
     },
 
     // Customer Nominations - customers write, admins read
     "customerNominations": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin' || root.child('admins').child(auth.uid).child('level').val() === 'shop_admin')",
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
       ".write": true
     },
 
-    // Nomination Items - readable by everyone, writable by admins
+    // Nomination Items - readable by everyone, writable only by admins
     "nominationItems": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
     },
 
-    // Admins - only super_admin can manage
+    // Admins - readable by admins, writable only by super_admin
     "admins": {
-      ".read": "auth != null && (root.child('admins').child(auth.uid).child('level').val() === 'super_admin' || root.child('admins').child(auth.uid).child('level').val() === 'agent_admin')",
-      ".write": "auth != null && root.child('admins').child(auth.uid).child('level').val() === 'super_admin'"
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists() && root.child('admins').child(auth.uid).child('level').val() === 'super_admin'",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid || (root.child('admins').child(auth.uid).exists() && root.child('admins').child(auth.uid).child('level').val() === 'super_admin')"
+      }
     },
 
-    // Settings - readable by everyone, writable by super_admin only
+    // Settings - readable by everyone, writable only by super_admin
     "settings": {
       ".read": true,
-      ".write": "auth != null && root.child('admins').child(auth.uid).child('level').val() === 'super_admin'"
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists() && root.child('admins').child(auth.uid).child('level').val() === 'super_admin'"
     },
 
     // Default deny
