@@ -363,16 +363,17 @@ const syncItem = async (type: SyncItemType, operation: SyncOperation, data: any)
 // Sync game attempt
 const syncAttempt = async (operation: SyncOperation, data: GameAttempt): Promise<void> => {
   const { rtdbAttempts } = await import('./firebase');
+  const shopId = data.shopId || 'unknown';
   
   switch (operation) {
     case 'create':
-      await rtdbAttempts.create(data);
+      await rtdbAttempts.create(shopId, data);
       break;
     case 'update':
-      await rtdbAttempts.update(data.id, data);
+      await rtdbAttempts.update(shopId, data.id, data);
       break;
     case 'delete':
-      await rtdbAttempts.delete(data.id);
+      await rtdbAttempts.delete(shopId, data.id);
       break;
   }
 };
@@ -380,16 +381,17 @@ const syncAttempt = async (operation: SyncOperation, data: GameAttempt): Promise
 // Sync item
 const syncItemData = async (operation: SyncOperation, data: Item): Promise<void> => {
   const { rtdbItems } = await import('./firebase');
+  const shopId = data.shopId || 'unknown';
   
   switch (operation) {
     case 'create':
-      await rtdbItems.create(data);
+      await rtdbItems.create(shopId, data);
       break;
     case 'update':
-      await rtdbItems.update(data.id, data);
+      await rtdbItems.update(shopId, data.id, data);
       break;
     case 'delete':
-      await rtdbItems.delete(data.id);
+      await rtdbItems.delete(shopId, data.id);
       break;
   }
 };
@@ -455,7 +457,8 @@ export const saveAttemptWithSync = async (attempt: GameAttempt): Promise<void> =
     console.log('[Sync] Online - attempting to sync...');
     try {
       const { rtdbAttempts } = await import('./firebase');
-      const result = await rtdbAttempts.create(attempt);
+      const shopId = attempt.shopId || 'unknown';
+      const result = await rtdbAttempts.create(shopId, attempt);
       console.log('[Sync] Attempt synced to Realtime Database:', result);
     } catch (error) {
       console.error('[Sync] Error syncing attempt to Realtime Database:', error);
@@ -475,10 +478,11 @@ export const saveItemWithSync = async (item: Item, isNew: boolean = true): Promi
   if (isOnline()) {
     try {
       const { rtdbItems } = await import('./firebase');
+      const shopId = item.shopId || 'unknown';
       if (isNew) {
-        await rtdbItems.create(item);
+        await rtdbItems.create(shopId, item);
       } else {
-        await rtdbItems.update(item.id, item);
+        await rtdbItems.update(shopId, item.id, item);
       }
       console.log('[Sync] Item synced to Realtime Database');
     } catch (error) {

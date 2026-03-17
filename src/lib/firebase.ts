@@ -1040,14 +1040,28 @@ export const rtdbShops = {
   }
 };
 
-// Items - Realtime Database
+// Items - stored under shops
 export const rtdbItems = {
   async getAll(): Promise<Item[]> {
     try {
-      const snapshot = await get(ref(rtdb, 'items'));
-      if (!snapshot.exists()) return [];
-      const data = snapshot.val();
-      return Object.entries(data).map(([id, item]: [string, any]) => ({ ...item, id }));
+      // Get all shops first
+      const shopsSnapshot = await get(ref(rtdb, 'shops'));
+      if (!shopsSnapshot.exists()) return [];
+      
+      const shops = shopsSnapshot.val();
+      const allItems: Item[] = [];
+      
+      // Get items from each shop
+      for (const shopId of Object.keys(shops)) {
+        const itemsSnapshot = await get(ref(rtdb, `shops/${shopId}/items`));
+        if (itemsSnapshot.exists()) {
+          const items = itemsSnapshot.val();
+          Object.entries(items).forEach(([id, item]: [string, any]) => {
+            allItems.push({ ...item, id, shopId });
+          });
+        }
+      }
+      return allItems;
     } catch (error) {
       console.error('RTDB Error fetching items:', error);
       return [];
@@ -1056,50 +1070,49 @@ export const rtdbItems = {
 
   async getByShop(shopId: string): Promise<Item[]> {
     try {
-      const q = rtdbQuery(ref(rtdb, 'items'), equalTo('shopId', shopId));
-      const snapshot = await get(q);
+      const snapshot = await get(ref(rtdb, `shops/${shopId}/items`));
       if (!snapshot.exists()) return [];
       const data = snapshot.val();
-      return Object.entries(data).map(([id, item]: [string, any]) => ({ ...item, id }));
+      return Object.entries(data).map(([id, item]: [string, any]) => ({ ...item, id, shopId }));
     } catch (error) {
       console.error('RTDB Error fetching items by shop:', error);
       return [];
     }
   },
 
-  async get(id: string): Promise<Item | null> {
+  async get(shopId: string, itemId: string): Promise<Item | null> {
     try {
-      const snapshot = await get(ref(rtdb, `items/${id}`));
+      const snapshot = await get(ref(rtdb, `shops/${shopId}/items/${itemId}`));
       if (!snapshot.exists()) return null;
-      return { ...snapshot.val(), id };
+      return { ...snapshot.val(), id: itemId, shopId };
     } catch (error) {
       console.error('RTDB Error fetching item:', error);
       return null;
     }
   },
 
-  async create(item: Item): Promise<{ success: boolean; id?: string; error?: string }> {
+  async create(shopId: string, item: Item): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const newRef = push(ref(rtdb, 'items'));
-      await set(newRef, serializeForRTDB(item));
+      const newRef = push(ref(rtdb, `shops/${shopId}/items`));
+      await set(newRef, serializeForRTDB({ ...item, shopId }));
       return { success: true, id: newRef.key || item.id };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   },
 
-  async update(id: string, data: Partial<Item>): Promise<{ success: boolean; error?: string }> {
+  async update(shopId: string, itemId: string, data: Partial<Item>): Promise<{ success: boolean; error?: string }> {
     try {
-      await update(ref(rtdb, `items/${id}`), { ...serializeForRTDB(data), updatedAt: new Date().toISOString() });
+      await update(ref(rtdb, `shops/${shopId}/items/${itemId}`), { ...serializeForRTDB(data), updatedAt: new Date().toISOString() });
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   },
 
-  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+  async delete(shopId: string, itemId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      await remove(ref(rtdb, `items/${id}`));
+      await remove(ref(rtdb, `shops/${shopId}/items/${itemId}`));
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -1107,11 +1120,11 @@ export const rtdbItems = {
   }
 };
 
-// Attempts - Realtime Database
+// Attempts - stored under shops
 export const rtdbAttempts = {
-  async create(attempt: GameAttempt): Promise<{ success: boolean; id?: string; error?: string }> {
+  async create(shopId: string, attempt: GameAttempt): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const newRef = push(ref(rtdb, 'attempts'));
+      const newRef = push(ref(rtdb, `shops/${shopId}/attempts`));
       await set(newRef, serializeForRTDB(attempt));
       return { success: true, id: newRef.key || attempt.id };
     } catch (error: any) {
@@ -1119,12 +1132,32 @@ export const rtdbAttempts = {
     }
   },
 
-  async getAll(): Promise<GameAttempt[]> {
+  async getAll(shopId?: string): Promise<GameAttempt[]> {
     try {
-      const snapshot = await get(ref(rtdb, 'attempts'));
-      if (!snapshot.exists()) return [];
-      const data = snapshot.val();
-      return Object.entries(data).map(([id, attempt]: [string, any]) => ({ ...attempt, id }));
+      if (shopId) {
+        const snapshot = await get(ref(rtdb, `shops/${shopId}/attempts`));
+        if (!snapshot.exists()) return [];
+        const data = snapshot.val();
+        return Object.entries(data).map(([id, attempt]: [string, any]) => ({ ...attempt, id }));
+      } else {
+        // Get all attempts from all shops
+        const shopsSnapshot = await get(ref(rtdb, 'shops'));
+        if (!shopsSnapshot.exists()) return [];
+        
+        const shops = shopsSnapshot.val();
+        const allAttempts: GameAttempt[] = [];
+        
+        for (const sid of Object.keys(shops)) {
+          const attemptsSnapshot = await get(ref(rtdb, `shops/${sid}/attempts`));
+          if (attemptsSnapshot.exists()) {
+            const attempts = attemptsSnapshot.val();
+            Object.entries(attempts).forEach(([id, attempt]: [string, any]) => {
+              allAttempts.push({ ...attempt, id, shopId: sid });
+            });
+          }
+        }
+        return allAttempts;
+      }
     } catch (error) {
       console.error('RTDB Error fetching attempts:', error);
       return [];
@@ -1133,29 +1166,28 @@ export const rtdbAttempts = {
 
   async getByShop(shopId: string): Promise<GameAttempt[]> {
     try {
-      const q = rtdbQuery(ref(rtdb, 'attempts'), equalTo('shopId', shopId));
-      const snapshot = await get(q);
+      const snapshot = await get(ref(rtdb, `shops/${shopId}/attempts`));
       if (!snapshot.exists()) return [];
       const data = snapshot.val();
-      return Object.entries(data).map(([id, attempt]: [string, any]) => ({ ...attempt, id }));
+      return Object.entries(data).map(([id, attempt]: [string, any]) => ({ ...attempt, id, shopId }));
     } catch (error) {
       console.error('RTDB Error fetching attempts by shop:', error);
       return [];
     }
   },
 
-  async update(id: string, data: Partial<GameAttempt>): Promise<{ success: boolean; error?: string }> {
+  async update(shopId: string, attemptId: string, data: Partial<GameAttempt>): Promise<{ success: boolean; error?: string }> {
     try {
-      await update(ref(rtdb, `attempts/${id}`), serializeForRTDB(data));
+      await update(ref(rtdb, `shops/${shopId}/attempts/${attemptId}`), serializeForRTDB(data));
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   },
 
-  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+  async delete(shopId: string, attemptId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      await remove(ref(rtdb, `attempts/${id}`));
+      await remove(ref(rtdb, `shops/${shopId}/attempts/${attemptId}`));
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
