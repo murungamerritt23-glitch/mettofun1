@@ -244,8 +244,8 @@ export default function AdminDashboard() {
   };
   const permissions: AdminPermissions = admin?.level ? 
     ((ADMIN_PERMISSIONS as any)[admin.level] || defaultPermissions) : defaultPermissions;
-  // Override canEditQualifyingPurchase for shop_admin and agent_admin
-  const canEditQualifyingPurchase = isShopAdmin || isAgentAdmin || permissions?.canEditQualifyingPurchase;
+  // Override canEditQualifyingPurchase for shop_admin only
+  const canEditQualifyingPurchase = isShopAdmin || permissions?.canEditQualifyingPurchase;
 
   // Load shops on mount
   useEffect(() => {
@@ -462,11 +462,10 @@ export default function AdminDashboard() {
       return true;
     }
     
-    // Handle agent_admin specific tabs
+    // Handle agent_admin specific tabs - only Shops tab (can add shops, cannot edit items or qualifying purchase)
     if (admin?.level === 'agent_admin' && (
       tab.requiredPermission === 'canManageAllShops' || 
-      tab.requiredPermission === 'canManageAssignedShops' ||
-      tab.requiredPermission === 'canEditQualifyingPurchase'
+      tab.requiredPermission === 'canManageAssignedShops'
     )) {
       return true;
     }
