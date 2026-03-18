@@ -38,6 +38,8 @@ export default function GameMode() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [selectedItemIndex, setSelectedItemIndex] = useState(0); // For DPAD navigation
   const [selectedNumberIndex, setSelectedNumberIndex] = useState(0); // For DPAD number navigation
+  const [tappedItemId, setTappedItemId] = useState<string | null>(null); // Visual feedback for tapped item
+  const [tappedBoxNum, setTappedBoxNum] = useState<number | null>(null); // Visual feedback for tapped box
 
   const { 
     gameStatus, setGameStatus, 
@@ -213,12 +215,20 @@ export default function GameMode() {
   const handleBoxSelect = (boxIndex: number) => {
     if (gameStatus !== 'playing' || selectedBox !== null) return;
     
+    // Visual feedback - show tapped animation
+    setTappedBoxNum(boxIndex);
+    setTimeout(() => setTappedBoxNum(null), 500);
+    
     setSelectedBox(boxIndex);
     setShowNumberPicker(true);
   };
 
   const handleItemSelect = (item: Item) => {
     if (!item || !item.isActive) return;
+    
+    // Visual feedback - show tapped animation
+    setTappedItemId(item.id);
+    setTimeout(() => setTappedItemId(null), 400);
     
     setSelectedItem(item);
     setShowItemPicker(false);
@@ -721,13 +731,13 @@ export default function GameMode() {
                   selectedItem?.id === item.id 
                     ? 'ring-2 ring-gold-500 bg-gold-900/50' 
                     : ''
-                }`}
+                } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
               >
-                <Gift className="w-6 h-6 sm:w-8 sm:h-8 mb-1 text-gold-400" />
+                <Gift className={`w-6 h-6 sm:w-8 sm:h-8 mb-1 ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`} />
                 <span className="text-xs sm:text-sm font-medium truncate w-full text-center">
                   {item.name}
                 </span>
-                <span className="text-gold-400 text-xs sm:text-sm">
+                <span className={`text-xs sm:text-sm ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`}>
                   KSh {item.value.toLocaleString()}
                 </span>
               </motion.button>
@@ -882,7 +892,7 @@ export default function GameMode() {
                 transition={{ delay: index * 0.05 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className={`game-box ${selectedBox === boxNum ? 'selected' : ''}`}
+                className={`game-box ${selectedBox === boxNum ? 'selected' : ''} ${tappedBoxNum === boxNum ? 'box-tapped' : ''}`}
                 onClick={() => handleBoxSelect(boxNum)}
               >
                 {/* Item Image or Placeholder */}
@@ -894,7 +904,7 @@ export default function GameMode() {
                       className="w-8 h-8 object-cover rounded"
                     />
                   ) : (
-                    <Gift className="w-6 h-6" />
+                    <Gift className={`w-6 h-6 ${tappedBoxNum === boxNum ? 'text-white' : ''}`} />
                   )}
                   {/* Item Name */}
                   <span className="text-xs font-semibold text-center leading-tight line-clamp-2">
@@ -902,7 +912,7 @@ export default function GameMode() {
                   </span>
                   {/* Item Price */}
                   {item?.value && (
-                    <span className="text-[10px] text-gold-400">
+                    <span className={`text-[10px] ${tappedBoxNum === boxNum ? 'text-white' : 'text-gold-400'}`}>
                       KSh {item.value.toLocaleString()}
                     </span>
                   )}

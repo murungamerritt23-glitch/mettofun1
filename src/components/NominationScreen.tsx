@@ -14,6 +14,7 @@ export default function NominationScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [tappedItemId, setTappedItemId] = useState<string | null>(null); // Visual feedback for tapped item
   
   const { 
     language, 
@@ -47,7 +48,10 @@ export default function NominationScreen() {
   }, [currentShop]);
 
   const handleNominate = async (item: NominationItem) => {
-    if (!currentGameAttemptId || !customerSession) return;
+    if (!currentGameAttemptId || !customerSession || isSaving) return;
+    
+    // Visual feedback - show tapped animation
+    setTappedItemId(item.id);
     
     setIsSaving(true);
     
@@ -86,12 +90,17 @@ export default function NominationScreen() {
         setItems(updatedItems);
       }
       
-      setShowSuccess(true);
-      setIsSaving(false);
+      // Show success after animation
+      setTimeout(() => {
+        setShowSuccess(true);
+        setIsSaving(false);
+        setTappedItemId(null);
+      }, 400);
       
     } catch (error) {
       console.error('Error saving nomination:', error);
       setIsSaving(false);
+      setTappedItemId(null);
       alert(language === 'sw' ? 'Hitilafu wakati wa kuhifadhi' : 'Error saving nomination');
     }
   };
@@ -295,9 +304,9 @@ export default function NominationScreen() {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleNominate(item)}
                 disabled={isSaving}
-                className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center ${
+                className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center relative ${
                   isSaving ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                } ${tappedItemId === item.id ? 'nomination-success' : ''}`}
               >
                 {/* Rank badge for top items */}
                 {index < 3 && (

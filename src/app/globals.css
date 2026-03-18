@@ -180,6 +180,13 @@ body {
   background: linear-gradient(145deg, #f59e0b 0%, #d97706 100%);
   border-color: #fbbf24;
   color: #000;
+  animation: selectedPulse 0.5s ease-out;
+}
+
+@keyframes selectedPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  50% { transform: scale(1.1); box-shadow: 0 0 20px 10px rgba(245, 158, 11, 0.4); }
+  100% { transform: scale(1); box-shadow: 0 0 10px 5px rgba(245, 158, 11, 0.2); }
 }
 
 .game-box.winner {
@@ -193,6 +200,41 @@ body {
   background: linear-gradient(145deg, #ef4444 0%, #dc2626 100%);
   border-color: #f87171;
   color: #fff;
+}
+
+/* Item selection feedback */
+.item-tapped {
+  animation: itemTapBounce 0.4s ease-out;
+}
+
+@keyframes itemTapBounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.9); }
+  50% { transform: scale(1.15); }
+  70% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Box/number selection feedback */
+.box-tapped {
+  animation: boxTapPulse 0.5s ease-out;
+}
+
+@keyframes boxTapPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  40% { transform: scale(1.15); box-shadow: 0 0 25px 10px rgba(245, 158, 11, 0.5); }
+  100% { transform: scale(1); box-shadow: 0 0 15px 5px rgba(245, 158, 11, 0.2); }
+}
+
+/* Nomination success feedback */
+.nomination-success {
+  animation: nominationSuccess 0.6s ease-out;
+}
+
+@keyframes nominationSuccess {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* Animation keyframes */
