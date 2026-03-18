@@ -291,7 +291,7 @@ export default function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md relative z-10"
       >
-        {/* Logo */}
+        {/* Logo - App Identity */}
         <div className="text-center mb-8">
           <motion.div
             initial={{ scale: 0 }}
@@ -301,11 +301,10 @@ export default function LoginPage() {
           >
             <img 
               src="/metofun-logo.png" 
-              alt="METOFUN" 
-              className="w-24 h-auto"
+              alt="ETO FUN" 
+              className="w-40 h-auto"
             />
           </motion.div>
-          <h1 className="gold-gradient-text text-4xl font-bold">metofun</h1>
           <p className="text-gray-400 mt-2">Admin Login</p>
         </div>
 

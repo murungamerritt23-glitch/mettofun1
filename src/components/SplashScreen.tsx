@@ -26,11 +26,11 @@ export default function SplashScreen() {
 
   return (
     <div className="min-h-screen bg-[#0A1628] flex flex-col items-center justify-center p-4">
-      {/* Static PNG Logo */}
+      {/* Static PNG Logo - App Identity */}
       <img
         src="/metofun-logo.png"
-        alt="METOFUN"
-        className="w-64 h-auto mb-8"
+        alt="ETO FUN"
+        className="w-48 h-auto mb-8"
       />
       
       {/* Simple Loading Bar */}

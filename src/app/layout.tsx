@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "EtoFun - Win Amazing Rewards!",
   description: "Promotional reward game - Play lucky number games and win exciting prizes!",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/metofun-logo.png",
+    apple: "/metofun-logo.png",
+  },
   other: {
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "black-translucent",
