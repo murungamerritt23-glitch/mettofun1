@@ -18,6 +18,8 @@ interface AuthState {
   // Security: PIN attempts
   pinAttempts: number;
   pinLockoutUntil: number | null;
+  // Offline login support
+  hasLoggedInBefore: boolean; // true after first successful online login
   setAdmin: (admin: Admin | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -26,6 +28,7 @@ interface AuthState {
   recordFailedAttempt: () => void;
   resetFailedAttempts: () => void;
   recordPinAttempt: (success: boolean) => void;
+  setHasLoggedInBefore: (value: boolean) => void;
   logout: () => void;
 }
 
@@ -48,6 +51,7 @@ export const useAuthStore = create<AuthState>()(
       lockoutUntil: null,
       pinAttempts: 0,
       pinLockoutUntil: null,
+      hasLoggedInBefore: false,
       setAdmin: (admin) => set({ admin, isAuthenticated: !!admin, lastActivity: Date.now() }),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
@@ -106,6 +110,7 @@ export const useAuthStore = create<AuthState>()(
           }
         }
       },
+      setHasLoggedInBefore: (value) => set({ hasLoggedInBefore: value }),
       logout: () => set({ 
         admin: null, 
         isAuthenticated: false, 

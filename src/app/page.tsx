@@ -4,10 +4,10 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import SplashScreen from '@/components/SplashScreen';
 import LoginPage from '@/components/LoginPage';
 import { SyncStatus } from '@/components/SyncStatus';
-import { useUIStore, useShopStore } from '@/store';
-import type { Shop } from '@/types';
-import { rtdbShops } from '@/lib/firebase';
-import { initDB } from '@/lib/local-db';
+import { useUIStore, useShopStore, useAuthStore } from '@/store';
+import type { Shop, Admin } from '@/types';
+import { rtdbShops, rtdbAdmins, firebaseAuth } from '@/lib/firebase';
+import { initDB, localAdmins, localShops } from '@/lib/local-db';
 import { getDeviceId } from '@/lib/device';
 
 // Lazy load heavy components
@@ -25,8 +25,72 @@ function ComponentLoader() {
 
 export default function Home() {
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
   const { currentView, showSplash, setShowSplash, setCurrentView } = useUIStore();
   const { setShops, setCurrentShop } = useShopStore();
+  const { admin, setAdmin, setHasLoggedInBefore } = useAuthStore();
+
+  // Persistent session - restore admin from local storage on load
+  // First login must be online, subsequent logins can be offline
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        // Get stored admin from local database
+        const storedAdmins = await localAdmins.getAll();
+        if (storedAdmins.length > 0) {
+          const storedAdmin = storedAdmins[0];
+          
+          // Try to verify with Firebase (online) - but allow offline fallback
+          try {
+            const firebaseAdmin = await rtdbAdmins.get(storedAdmin.id);
+            if (firebaseAdmin && firebaseAdmin.isActive !== false) {
+              // Online verified - restore session
+              setAdmin(storedAdmin);
+              setHasLoggedInBefore(true);
+              
+              // Auto-select shop for shop admins
+              const assignedShops = storedAdmin.assignedShops || [];
+              if (storedAdmin.level === 'shop_admin' && assignedShops.length > 0) {
+                const shops = await localShops.getAll();
+                const shop = shops.find(s => assignedShops.includes(s.id));
+                if (shop) {
+                  setCurrentShop(shop);
+                  setCurrentView('customer');
+                } else {
+                  setCurrentView('admin');
+                }
+              } else {
+                setCurrentView(storedAdmin.level === 'shop_admin' ? 'customer' : 'admin');
+              }
+              console.log('Session restored (online verified):', storedAdmin.email, storedAdmin.level);
+            } else if (firebaseAdmin === null) {
+              // Firebase unavailable or admin not found - allow offline session
+              setAdmin(storedAdmin);
+              setHasLoggedInBefore(true);
+              setCurrentView(storedAdmin.level === 'shop_admin' ? 'customer' : 'admin');
+              console.log('Session restored (offline mode):', storedAdmin.email);
+            } else {
+              // Admin deactivated in Firebase - clear session
+              await localAdmins.delete(storedAdmin.id);
+              console.log('Admin deactivated, cleared session');
+            }
+          } catch (fbError) {
+            // Firebase unavailable - use local cached data for offline login
+            setAdmin(storedAdmin);
+            setHasLoggedInBefore(true);
+            setCurrentView(storedAdmin.level === 'shop_admin' ? 'customer' : 'admin');
+            console.log('Session restored (offline fallback):', storedAdmin.email);
+          }
+        }
+      } catch (e) {
+        console.error('Error restoring session:', e);
+      } finally {
+        setIsRestoringSession(false);
+      }
+    };
+
+    restoreSession();
+  }, []);
 
   useEffect(() => {
     // Initialize local database and load shops - prioritize local data

@@ -253,8 +253,17 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
   - Updated capacitor.config.ts appName
 
 - [x] Use custom PNG logo from Google Photos on all pages
-  - Replaced SVG logo with custom PNG (metofun-logo.png) on all components
-  - Updated: LoginPage, AdminDashboard, GameMode, SplashScreen
+   - Replaced SVG logo with custom PNG (metofun-logo.png) on all components
+   - Updated: LoginPage, AdminDashboard, GameMode, SplashScreen
+
+- [x] Implement secure Firebase admin authentication with offline login support
+   - First login requires online Firebase authentication
+   - Subsequent logins can be offline using cached credentials
+   - Added hasLoggedInBefore flag to track first-time login status
+   - Session restoration tries online verification first, falls back to offline
+   - Added "Offline Login" button on login page for returning users
+   - Persistent session with 30-minute timeout
+   - Failed attempt tracking with lockout protection
 
 ## Current Structure
 

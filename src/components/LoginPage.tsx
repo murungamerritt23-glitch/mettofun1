@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, Lock, Eye, EyeOff, Loader2, FileText, CheckCircle } from 'lucide-react';
+import { Mail, Phone, Lock, Eye, EyeOff, Loader2, FileText, CheckCircle, AlertCircle, WifiOff } from 'lucide-react';
 import { useAuthStore, useUIStore, useShopStore, useGameStore } from '@/store';
-import { firebaseAuth, rtdbShops } from '@/lib/firebase';
+import { useAuth } from '@/lib/use-auth';
+import { firebaseAuth, rtdbShops, rtdbAdmins } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
 import type { AdminLevel, Admin } from '@/types';
@@ -38,7 +39,9 @@ export default function LoginPage() {
     checkAdminExists();
   }, []);
   
-  const { setAdmin, setLoading, setError: setAuthError } = useAuthStore();
+  // Use the new auth hook
+  const { login: authLogin, logout: authLogout } = useAuth();
+  const { setAdmin, setLoading, setError: setAuthError, hasLoggedInBefore, setHasLoggedInBefore } = useAuthStore();
   const { setCurrentView } = useUIStore();
   const { currentShop, setCurrentShop } = useShopStore();
   const { clearTestData } = useGameStore();
@@ -75,159 +78,132 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Try Firebase login first
+      // Step 1: Try Firebase Authentication (online login)
       const result = await firebaseAuth.signIn(email, password);
       
       if (result.error) {
-        // Firebase login failed - check local DB
-        const storedAdmin = await fetchAdminSettings(email);
-        
-        // Only allow login if admin exists in local database
-        if (!storedAdmin) {
-          setError('Invalid credentials. Admin not found.');
-          setIsLoading(false);
-          setLoading(false);
-          return;
+        setError('Invalid email or password.');
+        setIsLoading(false);
+        setLoading(false);
+        return;
+      }
+
+      if (!result.user) {
+        setError('Login failed. Please try again.');
+        setIsLoading(false);
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Fetch admin data from Firebase Realtime Database
+      const uid = result.user.uid;
+      const firebaseAdmin = await rtdbAdmins.get(uid);
+
+      // Check if admin exists in database
+      if (!firebaseAdmin) {
+        // Admin not found - sign out and show error
+        await firebaseAuth.signOut();
+        setError('Access denied. Admin record not found. Contact super admin.');
+        setIsLoading(false);
+        setLoading(false);
+        return;
+      }
+
+      // Check if admin is active
+      if (firebaseAdmin.isActive === false) {
+        await firebaseAuth.signOut();
+        setError('Access denied. Your account has been deactivated.');
+        setIsLoading(false);
+        setLoading(false);
+        return;
+      }
+
+      // Check if admin level is valid
+      if (!['super_admin', 'agent_admin', 'shop_admin'].includes(firebaseAdmin.level)) {
+        await firebaseAuth.signOut();
+        setError('Access denied. Invalid admin role.');
+        setIsLoading(false);
+        setLoading(false);
+        return;
+      }
+
+      // Check device authorization
+      const deviceError = checkDeviceAuthorization(firebaseAdmin);
+      if (deviceError) {
+        await firebaseAuth.signOut();
+        setError(deviceError);
+        setIsLoading(false);
+        setLoading(false);
+        return;
+      }
+
+      // Create admin object
+      const admin: Admin = {
+        id: uid,
+        email: firebaseAdmin.email || email,
+        phone: firebaseAdmin.phone || '',
+        name: firebaseAdmin.name || email.split('@')[0],
+        level: firebaseAdmin.level,
+        createdAt: firebaseAdmin.createdAt || new Date(),
+        lastLogin: new Date(),
+        isActive: firebaseAdmin.isActive ?? true,
+        region: firebaseAdmin.region || 'Default Region',
+        assignedShops: firebaseAdmin.assignedShops || [],
+        deviceId: firebaseAdmin.deviceId,
+        deviceLocked: firebaseAdmin.deviceLocked ?? false
+      };
+
+      // Save to local storage for offline access
+      await localAdmins.save(admin);
+
+      // Set admin in store
+      setAdmin(admin);
+      
+      // Mark as having logged in before (enables offline login later)
+      setHasLoggedInBefore(true);
+
+      // Step 3: Route based on admin level
+      if (admin.level === 'shop_admin') {
+        // Auto-select shop for shop admin
+        const currentDeviceId = getDeviceId();
+        let shop = await localShops.getByDeviceId(currentDeviceId);
+        if (!shop) {
+          const allShops = await localShops.getAll();
+          shop = allShops.find(s => 
+            s.adminEmail?.toLowerCase() === email.toLowerCase()
+          );
         }
-        
-        // Use stored admin data
-        const admin: Admin = {
-          id: storedAdmin.id || 'unknown',
-          email: storedAdmin.email || email,
-          phone: storedAdmin.phone || '',
-          name: storedAdmin.name || email.split('@')[0],
-          level: storedAdmin.level || 'super_admin',
-          createdAt: storedAdmin.createdAt || new Date(),
-          lastLogin: new Date(),
-          isActive: storedAdmin.isActive ?? true,
-          region: storedAdmin.region || 'Demo Region',
-          assignedShops: storedAdmin.assignedShops,
-          deviceId: storedAdmin.deviceId,
-          deviceLocked: storedAdmin.deviceLocked ?? false
-        };
-        
-        // Check device authorization
-        const deviceError = checkDeviceAuthorization(admin);
-        if (deviceError) {
-          setError(deviceError);
-          setIsLoading(false);
-          setLoading(false);
-          return;
+        if (!shop) {
+          try {
+            const firebaseShop = await rtdbShops.getByEmail(email);
+            shop = firebaseShop || undefined;
+            if (shop) {
+              await localShops.save(shop);
+            }
+          } catch (e) {
+            console.error('Error fetching shop from Firebase:', e);
+          }
         }
-        
-        setAdmin(admin);
-        
-        // Auto-select shop for shop admins based on device ID and email match
-        if (admin.level === 'shop_admin') {
-          const currentDeviceId = getDeviceId();
-          let shop = await localShops.getByDeviceId(currentDeviceId);
-          if (!shop) {
-            const allShops = await localShops.getAll();
-            shop = allShops.find(s => 
-              s.adminEmail?.toLowerCase() === email.toLowerCase()
-            );
-          }
-          if (!shop) {
-            try {
-              const firebaseShop = await rtdbShops.getByEmail(email);
-              shop = firebaseShop || undefined;
-              if (shop) {
-                await localShops.save(shop);
-              }
-            } catch (e) {
-              console.error('Error fetching shop from Firebase:', e);
-            }
-          }
-          if (shop) {
-            if (shop.adminEmail && shop.adminEmail.toLowerCase() !== email.toLowerCase()) {
-              setError('This device is not authorized for your account. Please contact support.');
-              setIsLoading(false);
-              setLoading(false);
-              return;
-            }
-            const updatedAdmin = { ...admin, assignedShops: [shop.id] };
-            setAdmin(updatedAdmin);
-            setCurrentShop(shop);
-          } else {
-            setError('No shop assigned to this device or email. Please contact your administrator.');
+        if (shop) {
+          if (shop.adminEmail && shop.adminEmail.toLowerCase() !== email.toLowerCase()) {
+            await firebaseAuth.signOut();
+            setError('This device is not authorized for your account.');
             setIsLoading(false);
             setLoading(false);
             return;
           }
-          setCurrentView('customer');
+          const updatedAdmin = { ...admin, assignedShops: [shop.id] };
+          setAdmin(updatedAdmin);
+          setCurrentShop(shop);
         } else {
-          setCurrentView('admin');
-        }
-      } else if (result.user) {
-        // Firebase login successful
-        const storedAdmin = await fetchAdminSettings(email);
-        const admin: Admin = {
-          id: result.user.uid,
-          email: result.user.email || '',
-          phone: result.user.phoneNumber || '',
-          name: result.user.displayName || email.split('@')[0],
-          level: storedAdmin?.level || selectedRole,
-          createdAt: storedAdmin?.createdAt || new Date(),
-          lastLogin: new Date(),
-          isActive: storedAdmin?.isActive ?? true,
-          region: storedAdmin?.region,
-          assignedShops: storedAdmin?.assignedShops,
-          deviceId: storedAdmin?.deviceId,
-          deviceLocked: storedAdmin?.deviceLocked ?? false
-        };
-        
-        // Check device authorization
-        const deviceError = checkDeviceAuthorization(admin);
-        if (deviceError) {
-          setError(deviceError);
+          setError('No shop assigned to this account. Contact super admin.');
           setIsLoading(false);
           setLoading(false);
           return;
         }
-        
-        setAdmin(admin);
-        
-        // Auto-select shop for shop admins
-        if (admin.level === 'shop_admin') {
-          const currentDeviceId = getDeviceId();
-          let shop = await localShops.getByDeviceId(currentDeviceId);
-          if (!shop) {
-            const allShops = await localShops.getAll();
-            shop = allShops.find(s => 
-              s.adminEmail?.toLowerCase() === email.toLowerCase()
-            );
-          }
-          if (!shop) {
-            try {
-              const firebaseShop = await rtdbShops.getByEmail(email);
-              shop = firebaseShop || undefined;
-              if (shop) {
-                await localShops.save(shop);
-              }
-            } catch (e) {
-              console.error('Error fetching shop from Firebase:', e);
-            }
-          }
-          if (shop) {
-            if (shop.adminEmail && shop.adminEmail.toLowerCase() !== email.toLowerCase()) {
-              setError('This device is not authorized for your account. Please contact support.');
-              setIsLoading(false);
-              setLoading(false);
-              return;
-            }
-            const updatedAdmin = { ...admin, assignedShops: [shop.id] };
-            setAdmin(updatedAdmin);
-            setCurrentShop(shop);
-          } else {
-            setError('No shop assigned to this device or email. Please contact your administrator.');
-            setIsLoading(false);
-            setLoading(false);
-            return;
-          }
-          setCurrentView('customer');
-        } else {
-          setCurrentView('admin');
-        }
+        setCurrentView('customer');
+      } else {
+        setCurrentView('admin');
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -419,6 +395,47 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-gray-700">
+            {/* Offline Login - shown only if user has logged in before */}
+            {hasLoggedInBefore && (
+              <div className="mb-4">
+                <p className="text-gray-500 text-xs text-center mb-2">Previously logged in? Login offline</p>
+                <button
+                  onClick={async () => {
+                    const cachedAdmins = await localAdmins.getAll();
+                    if (cachedAdmins.length > 0) {
+                      const cachedAdmin = cachedAdmins[0];
+                      setAdmin(cachedAdmin);
+                      setHasLoggedInBefore(true);
+                      
+                      // Auto-select shop for shop admin
+                      if (cachedAdmin.level === 'shop_admin') {
+                        const currentDeviceId = getDeviceId();
+                        let shop = await localShops.getByDeviceId(currentDeviceId);
+                        if (!shop) {
+                          const allShops = await localShops.getAll();
+                          shop = allShops.find(s => 
+                            s.adminEmail?.toLowerCase() === cachedAdmin.email.toLowerCase()
+                          );
+                        }
+                        if (shop) {
+                          setCurrentShop(shop);
+                          setCurrentView('customer');
+                          return;
+                        }
+                      }
+                      setCurrentView(cachedAdmin.level === 'shop_admin' ? 'customer' : 'admin');
+                    } else {
+                      setError('No cached credentials. Please login online first.');
+                    }
+                  }}
+                  className="btn-gold-outline w-full flex items-center justify-center gap-2"
+                >
+                  <WifiOff size={16} />
+                  Offline Login
+                </button>
+              </div>
+            )}
+            
             <p className="text-gray-500 text-xs text-center mb-3">Demo Logins</p>
             <button
               onClick={() => handleDemoLogin('super_admin')}
