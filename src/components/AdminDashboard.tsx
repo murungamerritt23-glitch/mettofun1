@@ -244,8 +244,8 @@ export default function AdminDashboard() {
   };
   const permissions: AdminPermissions = admin?.level ? 
     ((ADMIN_PERMISSIONS as any)[admin.level] || defaultPermissions) : defaultPermissions;
-  // Override canEditQualifyingPurchase for shop_admin
-  const canEditQualifyingPurchase = isShopAdmin || permissions?.canEditQualifyingPurchase;
+  // Override canEditQualifyingPurchase for shop_admin and agent_admin
+  const canEditQualifyingPurchase = isShopAdmin || isAgentAdmin || permissions?.canEditQualifyingPurchase;
 
   // Load shops on mount
   useEffect(() => {
@@ -254,14 +254,30 @@ export default function AdminDashboard() {
         // Get current shop from store first
         const storedCurrentShop = useShopStore.getState().currentShop;
         
-        // Check if this is a shop_admin with assigned shops
+        // Check admin types
+        const isSuperAdmin = admin?.level === 'super_admin';
         const isShopAdmin = admin?.level === 'shop_admin';
+        const isAgentAdmin = admin?.level === 'agent_admin';
         const assignedShopIds = admin?.assignedShops || [];
         
-        // Function to filter shops by assigned shops for shop_admin
+        // Function to filter shops by admin role:
+        // - super_admin: sees ALL shops
+        // - agent_admin: sees only shops they added OR shops assigned to them
+        // - shop_admin: sees only their assigned shops
         const filterByAssignedShops = (shopList: Shop[]): Shop[] => {
+          if (isSuperAdmin) {
+            // super_admin sees ALL shops
+            return shopList;
+          }
           if (isShopAdmin && assignedShopIds.length > 0) {
+            // shop_admin: only see their assigned shops
             return shopList.filter(s => assignedShopIds.includes(s.id));
+          }
+          if (isAgentAdmin) {
+            // agent_admin: see shops they added OR shops assigned to them
+            return shopList.filter(s => 
+              s.addedBy === admin.id || assignedShopIds.includes(s.id)
+            );
           }
           return shopList;
         };
@@ -426,8 +442,8 @@ export default function AdminDashboard() {
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
     { id: 'myShop', label: 'My Shop', icon: Store, requiredPermission: 'shop_admin' },
-    { id: 'customers', label: 'Customers', icon: ShoppingCart, requiredPermission: 'shop_admin' },
     { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageAllShops' },
+    { id: 'customers', label: 'Customers', icon: ShoppingCart, requiredPermission: 'shop_admin' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
     { id: 'qualifyingPurchase', label: 'Qualifying Purchase', icon: Zap, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'attempts', label: 'Attempts', icon: Users, requiredPermission: 'canViewAnalytics' },
@@ -441,22 +457,34 @@ export default function AdminDashboard() {
     // Settings tab is visible to everyone
     if (tab.requiredPermission === null) return true;
     
-    // Handle shop_admin specific tabs
+    // Handle shop_admin specific tabs - My Shop
     if (admin?.level === 'shop_admin' && tab.requiredPermission === 'shop_admin') {
       return true;
     }
     
-    // Also show tab if user is shop_admin (direct check) for edit permissions
-    if (admin?.level === 'shop_admin' && (tab.requiredPermission === 'canEditQualifyingPurchase' || tab.requiredPermission === 'canEditItems')) {
+    // Handle agent_admin specific tabs
+    if (admin?.level === 'agent_admin' && (
+      tab.requiredPermission === 'canManageAllShops' || 
+      tab.requiredPermission === 'canManageAssignedShops' ||
+      tab.requiredPermission === 'canEditQualifyingPurchase'
+    )) {
       return true;
     }
     
-    // Handle staff tab for both canManageAdmins and canAssignShops
+    // Handle shop_admin edit permissions
+    if (admin?.level === 'shop_admin' && (
+      tab.requiredPermission === 'canEditQualifyingPurchase' || 
+      tab.requiredPermission === 'canEditItems'
+    )) {
+      return true;
+    }
+    
+    // Handle staff tab for canManageAdmins and canAssignShops
     if (tab.requiredPermission === 'canManageAdmins' && (permissions.canManageAdmins || permissions.canAssignShops)) {
       return true;
     }
     
-    // Handle shops tab for both canManageAllShops and canManageAssignedShops
+    // Handle shops tab for canManageAllShops and canManageAssignedShops
     if (tab.requiredPermission === 'canManageAllShops' && (permissions.canManageAllShops || permissions.canManageAssignedShops)) {
       return true;
     }
