@@ -40,6 +40,7 @@ export default function GameMode() {
   const [selectedNumberIndex, setSelectedNumberIndex] = useState(0); // For DPAD number navigation
   const [tappedItemId, setTappedItemId] = useState<string | null>(null); // Visual feedback for tapped item
   const [tappedBoxNum, setTappedBoxNum] = useState<number | null>(null); // Visual feedback for tapped box
+  const [tappedNumber, setTappedNumber] = useState<number | null>(null); // Visual feedback for tapped number
 
   const { 
     gameStatus, setGameStatus, 
@@ -237,6 +238,10 @@ export default function GameMode() {
 
   const handleNumberSelect = async (number: number) => {
     if (selectedNumber !== null || !correctNumber) return;
+    
+    // Visual feedback - show tapped animation
+    setTappedNumber(number);
+    setTimeout(() => setTappedNumber(null), 500);
     
     setSelectedNumber(number);
     
@@ -626,7 +631,7 @@ export default function GameMode() {
                 key={num}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="game-box"
+                className={`game-box ${tappedNumber === num ? 'box-tapped' : ''}`}
                 onClick={() => handleNumberSelect(num)}
               >
                 {num}
@@ -729,7 +734,7 @@ export default function GameMode() {
                 onClick={() => handleItemSelect(item)}
                 className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center ${
                   selectedItem?.id === item.id 
-                    ? 'ring-2 ring-gold-500 bg-gold-900/50' 
+                    ? 'ring-2 ring-gold-500 bg-gold-900/50 selected' 
                     : ''
                 } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
               >
