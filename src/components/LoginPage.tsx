@@ -97,17 +97,7 @@ export default function LoginPage() {
 
       // Step 2: Fetch admin data from Firebase Realtime Database
       const uid = result.user.uid;
-      let firebaseAdmin = await rtdbAdmins.get(uid);
-
-      // If admin not found in Firebase, try cached admin from local storage
-      if (!firebaseAdmin) {
-        const cachedAdmins = await localAdmins.getAll();
-        const cachedAdmin = cachedAdmins.find(a => a.id === uid);
-        
-        if (cachedAdmin) {
-          firebaseAdmin = cachedAdmin;
-        }
-      }
+      const firebaseAdmin = await rtdbAdmins.get(uid);
 
       // Check if admin exists in database
       if (!firebaseAdmin) {
@@ -481,14 +471,6 @@ export default function LoginPage() {
                 ⚙️ Setup New Admin
               </button>
             )}
-            
-            {/* Always show option to create admin */}
-            <button
-              onClick={() => setShowSetup(true)}
-              className="mt-2 text-gray-500 text-xs hover:text-gold-400 w-full text-center"
-            >
-              + Create Admin Account
-            </button>
           </div>
         </div>
 
