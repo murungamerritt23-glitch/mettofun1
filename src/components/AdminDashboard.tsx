@@ -173,7 +173,8 @@ export default function AdminDashboard() {
   const isSuperAdmin = admin?.level === 'super_admin';
   const isAgentAdmin = admin?.level === 'agent_admin';
   const isAdmin = admin?.level === 'super_admin' || admin?.level === 'agent_admin';
-  const needsPassword = isShopAdmin || isSuperAdmin || isAgentAdmin;
+  // Temporarily disabled password protection
+  const needsPassword = false;
 
   // Default password for all admin types (can be changed)
   const DEFAULT_PASSWORD = '0000';
