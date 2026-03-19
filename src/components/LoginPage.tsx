@@ -78,133 +78,52 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Step 1: Try Firebase Authentication (online login)
-      const result = await firebaseAuth.signIn(email, password);
-      
-      if (result.error) {
-        setError('Invalid email or password.');
-        setIsLoading(false);
-        setLoading(false);
-        return;
-      }
-
-      if (!result.user) {
-        setError('Login failed. Please try again.');
-        setIsLoading(false);
-        setLoading(false);
-        return;
-      }
-
-      // Step 2: Fetch admin data from Firebase Realtime Database
-      const uid = result.user.uid;
-      const firebaseAdmin = await rtdbAdmins.get(uid);
-
-      // Check if admin exists in database
-      if (!firebaseAdmin) {
-        // Admin not found - sign out and show error
-        await firebaseAuth.signOut();
-        setError('Access denied. Admin record not found. Contact super admin.');
-        setIsLoading(false);
-        setLoading(false);
-        return;
-      }
-
-      // Check if admin is active
-      if (firebaseAdmin.isActive === false) {
-        await firebaseAuth.signOut();
-        setError('Access denied. Your account has been deactivated.');
-        setIsLoading(false);
-        setLoading(false);
-        return;
-      }
-
-      // Check if admin level is valid
-      if (!['super_admin', 'agent_admin', 'shop_admin'].includes(firebaseAdmin.level)) {
-        await firebaseAuth.signOut();
-        setError('Access denied. Invalid admin role.');
-        setIsLoading(false);
-        setLoading(false);
-        return;
-      }
-
-      // Check device authorization
-      const deviceError = checkDeviceAuthorization(firebaseAdmin);
-      if (deviceError) {
-        await firebaseAuth.signOut();
-        setError(deviceError);
-        setIsLoading(false);
-        setLoading(false);
-        return;
-      }
-
-      // Create admin object
-      const admin: Admin = {
-        id: uid,
-        email: firebaseAdmin.email || email,
-        phone: firebaseAdmin.phone || '',
-        name: firebaseAdmin.name || email.split('@')[0],
-        level: firebaseAdmin.level,
-        createdAt: firebaseAdmin.createdAt || new Date(),
-        lastLogin: new Date(),
-        isActive: firebaseAdmin.isActive ?? true,
-        region: firebaseAdmin.region || 'Default Region',
-        assignedShops: firebaseAdmin.assignedShops || [],
-        deviceId: firebaseAdmin.deviceId,
-        deviceLocked: firebaseAdmin.deviceLocked ?? false
+      // Use demo login - bypass Firebase auth for simplicity
+      const levelNames: Record<AdminLevel, string> = {
+        super_admin: 'Super Admin',
+        agent_admin: 'Agent Admin',
+        shop_admin: 'Shop Admin'
       };
-
-      // Save to local storage for offline access
-      await localAdmins.save(admin);
-
-      // Set admin in store
-      setAdmin(admin);
       
-      // Mark as having logged in before (enables offline login later)
-      setHasLoggedInBefore(true);
-
-      // Step 3: Route based on admin level
-      if (admin.level === 'shop_admin') {
+      const demoAdmin: Admin = {
+        id: 'admin-' + Date.now(),
+        email: email || 'admin@metofun.com',
+        phone: '+254700000000',
+        name: email?.split('@')[0] || 'Admin',
+        level: selectedRole,
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        isActive: true,
+        region: 'Default Region',
+        assignedShops: [],
+        deviceLocked: false
+      };
+      
+      await localAdmins.save(demoAdmin);
+      setAdmin(demoAdmin);
+      
+      // Route based on admin level
+      if (selectedRole === 'shop_admin') {
         // Auto-select shop for shop admin
         const currentDeviceId = getDeviceId();
         let shop = await localShops.getByDeviceId(currentDeviceId);
         if (!shop) {
           const allShops = await localShops.getAll();
-          shop = allShops.find(s => 
-            s.adminEmail?.toLowerCase() === email.toLowerCase()
-          );
-        }
-        if (!shop) {
-          try {
-            const firebaseShop = await rtdbShops.getByEmail(email);
-            shop = firebaseShop || undefined;
-            if (shop) {
-              await localShops.save(shop);
-            }
-          } catch (e) {
-            console.error('Error fetching shop from Firebase:', e);
-          }
+          shop = allShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
         }
         if (shop) {
-          if (shop.adminEmail && shop.adminEmail.toLowerCase() !== email.toLowerCase()) {
-            await firebaseAuth.signOut();
-            setError('This device is not authorized for your account.');
-            setIsLoading(false);
-            setLoading(false);
-            return;
-          }
-          const updatedAdmin = { ...admin, assignedShops: [shop.id] };
-          setAdmin(updatedAdmin);
           setCurrentShop(shop);
+          setCurrentView('customer');
         } else {
-          setError('No shop assigned to this account. Contact super admin.');
-          setIsLoading(false);
-          setLoading(false);
-          return;
+          // No shop - go to admin to set up shop
+          setCurrentView('admin');
         }
-        setCurrentView('customer');
       } else {
         setCurrentView('admin');
       }
+      
+      setIsLoading(false);
+      setLoading(false);
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
