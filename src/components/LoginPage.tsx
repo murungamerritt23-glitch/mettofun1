@@ -97,51 +97,15 @@ export default function LoginPage() {
 
       // Step 2: Fetch admin data from Firebase Realtime Database
       const uid = result.user.uid;
-      
-      let firebaseAdmin;
-      try {
-        firebaseAdmin = await rtdbAdmins.get(uid);
-      } catch (fbError) {
-        console.log('Firebase admin fetch failed, trying offline login:', fbError);
-        // Firebase unavailable - try to use cached admin from local storage
+      let firebaseAdmin = await rtdbAdmins.get(uid);
+
+      // If admin not found in Firebase, try cached admin from local storage
+      if (!firebaseAdmin) {
         const cachedAdmins = await localAdmins.getAll();
         const cachedAdmin = cachedAdmins.find(a => a.id === uid);
         
         if (cachedAdmin) {
-          // Use cached admin data
-          await localAdmins.save(cachedAdmin);
-          setAdmin(cachedAdmin);
-          setHasLoggedInBefore(true);
-          
-          // Route based on admin level
-          if (cachedAdmin.level === 'shop_admin') {
-            const currentDeviceId = getDeviceId();
-            let shop = await localShops.getByDeviceId(currentDeviceId);
-            if (!shop) {
-              const allShops = await localShops.getAll();
-              shop = allShops.find(s => 
-                s.adminEmail?.toLowerCase() === cachedAdmin.email.toLowerCase()
-              );
-            }
-            if (shop) {
-              setCurrentShop(shop);
-              setCurrentView('customer');
-            } else {
-              setError('No shop assigned to this account. Contact super admin.');
-            }
-          } else {
-            setCurrentView('admin');
-          }
-          
-          setIsLoading(false);
-          setLoading(false);
-          return;
-        } else {
-          setError('Cannot connect to server. Please try again or login offline.');
-          await firebaseAuth.signOut();
-          setIsLoading(false);
-          setLoading(false);
-          return;
+          firebaseAdmin = cachedAdmin;
         }
       }
 
@@ -517,6 +481,14 @@ export default function LoginPage() {
                 ⚙️ Setup New Admin
               </button>
             )}
+            
+            {/* Always show option to create admin */}
+            <button
+              onClick={() => setShowSetup(true)}
+              className="mt-2 text-gray-500 text-xs hover:text-gold-400 w-full text-center"
+            >
+              + Create Admin Account
+            </button>
           </div>
         </div>
 

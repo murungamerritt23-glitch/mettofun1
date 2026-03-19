@@ -260,19 +260,8 @@ export default function AdminDashboard() {
         
         // Function to filter shops by assigned shops for shop_admin
         const filterByAssignedShops = (shopList: Shop[]): Shop[] => {
-          if (isSuperAdmin) {
-            // super_admin sees ALL shops
-            return shopList;
-          }
           if (isShopAdmin && assignedShopIds.length > 0) {
-            // shop_admin: only see their assigned shops
             return shopList.filter(s => assignedShopIds.includes(s.id));
-          }
-          if (isAgentAdmin) {
-            // agent_admin: see shops they added OR shops assigned to them
-            return shopList.filter(s => 
-              s.addedBy === admin.id || assignedShopIds.includes(s.id)
-            );
           }
           return shopList;
         };
