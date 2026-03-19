@@ -1,25 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, Lock, Eye, EyeOff, Loader2, FileText, CheckCircle, AlertCircle, UserPlus, LogIn, Store, Shield, Users } from 'lucide-react';
-import { useAuthStore, useUIStore, useShopStore, useGameStore } from '@/store';
-import { firebaseAuth, rtdbShops, rtdbAdmins } from '@/lib/firebase';
+import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, LogIn } from 'lucide-react';
+import { useAuthStore, useUIStore, useShopStore } from '@/store';
+import { firebaseAuth, rtdbAdmins } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
-import type { AdminLevel, Admin } from '@/types';
-
-const ADMIN_LABELS: Record<AdminLevel, string> = {
-  super_admin: 'Super Admin',
-  agent_admin: 'Agent Admin',
-  shop_admin: 'Shop Admin'
-};
-
-const ADMIN_ICONS: Record<AdminLevel, React.ReactNode> = {
-  super_admin: <Shield size={20} />,
-  agent_admin: <Users size={20} />,
-  shop_admin: <Store size={20} />
-};
+import type { Admin } from '@/types';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -27,142 +15,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isSignupMode, setIsSignupMode] = useState(true);
-  const [signupName, setSignupName] = useState('');
-  const [signupPhone, setSignupPhone] = useState('');
-  const [signupPassword, setSignupPassword] = useState('');
-  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
-  const [signupRole, setSignupRole] = useState<AdminLevel>('shop_admin');
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
   
-  // Device-specific admin level - stored per device
-  const [deviceAdminLevel, setDeviceAdminLevel] = useState<AdminLevel | null>(null);
-  const [isFirstAdmin, setIsFirstAdmin] = useState<boolean | null>(null);
-  
-  useEffect(() => {
-    const checkDeviceAdmin = async () => {
-      // Check local storage for device's admin level
-      const storedLevel = localStorage.getItem('deviceAdminLevel') as AdminLevel;
-      
-      if (storedLevel) {
-        setDeviceAdminLevel(storedLevel);
-        setIsFirstAdmin(false);
-        setIsSignupMode(false);
-      } else {
-        // Check if any admin exists in local DB
-        const admins = await localAdmins.getAll();
-        if (admins.length > 0) {
-          const admin = admins[0];
-          localStorage.setItem('deviceAdminLevel', admin.level);
-          setDeviceAdminLevel(admin.level);
-          setIsFirstAdmin(false);
-          setIsSignupMode(false);
-        } else {
-          // First time - show signup
-          setIsFirstAdmin(true);
-          setIsSignupMode(true);
-        }
-      }
-    };
-    checkDeviceAdmin();
-  }, []);
-  
-  const { setAdmin, setLoading } = useAuthStore();
+  const { setAdmin } = useAuthStore();
   const { setCurrentView } = useUIStore();
   const { setCurrentShop } = useShopStore();
-  const { clearTestData } = useGameStore();
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!signupName.trim()) {
-      setError('Please enter your name');
-      return;
-    }
-    if (!email.trim()) {
-      setError('Please enter your email');
-      return;
-    }
-    if (signupPassword.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-    if (signupPassword !== signupConfirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    if (!termsAccepted) {
-      setError('Please accept the Terms & Conditions');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const result = await firebaseAuth.signUp(email, password);
-      
-      if (result.error) {
-        setError(result.error);
-        setIsLoading(false);
-        return;
-      }
-
-      if (!result.user) {
-        setError('Signup failed. Please try again.');
-        setIsLoading(false);
-        return;
-      }
-
-      const uid = result.user.uid;
-
-      const adminData: Admin = {
-        id: uid,
-        email: email.toLowerCase(),
-        phone: signupPhone || '',
-        name: signupName,
-        level: signupRole,
-        createdAt: new Date(),
-        lastLogin: new Date(),
-        isActive: true,
-        region: 'Default Region',
-        assignedShops: [],
-        deviceId: getDeviceId(),
-        deviceLocked: false
-      };
-
-      await rtdbAdmins.save(adminData);
-      await localAdmins.save(adminData);
-      
-      // Store admin level for this device
-      localStorage.setItem('deviceAdminLevel', signupRole);
-      setDeviceAdminLevel(signupRole);
-
-      setAdmin(adminData);
-
-      const messages: Record<AdminLevel, string> = {
-        super_admin: 'Welcome! You are now the Super Admin.',
-        agent_admin: 'Welcome! You are now an Agent Admin.',
-        shop_admin: 'Welcome! You are now a Shop Admin.'
-      };
-      
-      setSuccessMessage(messages[signupRole]);
-      
-      setTimeout(() => {
-        if (signupRole === 'shop_admin') {
-          setCurrentView('customer');
-        } else {
-          setCurrentView('admin');
-        }
-      }, 1500);
-
-    } catch (err: any) {
-      setError(err.message || 'Signup failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,14 +59,6 @@ export default function LoginPage() {
       if (firebaseAdmin.isActive === false) {
         await firebaseAuth.signOut();
         setError('Account has been deactivated.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Verify the login matches device admin level
-      if (deviceAdminLevel && firebaseAdmin.level !== deviceAdminLevel) {
-        await firebaseAuth.signOut();
-        setError(`This device is registered for ${ADMIN_LABELS[deviceAdminLevel]} only.`);
         setIsLoading(false);
         return;
       }
@@ -259,14 +107,6 @@ export default function LoginPage() {
     }
   };
 
-  if (isFirstAdmin === null) {
-    return (
-      <div className="min-h-screen bg-[#0A1628] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#0A1628] flex items-center justify-center p-4">
       <motion.div
@@ -279,212 +119,78 @@ export default function LoginPage() {
           <img src="/metofun-logo.png" alt="ETO FUN" className="w-40 h-auto mx-auto" />
         </div>
 
-        {successMessage ? (
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="card-gold text-center"
-          >
-            <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Success!</h2>
-            <p className="text-gray-300">{successMessage}</p>
-          </motion.div>
-        ) : (
-          <>
-            {/* Role-specific header */}
-            <div className="mb-6">
-              {deviceAdminLevel ? (
-                <div className="text-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-gold-900/50 rounded-full">
-                    {ADMIN_ICONS[deviceAdminLevel]}
-                    <span className="text-gold-400 font-medium">{ADMIN_LABELS[deviceAdminLevel]}</span>
-                  </div>
-                </div>
-              ) : isFirstAdmin ? (
-                <div className="text-center">
-                  <h2 className="text-white text-xl font-semibold mb-2">Create Your Account</h2>
-                  <p className="text-gray-400 text-sm">Select your admin role below</p>
-                </div>
-              ) : null}
+        <div className="card-gold">
+          <h2 className="gold-gradient-text text-2xl font-bold text-center mb-2">Admin Login</h2>
+          <p className="text-gray-400 text-center mb-6">Enter your credentials to access</p>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input pl-10"
+                  placeholder="admin@metofun.com"
+                  required
+                />
+              </div>
             </div>
 
-            {/* Mode Toggle - only show if no device role */}
-            {!deviceAdminLevel && (
-              <div className="flex mb-6 bg-gray-800 rounded-lg p-1">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input pl-10 pr-10"
+                  placeholder="Enter password"
+                  required
+                />
                 <button
-                  onClick={() => setIsSignupMode(true)}
-                  className={`flex-1 py-2 px-4 rounded-md flex items-center justify-center gap-2 transition-all ${
-                    isSignupMode ? 'bg-gold-600 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
                 >
-                  <UserPlus size={18} />
-                  Sign Up
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
-                <button
-                  onClick={() => setIsSignupMode(false)}
-                  className={`flex-1 py-2 px-4 rounded-md flex items-center justify-center gap-2 transition-all ${
-                    !isSignupMode ? 'bg-gold-600 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <LogIn size={18} />
-                  Login
-                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
+                <AlertCircle className="text-red-400 flex-shrink-0" size={20} />
+                <p className="text-red-400 text-sm">{error}</p>
               </div>
             )}
 
-            <div className="card-gold">
-              <h2 className="gold-gradient-text text-2xl font-bold text-center mb-6">
-                {isSignupMode ? 'Create Account' : 'Admin Login'}
-              </h2>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn-gold w-full flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin" size={20} />
+                  Logging in...
+                </>
+              ) : (
+                <>
+                  <LogIn size={20} />
+                  Login
+                </>
+              )}
+            </button>
+          </form>
+        </div>
 
-              <form onSubmit={isSignupMode ? handleSignup : handleLogin} className="space-y-4">
-                {isSignupMode && (
-                  <>
-                    {/* Role Selection - only for first admin */}
-                    {!deviceAdminLevel && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Select Admin Role</label>
-                        <div className="space-y-2">
-                          {(['super_admin', 'agent_admin', 'shop_admin'] as AdminLevel[]).map((role) => (
-                            <button
-                              key={role}
-                              type="button"
-                              onClick={() => setSignupRole(role)}
-                              className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${
-                                signupRole === role 
-                                  ? 'bg-gold-600 border-2 border-gold-400 text-white' 
-                                  : 'bg-gray-800 border-2 border-transparent text-gray-300 hover:bg-gray-700'
-                              }`}
-                            >
-                              {ADMIN_ICONS[role]}
-                              <span>{ADMIN_LABELS[role]}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
-                      <input
-                        type="text"
-                        value={signupName}
-                        onChange={(e) => setSignupName(e.target.value)}
-                        className="input"
-                        placeholder="Enter your full name"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Phone Number</label>
-                      <input
-                        type="tel"
-                        value={signupPhone}
-                        onChange={(e) => setSignupPhone(e.target.value)}
-                        className="input"
-                        placeholder="+254..."
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="input pl-10"
-                      placeholder="admin@shop.com"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={isSignupMode ? signupPassword : password}
-                      onChange={(e) => isSignupMode ? setSignupPassword(e.target.value) : setPassword(e.target.value)}
-                      className="input pl-10 pr-10"
-                      placeholder="Enter password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                </div>
-
-                {isSignupMode && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
-                    <input
-                      type="password"
-                      value={signupConfirmPassword}
-                      onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                      className="input"
-                      placeholder="Confirm password"
-                      required
-                    />
-                  </div>
-                )}
-
-                {isSignupMode && (
-                  <div className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      id="terms"
-                      checked={termsAccepted}
-                      onChange={(e) => setTermsAccepted(e.target.checked)}
-                      className="mt-1"
-                    />
-                    <label htmlFor="terms" className="text-sm text-gray-400">
-                      I accept the Terms & Conditions
-                    </label>
-                  </div>
-                )}
-
-                {error && (
-                  <div className="flex items-center gap-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
-                    <AlertCircle className="text-red-400 flex-shrink-0" size={20} />
-                    <p className="text-red-400 text-sm">{error}</p>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="btn-gold w-full flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="animate-spin" size={20} />
-                      {isSignupMode ? 'Creating Account...' : 'Logging in...'}
-                    </>
-                  ) : (
-                    <>
-                      {isSignupMode ? 'Sign Up' : 'Login'}
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-
-            <div className="mt-6 text-center text-gray-500 text-sm">
-              <p>&copy; 2024 ETO FUN. All rights reserved.</p>
-            </div>
-          </>
-        )}
+        <div className="mt-6 text-center text-gray-500 text-sm">
+          <p>&copy; 2024 ETO FUN. All rights reserved.</p>
+        </div>
       </motion.div>
     </div>
   );
