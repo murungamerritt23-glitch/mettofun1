@@ -2,12 +2,24 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, Lock, Eye, EyeOff, Loader2, FileText, CheckCircle, AlertCircle, UserPlus, LogIn } from 'lucide-react';
+import { Mail, Phone, Lock, Eye, EyeOff, Loader2, FileText, CheckCircle, AlertCircle, UserPlus, LogIn, Store, Shield, Users } from 'lucide-react';
 import { useAuthStore, useUIStore, useShopStore, useGameStore } from '@/store';
 import { firebaseAuth, rtdbShops, rtdbAdmins } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
 import type { AdminLevel, Admin } from '@/types';
+
+const ADMIN_LABELS: Record<AdminLevel, string> = {
+  super_admin: 'Super Admin',
+  agent_admin: 'Agent Admin',
+  shop_admin: 'Shop Admin'
+};
+
+const ADMIN_ICONS: Record<AdminLevel, React.ReactNode> = {
+  super_admin: <Shield size={20} />,
+  agent_admin: <Users size={20} />,
+  shop_admin: <Store size={20} />
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,26 +32,40 @@ export default function LoginPage() {
   const [signupPhone, setSignupPhone] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [signupRole, setSignupRole] = useState<AdminLevel>('shop_admin');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   
-  // Check admin status on mount
-  const [existingAdmin, setExistingAdmin] = useState<Admin | null>(null);
+  // Device-specific admin level - stored per device
+  const [deviceAdminLevel, setDeviceAdminLevel] = useState<AdminLevel | null>(null);
   const [isFirstAdmin, setIsFirstAdmin] = useState<boolean | null>(null);
   
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      const admins = await localAdmins.getAll();
-      if (admins.length > 0) {
-        setExistingAdmin(admins[0]);
+    const checkDeviceAdmin = async () => {
+      // Check local storage for device's admin level
+      const storedLevel = localStorage.getItem('deviceAdminLevel') as AdminLevel;
+      
+      if (storedLevel) {
+        setDeviceAdminLevel(storedLevel);
         setIsFirstAdmin(false);
-        setIsSignupMode(false); // Show login if admin exists
+        setIsSignupMode(false);
       } else {
-        setIsFirstAdmin(true);
-        setIsSignupMode(true); // Show signup for first admin
+        // Check if any admin exists in local DB
+        const admins = await localAdmins.getAll();
+        if (admins.length > 0) {
+          const admin = admins[0];
+          localStorage.setItem('deviceAdminLevel', admin.level);
+          setDeviceAdminLevel(admin.level);
+          setIsFirstAdmin(false);
+          setIsSignupMode(false);
+        } else {
+          // First time - show signup
+          setIsFirstAdmin(true);
+          setIsSignupMode(true);
+        }
       }
     };
-    checkAdminStatus();
+    checkDeviceAdmin();
   }, []);
   
   const { setAdmin, setLoading } = useAuthStore();
@@ -75,7 +101,6 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Create Firebase auth user
       const result = await firebaseAuth.signUp(email, password);
       
       if (result.error) {
@@ -92,16 +117,12 @@ export default function LoginPage() {
 
       const uid = result.user.uid;
 
-      // First admin becomes super_admin automatically
-      const adminLevel: AdminLevel = isFirstAdmin ? 'super_admin' : 'shop_admin';
-
-      // Create admin record in Firebase
       const adminData: Admin = {
         id: uid,
         email: email.toLowerCase(),
         phone: signupPhone || '',
         name: signupName,
-        level: adminLevel,
+        level: signupRole,
         createdAt: new Date(),
         lastLogin: new Date(),
         isActive: true,
@@ -113,12 +134,23 @@ export default function LoginPage() {
 
       await rtdbAdmins.save(adminData);
       await localAdmins.save(adminData);
+      
+      // Store admin level for this device
+      localStorage.setItem('deviceAdminLevel', signupRole);
+      setDeviceAdminLevel(signupRole);
+
       setAdmin(adminData);
 
-      setSuccessMessage(isFirstAdmin ? 'Welcome! You are now the Super Admin.' : 'Account created successfully!');
+      const messages: Record<AdminLevel, string> = {
+        super_admin: 'Welcome! You are now the Super Admin.',
+        agent_admin: 'Welcome! You are now an Agent Admin.',
+        shop_admin: 'Welcome! You are now a Shop Admin.'
+      };
+      
+      setSuccessMessage(messages[signupRole]);
       
       setTimeout(() => {
-        if (adminLevel === 'shop_admin') {
+        if (signupRole === 'shop_admin') {
           setCurrentView('customer');
         } else {
           setCurrentView('admin');
@@ -175,6 +207,14 @@ export default function LoginPage() {
         return;
       }
 
+      // Verify the login matches device admin level
+      if (deviceAdminLevel && firebaseAdmin.level !== deviceAdminLevel) {
+        await firebaseAuth.signOut();
+        setError(`This device is registered for ${ADMIN_LABELS[deviceAdminLevel]} only.`);
+        setIsLoading(false);
+        return;
+      }
+
       const admin: Admin = {
         id: uid,
         email: firebaseAdmin.email || email,
@@ -219,7 +259,6 @@ export default function LoginPage() {
     }
   };
 
-  // If loading admin status
   if (isFirstAdmin === null) {
     return (
       <div className="min-h-screen bg-[#0A1628] flex items-center justify-center">
@@ -252,32 +291,44 @@ export default function LoginPage() {
           </motion.div>
         ) : (
           <>
-            {/* Mode Toggle */}
-            <div className="flex mb-6 bg-gray-800 rounded-lg p-1">
-              <button
-                onClick={() => setIsSignupMode(true)}
-                className={`flex-1 py-2 px-4 rounded-md flex items-center justify-center gap-2 transition-all ${
-                  isSignupMode ? 'bg-gold-600 text-white' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <UserPlus size={18} />
-                Sign Up
-              </button>
-              <button
-                onClick={() => setIsSignupMode(false)}
-                className={`flex-1 py-2 px-4 rounded-md flex items-center justify-center gap-2 transition-all ${
-                  !isSignupMode ? 'bg-gold-600 text-white' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <LogIn size={18} />
-                Login
-              </button>
+            {/* Role-specific header */}
+            <div className="mb-6">
+              {deviceAdminLevel ? (
+                <div className="text-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-gold-900/50 rounded-full">
+                    {ADMIN_ICONS[deviceAdminLevel]}
+                    <span className="text-gold-400 font-medium">{ADMIN_LABELS[deviceAdminLevel]}</span>
+                  </div>
+                </div>
+              ) : isFirstAdmin ? (
+                <div className="text-center">
+                  <h2 className="text-white text-xl font-semibold mb-2">Create Your Account</h2>
+                  <p className="text-gray-400 text-sm">Select your admin role below</p>
+                </div>
+              ) : null}
             </div>
 
-            {/* First Admin Notice */}
-            {isFirstAdmin && isSignupMode && (
-              <div className="mb-4 p-3 bg-green-900/30 border border-green-500 rounded-lg text-center">
-                <p className="text-green-400 text-sm">You are creating the first admin account. You will become Super Admin.</p>
+            {/* Mode Toggle - only show if no device role */}
+            {!deviceAdminLevel && (
+              <div className="flex mb-6 bg-gray-800 rounded-lg p-1">
+                <button
+                  onClick={() => setIsSignupMode(true)}
+                  className={`flex-1 py-2 px-4 rounded-md flex items-center justify-center gap-2 transition-all ${
+                    isSignupMode ? 'bg-gold-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <UserPlus size={18} />
+                  Sign Up
+                </button>
+                <button
+                  onClick={() => setIsSignupMode(false)}
+                  className={`flex-1 py-2 px-4 rounded-md flex items-center justify-center gap-2 transition-all ${
+                    !isSignupMode ? 'bg-gold-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <LogIn size={18} />
+                  Login
+                </button>
               </div>
             )}
 
@@ -289,6 +340,30 @@ export default function LoginPage() {
               <form onSubmit={isSignupMode ? handleSignup : handleLogin} className="space-y-4">
                 {isSignupMode && (
                   <>
+                    {/* Role Selection - only for first admin */}
+                    {!deviceAdminLevel && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Select Admin Role</label>
+                        <div className="space-y-2">
+                          {(['super_admin', 'agent_admin', 'shop_admin'] as AdminLevel[]).map((role) => (
+                            <button
+                              key={role}
+                              type="button"
+                              onClick={() => setSignupRole(role)}
+                              className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${
+                                signupRole === role 
+                                  ? 'bg-gold-600 border-2 border-gold-400 text-white' 
+                                  : 'bg-gray-800 border-2 border-transparent text-gray-300 hover:bg-gray-700'
+                              }`}
+                            >
+                              {ADMIN_ICONS[role]}
+                              <span>{ADMIN_LABELS[role]}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
                       <input
