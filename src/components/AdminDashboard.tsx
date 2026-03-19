@@ -1259,12 +1259,6 @@ export default function AdminDashboard() {
                     )}
                   </div>
                   
-                  {/* Debug info - remove in production */}
-                  <div className="mb-4 p-2 bg-gray-800 rounded text-xs">
-                    <p className="text-gray-400">Admin Level: <span className="text-white">{admin?.level || 'undefined'}</span></p>
-                    <p className="text-gray-400">canEditQualifyingPurchase: <span className={canEditQualifyingPurchase ? 'text-green-400' : 'text-red-400'}>{String(canEditQualifyingPurchase)}</span></p>
-                  </div>
-
                   {(canEditQualifyingPurchase) && (
                     <div className="mb-6 p-4 bg-gold-900/20 border-2 border-gold-500 rounded-lg">
                       <label className="block text-white font-semibold text-lg mb-2 flex items-center gap-2">
