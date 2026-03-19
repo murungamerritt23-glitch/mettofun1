@@ -2917,7 +2917,7 @@ function AdminSidebar({
                   setIsMobileMenuOpen(false);
                 }}
                 className={`nav-item w-full flex items-center gap-3 ${
-                  activeTab === tab.id ? 'active' : ''
+                  activeTab === tab.id ? 'active' : '' 
                 }`}
               >
                 <tab.icon size={20} />
@@ -2925,13 +2925,6 @@ function AdminSidebar({
               </button>
             ))}
           </nav>
-
-          <div className="absolute bottom-20 left-6 right-6">
-            <div className="card">
-              <p className="text-white font-medium">{admin?.name || 'Admin'}</p>
-              <p className="text-gray-400 text-sm capitalize">{admin?.level?.replace('_', ' ') || 'Admin'}</p>
-            </div>
-          </div>
 
           <button
             onClick={onLogout}
