@@ -31,56 +31,32 @@ export default function Home() {
   const { admin, setAdmin, setHasLoggedInBefore } = useAuthStore();
 
   // Persistent session - restore admin from local storage on load
-  // First login must be online, subsequent logins can be offline
+  // Trust local cache after successful login
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        // Get stored admin from local database
         const storedAdmins = await localAdmins.getAll();
         if (storedAdmins.length > 0) {
           const storedAdmin = storedAdmins[0];
           
-          // Try to verify with Firebase (online) - but allow offline fallback
-          try {
-            const firebaseAdmin = await rtdbAdmins.get(storedAdmin.id);
-            if (firebaseAdmin && firebaseAdmin.isActive !== false) {
-              // Online verified - restore session
-              setAdmin(storedAdmin);
-              setHasLoggedInBefore(true);
-              
-              // Auto-select shop for shop admins
-              const assignedShops = storedAdmin.assignedShops || [];
-              if (storedAdmin.level === 'shop_admin' && assignedShops.length > 0) {
-                const shops = await localShops.getAll();
-                const shop = shops.find(s => assignedShops.includes(s.id));
-                if (shop) {
-                  setCurrentShop(shop);
-                  setCurrentView('customer');
-                } else {
-                  setCurrentView('admin');
-                }
-              } else {
-                setCurrentView(storedAdmin.level === 'shop_admin' ? 'customer' : 'admin');
-              }
-              console.log('Session restored (online verified):', storedAdmin.email, storedAdmin.level);
-            } else if (firebaseAdmin === null) {
-              // Firebase unavailable or admin not found - allow offline session
-              setAdmin(storedAdmin);
-              setHasLoggedInBefore(true);
-              setCurrentView(storedAdmin.level === 'shop_admin' ? 'customer' : 'admin');
-              console.log('Session restored (offline mode):', storedAdmin.email);
+          // Always trust local cache - don't require online verification every time
+          // Online verification only happens during login
+          setAdmin(storedAdmin);
+          
+          const assignedShops = storedAdmin.assignedShops || [];
+          if (storedAdmin.level === 'shop_admin' && assignedShops.length > 0) {
+            const shops = await localShops.getAll();
+            const shop = shops.find(s => assignedShops.includes(s.id));
+            if (shop) {
+              setCurrentShop(shop);
+              setCurrentView('customer');
             } else {
-              // Admin deactivated in Firebase - clear session
-              await localAdmins.delete(storedAdmin.id);
-              console.log('Admin deactivated, cleared session');
+              setCurrentView('admin');
             }
-          } catch (fbError) {
-            // Firebase unavailable - use local cached data for offline login
-            setAdmin(storedAdmin);
-            setHasLoggedInBefore(true);
+          } else {
             setCurrentView(storedAdmin.level === 'shop_admin' ? 'customer' : 'admin');
-            console.log('Session restored (offline fallback):', storedAdmin.email);
           }
+          console.log('Session restored from cache:', storedAdmin.email);
         }
       } catch (e) {
         console.error('Error restoring session:', e);
