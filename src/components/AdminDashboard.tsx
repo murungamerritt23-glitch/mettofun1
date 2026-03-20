@@ -555,9 +555,10 @@ export default function AdminDashboard() {
     setIsEditingItemOfDay(true);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    // Immediate navigation - don't wait for any cleanup
     setCurrentView('login');
+    logout();
   };
 
   const loadAttempts = async () => {
