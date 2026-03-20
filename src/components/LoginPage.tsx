@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, LogIn } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, LogIn, UserPlus } from 'lucide-react';
 import { useAuthStore, useUIStore, useShopStore } from '@/store';
 import { firebaseAuth, rtdbAdmins } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
-import type { Admin } from '@/types';
+import type { Admin, AdminLevel } from '@/types';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,10 +15,93 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isSignupMode, setIsSignupMode] = useState(false);
+  const [signupName, setSignupName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isFirstAdmin, setIsFirstAdmin] = useState<boolean | null>(null);
   
   const { setAdmin } = useAuthStore();
   const { setCurrentView } = useUIStore();
   const { setCurrentShop } = useShopStore();
+
+  useEffect(() => {
+    const checkFirstAdmin = async () => {
+      try {
+        const admins = await rtdbAdmins.getAll();
+        setIsFirstAdmin(admins.length === 0);
+      } catch {
+        setIsFirstAdmin(true);
+      }
+    };
+    checkFirstAdmin();
+  }, []);
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!signupName.trim()) {
+      setError('Please enter your name');
+      return;
+    }
+    if (!email || !password) {
+      setError('Please enter email and password');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await firebaseAuth.signUp(email, password);
+      
+      if (result.error) {
+        setError(result.error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!result.user) {
+        setError('Signup failed. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      const uid = result.user.uid;
+
+      const adminData: Admin = {
+        id: uid,
+        email: email.toLowerCase(),
+        phone: '',
+        name: signupName,
+        level: 'super_admin' as AdminLevel,
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        isActive: true,
+        region: 'Default Region',
+        assignedShops: [],
+        deviceId: getDeviceId(),
+        deviceLocked: false
+      };
+
+      await rtdbAdmins.save(adminData);
+      await localAdmins.save(adminData);
+      setAdmin(adminData);
+      setCurrentView('admin');
+
+    } catch (err: any) {
+      setError(err.message || 'Signup failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +190,14 @@ export default function LoginPage() {
     }
   };
 
+  if (isFirstAdmin === null) {
+    return (
+      <div className="min-h-screen bg-[#0A1628] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0A1628] flex items-center justify-center p-4">
       <motion.div
@@ -114,16 +205,39 @@ export default function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        {/* Logo */}
         <div className="text-center mb-8">
           <img src="/metofun-logo.png" alt="ETO FUN" className="w-40 h-auto mx-auto" />
         </div>
 
-        <div className="card-gold">
-          <h2 className="gold-gradient-text text-2xl font-bold text-center mb-2">Admin Login</h2>
-          <p className="text-gray-400 text-center mb-6">Enter your credentials to access</p>
+        {isFirstAdmin && (
+          <div className="mb-4 p-3 bg-green-900/30 border border-green-500 rounded-lg text-center">
+            <p className="text-green-400 text-sm">First time? Create your Super Admin account</p>
+          </div>
+        )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
+        <div className="card-gold">
+          <h2 className="gold-gradient-text text-2xl font-bold text-center mb-2">
+            {isSignupMode ? 'Create Account' : 'Admin Login'}
+          </h2>
+          <p className="text-gray-400 text-center mb-6">
+            {isSignupMode ? 'Set up your admin account' : 'Enter your credentials to access'}
+          </p>
+
+          <form onSubmit={isSignupMode ? handleSignup : handleLogin} className="space-y-4">
+            {isSignupMode && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={signupName}
+                  onChange={(e) => setSignupName(e.target.value)}
+                  className="input"
+                  placeholder="Your full name"
+                  required
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
               <div className="relative">
@@ -161,6 +275,20 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {isSignupMode && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="input"
+                  placeholder="Confirm password"
+                  required
+                />
+              </div>
+            )}
+
             {error && (
               <div className="flex items-center gap-2 p-3 bg-red-900/30 border border-red-500 rounded-lg">
                 <AlertCircle className="text-red-400 flex-shrink-0" size={20} />
@@ -176,16 +304,38 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="animate-spin" size={20} />
-                  Logging in...
+                  {isSignupMode ? 'Creating Account...' : 'Logging in...'}
                 </>
               ) : (
                 <>
-                  <LogIn size={20} />
-                  Login
+                  {isSignupMode ? <UserPlus size={20} /> : <LogIn size={20} />}
+                  {isSignupMode ? 'Create Account' : 'Login'}
                 </>
               )}
             </button>
           </form>
+
+          {!isSignupMode && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setIsSignupMode(true)}
+                className="text-gold-400 hover:text-gold-300 text-sm"
+              >
+                First time? Sign Up
+              </button>
+            </div>
+          )}
+
+          {isSignupMode && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => { setIsSignupMode(false); setError(''); }}
+                className="text-gray-400 hover:text-gray-300 text-sm"
+              >
+                Already have an account? Login
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 text-center text-gray-500 text-sm">
