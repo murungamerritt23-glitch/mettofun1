@@ -666,14 +666,25 @@ export default function GameMode() {
               : 'Pick one of the prizes below'}
           </p>
           
-          {/* Selected item preview if any */}
-          {selectedItem && (
-            <div className="text-center mb-4 p-3 bg-gold-900/30 rounded-lg">
-              <p className="text-gray-400 text-sm">{language === 'sw' ? 'Umechagua:' : 'You selected:'}</p>
-              <p className="gold-gradient-text text-xl font-bold">{selectedItem.name}</p>
-              <p className="text-gold-400">KSh {selectedItem.value.toLocaleString()}</p>
-            </div>
-          )}
+          {/* Selected item preview - Enhanced visual */}
+          <div className={`mb-4 p-4 rounded-xl border-2 transition-all ${
+            selectedItem 
+              ? 'bg-gold-900/40 border-gold-500 animate-pulse' 
+              : 'bg-gray-800/50 border-gray-700'
+          }`}>
+            {selectedItem ? (
+              <div className="text-center">
+                <p className="text-gray-300 text-sm mb-2">✓ {language === 'sw' ? 'Umechagua:' : 'You selected:'}</p>
+                <p className="gold-gradient-text text-2xl font-bold">{selectedItem.name}</p>
+                <p className="text-gold-400 text-xl font-bold">KSh {selectedItem.value.toLocaleString()}</p>
+                <p className="text-gray-400 text-xs mt-2">Tap "Next" to continue</p>
+              </div>
+            ) : (
+              <div className="text-center">
+                <p className="text-gray-400 text-sm">{language === 'sw' ? 'Bonyeza kitufe kuchagua' : 'Tap an item to select'}</p>
+              </div>
+            )}
+          </div>
 
           {/* Item of the Day Banner - Marketing Feature */}
           {itemOfTheDay && itemOfTheDay.isActive && (
@@ -749,17 +760,23 @@ export default function GameMode() {
             ))}
           </div>
           
-          {/* Confirm button when item selected */}
-          {selectedItem && (
-            <button
+          {/* Next button - only show when item selected */}
+          {selectedItem ? (
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               onClick={() => {
                 setShowItemPicker(false);
                 setShowNumberPicker(true);
               }}
-              className="btn-gold w-full mt-4"
+              className="btn-gold w-full mt-4 py-4 text-lg font-bold"
             >
-              {language === 'sw' ? 'Endelea kuchagua nambari' : 'Continue to Pick Number'}
-            </button>
+              {language === 'sw' ? 'Endelea →' : 'Next →'}
+            </motion.button>
+          ) : (
+            <div className="mt-4 p-3 bg-gray-800/50 rounded-lg text-center">
+              <p className="text-gray-500 text-sm">{language === 'sw' ? 'Chagua kitufe kabla yaenda mbele' : 'Select an item to continue'}</p>
+            </div>
           )}
         </div>
       </div>
