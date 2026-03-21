@@ -18,22 +18,23 @@ export default function LoginPage() {
   const [isSignupMode, setIsSignupMode] = useState(false);
   const [signupName, setSignupName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isFirstAdmin, setIsFirstAdmin] = useState<boolean | null>(null);
+  const [isFirstAdmin, setIsFirstAdmin] = useState(false);
   
   const { setAdmin } = useAuthStore();
   const { setCurrentView } = useUIStore();
   const { setCurrentShop } = useShopStore();
 
   useEffect(() => {
-    const checkFirstAdmin = async () => {
-      try {
-        const admins = await rtdbAdmins.getAll();
-        setIsFirstAdmin(admins.length === 0);
-      } catch {
+    // Check if first admin by checking local storage
+    localAdmins.getAll().then(admins => {
+      if (admins.length === 0) {
         setIsFirstAdmin(true);
+        setIsSignupMode(true);
       }
-    };
-    checkFirstAdmin();
+    }).catch(() => {
+      setIsFirstAdmin(true);
+      setIsSignupMode(true);
+    });
   }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -190,7 +191,8 @@ export default function LoginPage() {
     }
   };
 
-  if (isFirstAdmin === null) {
+  // Show loading only if checking Firebase (not needed anymore)
+  if (false) {
     return (
       <div className="min-h-screen bg-[#0A1628] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
