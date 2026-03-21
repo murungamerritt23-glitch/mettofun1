@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react';
 import LoginPage from '@/components/LoginPage';
 import { useUIStore, useShopStore, useAuthStore } from '@/store';
-import { rtdbShops } from '@/lib/firebase';
-import { initDB, localAdmins, localShops } from '@/lib/local-db';
 
 export default function Home() {
   const [ready, setReady] = useState(false);
@@ -13,41 +11,12 @@ export default function Home() {
   const { setAdmin } = useAuthStore();
 
   useEffect(() => {
-    init().then(() => setReady(true));
+    // Quick init - skip IndexedDB for now
+    const timer = setTimeout(() => {
+      setReady(true);
+    }, 500);
+    return () => clearTimeout(timer);
   }, []);
-
-  const init = async () => {
-    try {
-      await initDB();
-      
-      let shops = await localShops.getAll();
-      if (shops.length === 0) {
-        try { shops = await rtdbShops.getAll(); } catch {}
-      }
-      setShops(shops);
-      
-      const admins = await localAdmins.getAll();
-      if (admins.length > 0) {
-        const admin = admins[0];
-        setAdmin(admin);
-        
-        const assigned = admin.assignedShops || [];
-        if (admin.level === 'shop_admin' && assigned.length > 0) {
-          const shop = shops.find(s => assigned.includes(s.id));
-          if (shop) {
-            setCurrentShop(shop);
-            setCurrentView('customer');
-          } else {
-            setCurrentView('admin');
-          }
-        } else {
-          setCurrentView(admin.level === 'shop_admin' ? 'customer' : 'admin');
-        }
-      }
-    } catch (e) {
-      console.error('Init error:', e);
-    }
-  };
 
   if (!ready) {
     return (
