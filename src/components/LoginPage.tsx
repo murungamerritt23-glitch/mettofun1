@@ -15,26 +15,21 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isSignupMode, setIsSignupMode] = useState(false);
+  const [isSignupMode, setIsSignupMode] = useState(false); // Default to LOGIN
   const [signupName, setSignupName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isFirstAdmin, setIsFirstAdmin] = useState(false);
   
   const { setAdmin } = useAuthStore();
   const { setCurrentView } = useUIStore();
   const { setCurrentShop } = useShopStore();
 
+  // Default to login mode - signup is for first time only
   useEffect(() => {
-    // Check if first admin by checking local storage
-    localAdmins.getAll().then(admins => {
-      if (admins.length === 0) {
-        setIsFirstAdmin(true);
-        setIsSignupMode(true);
-      }
-    }).catch(() => {
-      setIsFirstAdmin(true);
-      setIsSignupMode(true);
-    });
+    // Just check localStorage directly - don't wait for async
+    const hasAdmin = localStorage.getItem('metofun-auth');
+    if (!hasAdmin) {
+      setIsSignupMode(true); // First time user
+    }
   }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -191,15 +186,6 @@ export default function LoginPage() {
     }
   };
 
-  // Show loading only if checking Firebase (not needed anymore)
-  if (false) {
-    return (
-      <div className="min-h-screen bg-[#0A1628] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#0A1628] flex items-center justify-center p-4">
       <motion.div
@@ -211,7 +197,7 @@ export default function LoginPage() {
           <img src="/metofun-logo.png" alt="ETO FUN" className="w-40 h-auto mx-auto" />
         </div>
 
-        {isFirstAdmin && (
+        {isSignupMode && (
           <div className="mb-4 p-3 bg-green-900/30 border border-green-500 rounded-lg text-center">
             <p className="text-green-400 text-sm">First time? Create your Super Admin account</p>
           </div>
