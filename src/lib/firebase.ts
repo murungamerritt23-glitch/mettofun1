@@ -48,15 +48,15 @@ import {
 import type { Shop, Subscription, SubscriptionTier, Admin, GameAttempt, Item, NominationItem, CustomerNomination } from '@/types';
 import { localSettings } from './local-db';
 
-// Firebase configuration - Replace with your own config
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "demo-api-key",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "demo-project.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "demo-project",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "demo-project.appspot.com",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:123456789:web:abcdef",
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "https://demo-project-default-rtdb.firebaseio.com"
+  apiKey: "AIzaSyDXKEeVx0Zi_7USxTP63KTnNcWDArt7k7E",
+  authDomain: "metofun-6a2de.firebaseapp.com",
+  databaseURL: "https://metofun-6a2de-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "metofun-6a2de",
+  storageBucket: "metofun-6a2de.firebasestorage.app",
+  messagingSenderId: "453737536176",
+  appId: "1:453737536176:web:0d9f7b49f23fdd76e4b975"
 };
 
 // Initialize Firebase

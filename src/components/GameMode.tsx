@@ -702,7 +702,7 @@ export default function GameMode() {
                 <p className="text-gray-300 text-sm mb-2">✓ {language === 'sw' ? 'Umechagua:' : 'You selected:'}</p>
                 <p className="gold-gradient-text text-2xl font-bold">{selectedItem.name}</p>
                 <p className="text-gold-400 text-xl font-bold">KSh {selectedItem.value.toLocaleString()}</p>
-                <p className="text-gray-400 text-xs mt-2">Tap "Next" to continue</p>
+                <p className="text-gray-400 text-xs mt-2">Tap &quot;Next&quot; to continue</p>
               </div>
             ) : (
               <div className="text-center">
