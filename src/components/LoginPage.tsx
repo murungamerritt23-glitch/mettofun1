@@ -87,9 +87,18 @@ export default function LoginPage() {
         deviceLocked: false
       };
 
-      await rtdbAdmins.save(adminData);
+      const rtdbResult = await rtdbAdmins.save(adminData);
+      if (!rtdbResult.success) {
+        console.error('RTDB save error:', rtdbResult.error);
+        await firebaseAuth.signOut();
+        setError('Failed to create admin record. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
       await localAdmins.save(adminData);
       setAdmin(adminData);
+      localStorage.setItem('metofun-auth', JSON.stringify(adminData));
       setCurrentView('admin');
 
     } catch (err: any) {
@@ -159,6 +168,7 @@ export default function LoginPage() {
 
       await localAdmins.save(admin);
       setAdmin(admin);
+      localStorage.setItem('metofun-auth', JSON.stringify(admin));
 
       if (admin.level === 'shop_admin') {
         const deviceId = getDeviceId();
