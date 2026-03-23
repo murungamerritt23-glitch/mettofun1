@@ -50,7 +50,7 @@ import { localSettings } from './local-db';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDXKEeVx0Zi_7USxTP63KTnNcWDArt7k7E",
+  apiKey: "AIzaSyBBIaOVkt8FMPgv8JPF-ceoeCTHR0iWgYE",
   authDomain: "metofun-6a2de.firebaseapp.com",
   databaseURL: "https://metofun-6a2de-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "metofun-6a2de",
