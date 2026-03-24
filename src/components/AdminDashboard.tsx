@@ -312,57 +312,48 @@ export default function AdminDashboard() {
             }
           }
         };
-        
-        // Helper function with timeout
-        const loadWithTimeout = async (promise: Promise<any>, ms = 5000) => {
-          const timeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('timeout')), ms)
-          );
-          return Promise.race([promise, timeout]);
-        };
 
-        // admin sees all shops (including inactive)
-        if (admin?.level === 'super_admin') {
-          try {
-            const allShops = await loadWithTimeout(rtdbShops.getAll());
-            if (allShops && allShops.length > 0) {
-              setShops(allShops);
-              autoSelectShop(allShops);
-            } else {
-              const localShopList = await localShops.getAll();
-              setShops(localShopList);
-              autoSelectShop(localShopList);
-            }
-          } catch (error) {
-            console.error('Error loading shops, using local:', error);
-            const localShopList = await localShops.getAll();
+        // Load from local first (always works), then try RTDB in background
+        const loadShopsFromLocal = async () => {
+          const localShopList = await localShops.getAll();
+          if (admin?.level === 'super_admin') {
             setShops(localShopList);
             autoSelectShop(localShopList);
-          }
-        } else {
-          // Other admins (agent_admin, shop_admin) see only active shops
-          try {
-            const fbShops = await loadWithTimeout(rtdbShops.getAllActive());
-            const filteredFbShops = filterByAssignedShops(fbShops || []);
-            if (filteredFbShops.length > 0) {
-              setShops(filteredFbShops);
-              autoSelectShop(filteredFbShops);
-            } else {
-              const localShopList = await localShops.getAll();
-              const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
-              const filteredLocalShops = filterByAssignedShops(activeLocalShops);
-              setShops(filteredLocalShops);
-              autoSelectShop(filteredLocalShops);
-            }
-          } catch (error) {
-            console.error('Error loading shops, using local:', error);
-            const localShopList = await localShops.getAll();
+          } else {
             const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
             const filteredLocalShops = filterByAssignedShops(activeLocalShops);
             setShops(filteredLocalShops);
             autoSelectShop(filteredLocalShops);
           }
-        }
+        };
+
+        // Try RTDB in background but don't block
+        const tryLoadFromRTDB = async () => {
+          try {
+            let fbShops;
+            if (admin?.level === 'super_admin') {
+              fbShops = await rtdbShops.getAll();
+            } else {
+              fbShops = await rtdbShops.getAllActive();
+            }
+            if (fbShops && fbShops.length > 0) {
+              if (admin?.level === 'super_admin') {
+                setShops(fbShops);
+                autoSelectShop(fbShops);
+              } else {
+                const filteredFbShops = filterByAssignedShops(fbShops);
+                setShops(filteredFbShops);
+                autoSelectShop(filteredFbShops);
+              }
+            }
+          } catch (err) {
+            console.log('RTDB shops unavailable, using local');
+          }
+        };
+
+        // Load local immediately, then try RTDB
+        await loadShopsFromLocal();
+        tryLoadFromRTDB();
       } catch (error) {
         console.error('Error in loadShops:', error);
       }
