@@ -145,25 +145,35 @@ export default function LoginPage() {
 
       const uid = result.user.uid;
       
-      // Check RTDB first for admin record
-      let firebaseAdmin: Admin | null = null;
+      // Check local storage first (fast and reliable)
+      let adminFromLocal: Admin | null = null;
       try {
-        firebaseAdmin = await rtdbAdmins.get(uid);
+        const localAdminsList = await localAdmins.getAll();
+        adminFromLocal = localAdminsList.find(a => a.id === uid) || null;
       } catch (err) {
-        console.log('RTDB lookup failed:', err);
+        console.log('Local admin lookup failed:', err);
       }
 
-      // If not in RTDB, check local storage
-      if (!firebaseAdmin) {
+      // If not in local, try RTDB
+      let adminFromRTDB: Admin | null = null;
+      if (!adminFromLocal) {
         try {
-          const localAdminsList = await localAdmins.getAll();
-          firebaseAdmin = localAdminsList.find(a => a.id === uid) || null;
+          adminFromRTDB = await rtdbAdmins.get(uid);
         } catch (err) {
-          console.log('Local admin lookup failed:', err);
+          console.log('RTDB lookup failed:', err);
         }
       }
 
       // If no admin record anywhere, deny access
+      if (!adminFromLocal && !adminFromRTDB) {
+        await firebaseAuth.signOut();
+        setError('Access denied. You are not registered as an admin.');
+        setIsLoading(false);
+        return;
+      }
+
+      const firebaseAdmin = adminFromLocal || adminFromRTDB;
+
       if (!firebaseAdmin) {
         await firebaseAuth.signOut();
         setError('Access denied. You are not registered as an admin.');
@@ -187,16 +197,7 @@ export default function LoginPage() {
         return;
       }
 
-      // Also check local for any cached updates
-      let localAdmin: Admin | null = null;
-      try {
-        const localAdminsList = await localAdmins.getAll();
-        localAdmin = localAdminsList.find(a => a.id === uid) || null;
-      } catch (err) {
-        console.log('Local admin lookup failed');
-      }
-
-      // Use RTDB as authoritative, merge with local if needed
+      // Use the admin data
       const adminToUse: Admin = {
         id: uid,
         email: firebaseAdmin.email || email,
@@ -208,7 +209,7 @@ export default function LoginPage() {
         isActive: firebaseAdmin.isActive ?? true,
         region: firebaseAdmin.region || 'Default Region',
         assignedShops: firebaseAdmin.assignedShops || [],
-        deviceId: firebaseAdmin.deviceId || localAdmin?.deviceId,
+        deviceId: firebaseAdmin.deviceId,
         deviceLocked: firebaseAdmin.deviceLocked ?? false
       };
 
