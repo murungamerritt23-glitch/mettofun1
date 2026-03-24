@@ -144,12 +144,17 @@ export default function LoginPage() {
       }
 
       const uid = result.user.uid;
+      const userEmail = email.toLowerCase();
       
-      // Check local storage first (fast and reliable)
+      // Check local storage first (fast and reliable) - check by ID AND email
       let adminFromLocal: Admin | null = null;
       try {
         const localAdminsList = await localAdmins.getAll();
-        adminFromLocal = localAdminsList.find(a => a.id === uid) || null;
+        // Try to find by UID first, then by email
+        adminFromLocal = localAdminsList.find(a => a.id === uid) || 
+                        localAdminsList.find(a => a.email?.toLowerCase() === userEmail) || 
+                        null;
+        console.log('Local admins found:', localAdminsList.length, 'Looking for uid:', uid, 'email:', userEmail);
       } catch (err) {
         console.log('Local admin lookup failed:', err);
       }
