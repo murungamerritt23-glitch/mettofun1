@@ -3017,8 +3017,8 @@ function AdminForm({
   onSave: (admin: Admin) => void;
   onCancel: () => void;
 }) {
-  // Check if there's already a admin (excluding the admin being edited)
-  const existingAdmin = admins.find(a => a.level === 'super_admin' && a.id !== admin?.id);
+  // Check if there's already a super_admin (excluding the admin being edited)
+  const existingSuperAdmin = admins.find(a => a.level === 'super_admin' && a.id !== admin?.id);
   const isEditingExistingAdmin = admin?.level === 'super_admin';
   const [formData, setFormData] = useState({
     name: admin?.name || '',
@@ -3100,9 +3100,9 @@ function AdminForm({
         </div>
         <div>
           <label className="block text-sm text-gray-400 mb-1">Admin Level</label>
-          {existingAdmin && !isEditingExistingAdmin ? (
+          {existingSuperAdmin && !isEditingExistingAdmin ? (
             <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-400 text-sm">
-              ⚠️ Only one Admin allowed. An Admin already exists.
+              ⚠️ Only one Super Admin allowed. You can create Agent Admin or Shop Admin.
             </div>
           ) : (
             <select
