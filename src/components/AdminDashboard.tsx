@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
-import { rtdbShops, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
+import { rtdbShops, rtdbAdmins, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
 import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
@@ -397,11 +397,11 @@ export default function AdminDashboard() {
     // Save to local database
     await localAdmins.save(adminData);
     
-    // Also sync to Firebase
+    // Also sync to RTDB
     try {
-      await firebaseAdmins.save(adminData);
+      await rtdbAdmins.save(adminData);
     } catch (e) {
-      console.log('Firebase sync skipped (local only mode)');
+      console.log('RTDB sync skipped (local only mode)');
     }
     
     setEditingAdmin(null);
