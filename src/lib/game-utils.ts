@@ -37,19 +37,29 @@ export const calculateBoxConfiguration = (purchaseAmount: number, qualifyingAmou
   return { boxCount: 17, threshold, ratio: ratio.toString() };
 };
 
-// Secure random number generation with obfuscation
+// Secure random number generation with complete entropy
 export const generateSecureRandomNumber = (max: number): number => {
-  // Generate entropy from multiple sources
+  // Generate entropy from multiple sources for complete reshuffle
   const timestamp = Date.now();
-  const randomBytes = CryptoJS.lib.WordArray.random(4);
-  const entropy = `${timestamp}-${randomBytes}-${Math.random()}`;
+  const randomBytes = CryptoJS.lib.WordArray.random(8);
+  const randomMath = Math.random() * 1000000;
+  const randomTime = performance.now() * 1000;
   
-  // Hash the entropy
-  const hash = CryptoJS.SHA256(entropy);
+  // Combine all entropy sources
+  const entropy = `${timestamp}-${randomBytes}-${randomMath}-${randomTime}-${Math.random()}-${Date.now()}`;
+  
+  // Hash multiple times for extra randomness
+  let hash = CryptoJS.SHA256(entropy);
+  hash = CryptoJS.SHA256(hash.toString() + entropy);
+  hash = CryptoJS.SHA256(hash.toString(CryptoJS.enc.Hex).substring(0, 16) + randomBytes);
   
   // Convert to number and mod by max
-  const num = parseInt(hash.toString(CryptoJS.enc.Hex).substring(0, 8), 16);
-  return (num % max) + 1;
+  const hexStr = hash.toString(CryptoJS.enc.Hex);
+  const num = parseInt(hexStr.substring(0, 8), 16);
+  const result = (num % max) + 1;
+  
+  // Ensure result is within valid range
+  return Math.min(Math.max(result, 1), max);
 };
 
 // Hash a number for anti-cheat
