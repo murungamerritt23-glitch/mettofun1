@@ -214,18 +214,28 @@ export default function LoginPage() {
 
       // Role-based navigation
       if (adminToUse.level === 'shop_admin') {
-        // Load shop data for shop admin
+        // Load shop data for shop admin - check multiple sources
         const deviceId = getDeviceId();
         let shop = await localShops.getByDeviceId(deviceId);
+        
+        // Try by admin email
         if (!shop) {
           const shops = await localShops.getAll();
           shop = shops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
         }
+        
+        // Try by assigned shops
+        const assignedShopIds = adminToUse.assignedShops || [];
+        if (!shop && assignedShopIds.length > 0) {
+          const shops = await localShops.getAll();
+          shop = shops.find(s => assignedShopIds.includes(s.id));
+        }
+        
         if (shop) {
           setCurrentShop(shop);
           setCurrentView('customer');
         } else {
-          setError('No shop assigned to this device. Contact super admin.');
+          setError('No shop assigned to this admin. Contact super admin.');
           setIsLoading(false);
           return;
         }
