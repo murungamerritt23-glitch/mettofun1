@@ -135,7 +135,19 @@ export default function LoginPage() {
       }
 
       const uid = result.user.uid;
-      const firebaseAdmin = await rtdbAdmins.get(uid);
+      
+      let firebaseAdmin;
+      try {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        );
+        firebaseAdmin = await Promise.race([rtdbAdmins.get(uid), timeoutPromise]) as Admin | null;
+      } catch (err) {
+        console.error('RTDB lookup error:', err);
+        setError('Connection error. Please try again.');
+        setIsLoading(false);
+        return;
+      }
 
       if (!firebaseAdmin) {
         await firebaseAuth.signOut();
