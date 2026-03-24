@@ -793,23 +793,25 @@ export default function GameMode() {
           </div>
           
           {/* Next button - only show when item selected */}
-          {selectedItem ? (
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              onClick={() => {
-                setShowItemPicker(false);
-                setShowNumberPicker(true);
-              }}
-              className="btn-gold w-full mt-4 py-4 text-lg font-bold"
-            >
-              {language === 'sw' ? 'Endelea →' : 'Next →'}
-            </motion.button>
-          ) : (
-            <div className="mt-4 p-3 bg-gray-800/50 rounded-lg text-center">
-              <p className="text-gray-500 text-sm">{language === 'sw' ? 'Chagua kitufe kabla yaenda mbele' : 'Select an item to continue'}</p>
-            </div>
-          )}
+          {/* Always show Next button - prominent - when item is selected */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              if (!selectedItem) return;
+              setShowItemPicker(false);
+              setShowNumberPicker(true);
+            }}
+            disabled={!selectedItem}
+            className={`btn-gold w-full mt-4 py-4 text-lg font-bold ${
+              !selectedItem ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {selectedItem 
+              ? (language === 'sw' ? 'Endelea kuchagua nambari →' : 'Next: Pick Your Number →')
+              : (language === 'sw' ? 'Chagua kitufe kwanza' : 'Select an item first')
+            }
+          </motion.button>
         </div>
       </div>
     );
