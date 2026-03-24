@@ -110,6 +110,7 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Login started', { email });
     setError('');
 
     if (!email || !password) {
@@ -119,8 +120,16 @@ export default function LoginPage() {
 
     setIsLoading(true);
 
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false);
+      setError('Login timed out. Please try again.');
+    }, 15000);
+
     try {
+      console.log('Calling Firebase signIn...');
       const result = await firebaseAuth.signIn(email, password);
+      console.log('Firebase result:', result);
+      clearTimeout(timeoutId);
       
       if (result.error) {
         setError('Invalid email or password');
@@ -202,8 +211,11 @@ export default function LoginPage() {
       }
 
     } catch (err: any) {
+      console.error('Login error:', err);
+      clearTimeout(timeoutId);
       setError(err.message || 'Login failed');
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   };
