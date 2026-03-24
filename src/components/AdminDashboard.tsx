@@ -313,11 +313,19 @@ export default function AdminDashboard() {
           }
         };
         
+        // Helper function with timeout
+        const loadWithTimeout = async (promise: Promise<any>, ms = 5000) => {
+          const timeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('timeout')), ms)
+          );
+          return Promise.race([promise, timeout]);
+        };
+
         // admin sees all shops (including inactive)
         if (admin?.level === 'super_admin') {
           try {
-            const allShops = await rtdbShops.getAll();
-            if (allShops.length > 0) {
+            const allShops = await loadWithTimeout(rtdbShops.getAll());
+            if (allShops && allShops.length > 0) {
               setShops(allShops);
               autoSelectShop(allShops);
             } else {
@@ -326,8 +334,7 @@ export default function AdminDashboard() {
               autoSelectShop(localShopList);
             }
           } catch (error) {
-            console.error('Error loading shops from Firebase:', error);
-            // Fallback to local
+            console.error('Error loading shops, using local:', error);
             const localShopList = await localShops.getAll();
             setShops(localShopList);
             autoSelectShop(localShopList);
@@ -335,14 +342,12 @@ export default function AdminDashboard() {
         } else {
           // Other admins (agent_admin, shop_admin) see only active shops
           try {
-            const fbShops = await rtdbShops.getAllActive();
-            // Filter by assigned shops for shop_admin
-            const filteredFbShops = filterByAssignedShops(fbShops);
+            const fbShops = await loadWithTimeout(rtdbShops.getAllActive());
+            const filteredFbShops = filterByAssignedShops(fbShops || []);
             if (filteredFbShops.length > 0) {
               setShops(filteredFbShops);
               autoSelectShop(filteredFbShops);
             } else {
-              // Fallback to local if Firebase has no shops
               const localShopList = await localShops.getAll();
               const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
               const filteredLocalShops = filterByAssignedShops(activeLocalShops);
@@ -350,8 +355,7 @@ export default function AdminDashboard() {
               autoSelectShop(filteredLocalShops);
             }
           } catch (error) {
-            console.error('Error loading shops:', error);
-            // Fallback to local
+            console.error('Error loading shops, using local:', error);
             const localShopList = await localShops.getAll();
             const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
             const filteredLocalShops = filterByAssignedShops(activeLocalShops);
