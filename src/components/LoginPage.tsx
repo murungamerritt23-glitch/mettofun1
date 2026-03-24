@@ -144,17 +144,27 @@ export default function LoginPage() {
       const uid = result.user.uid;
       const userEmail = email.toLowerCase();
       
-      // Simple: trust Firebase Auth, create admin record if not found
-      // Check local first
+      // Check local first - prioritize email match to keep original level
       const localAdminsList = await localAdmins.getAll();
-      let adminFromLocal = localAdminsList.find(a => a.id === uid) || 
-                          localAdminsList.find(a => a.email?.toLowerCase() === userEmail) || 
-                          null;
+      
+      // Find by email first (to preserve level from staff creation)
+      let adminFromLocal: Admin | undefined = localAdminsList.find(a => a.email?.toLowerCase() === userEmail);
+      
+      // Also try by UID
+      if (!adminFromLocal) {
+        adminFromLocal = localAdminsList.find(a => a.id === uid);
+      }
 
       let adminToUse: Admin;
       
       if (adminFromLocal) {
-        adminToUse = adminFromLocal;
+        // Update the ID to match Firebase UID and update lastLogin
+        adminToUse = {
+          ...adminFromLocal,
+          id: uid, // Ensure ID matches Firebase UID
+          lastLogin: new Date()
+        };
+        await localAdmins.save(adminToUse);
       } else {
         // Create new admin record - default to super_admin
         adminToUse = {
@@ -171,9 +181,7 @@ export default function LoginPage() {
           deviceId: getDeviceId(),
           deviceLocked: false
         };
-        // Save to local
         await localAdmins.save(adminToUse);
-        // Try RTDB in background
         try { await rtdbAdmins.save(adminToUse); } catch {}
       }
 
