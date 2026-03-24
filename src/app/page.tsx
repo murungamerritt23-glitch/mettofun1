@@ -1,34 +1,38 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import LoginPage from '@/components/LoginPage';
+import dynamic from 'next/dynamic';
 import { useUIStore, useShopStore, useAuthStore } from '@/store';
 import { localShops } from '@/lib/local-db';
 import { getDeviceId } from '@/lib/device';
 import type { Admin } from '@/types';
+
+const LoginPage = dynamic(() => import('@/components/LoginPage'), { ssr: false });
+const AdminDashboard = dynamic(() => import('@/components/AdminDashboard'), { ssr: false });
+const GameMode = dynamic(() => import('@/components/GameMode'), { ssr: false });
 
 export default function Home() {
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const { currentView, setCurrentView } = useUIStore();
   const { setShops, setCurrentShop, setShops: setLocalShops } = useShopStore();
-  const { setAdmin } = useAuthStore();
+  const { setAdmin, admin } = useAuthStore();
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const authData = localStorage.getItem('metofun-auth');
         if (authData) {
-          const admin: Admin = JSON.parse(authData);
-          if (admin && admin.isActive) {
-            setAdmin(admin);
+          const adminData: Admin = JSON.parse(authData);
+          if (adminData && adminData.isActive) {
+            setAdmin(adminData);
             
-            if (admin.level === 'shop_admin') {
+            if (adminData.level === 'shop_admin') {
               const deviceId = getDeviceId();
               let shop = await localShops.getByDeviceId(deviceId);
               if (!shop) {
                 const shops = await localShops.getAll();
-                shop = shops.find(s => s.adminEmail?.toLowerCase() === admin.email?.toLowerCase());
+                shop = shops.find(s => s.adminEmail?.toLowerCase() === adminData.email?.toLowerCase());
               }
               if (shop) {
                 setCurrentShop(shop);
@@ -57,12 +61,30 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [setAdmin, setCurrentView, setCurrentShop, setShops]);
 
+  useEffect(() => {
+    if (admin && currentView === 'login') {
+      if (admin.level === 'shop_admin') {
+        setCurrentView('customer');
+      } else {
+        setCurrentView('admin');
+      }
+    }
+  }, [admin, currentView, setCurrentView]);
+
   if (!ready || loading) {
     return (
       <div className="min-h-screen bg-[#0A1628] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
       </div>
     );
+  }
+
+  if (currentView === 'admin') {
+    return <AdminDashboard />;
+  }
+
+  if (currentView === 'customer') {
+    return <GameMode />;
   }
 
   return <LoginPage />;
