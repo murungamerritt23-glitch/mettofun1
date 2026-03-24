@@ -126,23 +126,27 @@ export default function LoginPage() {
     }, 15000);
 
     try {
+      alert('Starting login for: ' + email);
       console.log('Calling Firebase signIn...');
       const result = await firebaseAuth.signIn(email, password);
-      console.log('Firebase result:', result);
+      alert('Firebase auth result: ' + JSON.stringify(result));
       clearTimeout(timeoutId);
       
       if (result.error) {
+        alert('Auth error: ' + result.error);
         setError('Invalid email or password');
         setIsLoading(false);
         return;
       }
 
       if (!result.user) {
+        alert('No user returned');
         setError('Login failed. Please try again.');
         setIsLoading(false);
         return;
       }
 
+      alert('User logged in, UID: ' + result.user.uid);
       const uid = result.user.uid;
       const userEmail = email.toLowerCase();
       
