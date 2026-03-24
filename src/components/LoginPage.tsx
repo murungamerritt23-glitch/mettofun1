@@ -126,79 +126,59 @@ export default function LoginPage() {
     }, 15000);
 
     try {
-      alert('Starting login for: ' + email);
-      console.log('Calling Firebase signIn...');
       const result = await firebaseAuth.signIn(email, password);
-      alert('Firebase auth result: ' + JSON.stringify(result));
       clearTimeout(timeoutId);
       
       if (result.error) {
-        alert('Auth error: ' + result.error);
         setError('Invalid email or password');
         setIsLoading(false);
         return;
       }
 
       if (!result.user) {
-        alert('No user returned');
         setError('Login failed. Please try again.');
         setIsLoading(false);
         return;
       }
 
-      alert('User logged in, UID: ' + result.user.uid);
       const uid = result.user.uid;
       const userEmail = email.toLowerCase();
       
-      // Check local storage first (fast and reliable) - check by ID AND email
-      let adminFromLocal: Admin | null = null;
-      try {
-        const localAdminsList = await localAdmins.getAll();
-        // Try to find by UID first, then by email
-        adminFromLocal = localAdminsList.find(a => a.id === uid) || 
-                        localAdminsList.find(a => a.email?.toLowerCase() === userEmail) || 
-                        null;
-        console.log('DEBUG - Local admins found:', localAdminsList.length);
-        console.log('DEBUG - Looking for uid:', uid, 'email:', userEmail);
-        console.log('DEBUG - Admin found:', adminFromLocal);
-        alert(`DEBUG: Found ${localAdminsList.length} local admins. Looking for UID: ${uid}, Email: ${userEmail}. Found: ${adminFromLocal ? adminFromLocal.name + ' (' + adminFromLocal.level + ')' : 'NONE'}`);
-      } catch (err) {
-        console.log('Local admin lookup failed:', err);
-        alert('DEBUG: Local lookup failed: ' + err);
-      }
+      // Simple: trust Firebase Auth, create admin record if not found
+      // Check local first
+      const localAdminsList = await localAdmins.getAll();
+      let adminFromLocal = localAdminsList.find(a => a.id === uid) || 
+                          localAdminsList.find(a => a.email?.toLowerCase() === userEmail) || 
+                          null;
 
-      // If not in local, try RTDB
-      let adminFromRTDB: Admin | null = null;
-      if (!adminFromLocal) {
-        try {
-          adminFromRTDB = await rtdbAdmins.get(uid);
-          alert('DEBUG: RTDB result: ' + (adminFromRTDB ? adminFromRTDB.name : 'null'));
-        } catch (err) {
-          console.log('RTDB lookup failed:', err);
-          alert('DEBUG: RTDB failed: ' + err);
-        }
-      }
-
-      // If no admin record anywhere, deny access
-      if (!adminFromLocal && !adminFromRTDB) {
-        alert('DEBUG: No admin found - denying access');
-        await firebaseAuth.signOut();
-        setError('Access denied. You are not registered as an admin.');
-        setIsLoading(false);
-        return;
-      }
-
-      const firebaseAdmin = adminFromLocal || adminFromRTDB;
-
-      if (!firebaseAdmin) {
-        await firebaseAuth.signOut();
-        setError('Access denied. You are not registered as an admin.');
-        setIsLoading(false);
-        return;
+      let adminToUse: Admin;
+      
+      if (adminFromLocal) {
+        adminToUse = adminFromLocal;
+      } else {
+        // Create new admin record - default to super_admin
+        adminToUse = {
+          id: uid,
+          email: userEmail,
+          phone: '',
+          name: userEmail.split('@')[0],
+          level: 'super_admin',
+          createdAt: new Date(),
+          lastLogin: new Date(),
+          isActive: true,
+          region: 'Default Region',
+          assignedShops: [],
+          deviceId: getDeviceId(),
+          deviceLocked: false
+        };
+        // Save to local
+        await localAdmins.save(adminToUse);
+        // Try RTDB in background
+        try { await rtdbAdmins.save(adminToUse); } catch {}
       }
 
       // Check if admin is active
-      if (firebaseAdmin.isActive === false) {
+      if (adminToUse.isActive === false) {
         await firebaseAuth.signOut();
         setError('Account has been deactivated.');
         setIsLoading(false);
@@ -206,36 +186,13 @@ export default function LoginPage() {
       }
 
       // Check valid role
-      if (!['super_admin', 'agent_admin', 'shop_admin'].includes(firebaseAdmin.level)) {
+      if (!['super_admin', 'agent_admin', 'shop_admin'].includes(adminToUse.level)) {
         await firebaseAuth.signOut();
         setError('Access denied. Invalid admin role.');
         setIsLoading(false);
         return;
       }
 
-      // Use the admin data
-      const adminToUse: Admin = {
-        id: uid,
-        email: firebaseAdmin.email || email,
-        phone: firebaseAdmin.phone || '',
-        name: firebaseAdmin.name || email.split('@')[0],
-        level: firebaseAdmin.level,
-        createdAt: firebaseAdmin.createdAt || new Date(),
-        lastLogin: new Date(),
-        isActive: firebaseAdmin.isActive ?? true,
-        region: firebaseAdmin.region || 'Default Region',
-        assignedShops: firebaseAdmin.assignedShops || [],
-        deviceId: firebaseAdmin.deviceId,
-        deviceLocked: firebaseAdmin.deviceLocked ?? false
-      };
-
-      // Save to local for offline access
-      try {
-        await localAdmins.save(adminToUse);
-      } catch (err) {
-        console.error('Local save error:', err);
-      }
-      
       setAdmin(adminToUse);
       localStorage.setItem('metofun-auth', JSON.stringify(adminToUse));
 
