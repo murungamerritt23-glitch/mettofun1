@@ -145,7 +145,7 @@ export default function LoginPage() {
 
       const uid = result.user.uid;
       
-      // Check RTDB first for admin record (authoritative source)
+      // Check RTDB first for admin record
       let firebaseAdmin: Admin | null = null;
       try {
         firebaseAdmin = await rtdbAdmins.get(uid);
@@ -153,7 +153,17 @@ export default function LoginPage() {
         console.log('RTDB lookup failed:', err);
       }
 
-      // If no admin record in RTDB, deny access
+      // If not in RTDB, check local storage
+      if (!firebaseAdmin) {
+        try {
+          const localAdminsList = await localAdmins.getAll();
+          firebaseAdmin = localAdminsList.find(a => a.id === uid) || null;
+        } catch (err) {
+          console.log('Local admin lookup failed:', err);
+        }
+      }
+
+      // If no admin record anywhere, deny access
       if (!firebaseAdmin) {
         await firebaseAuth.signOut();
         setError('Access denied. You are not registered as an admin.');
