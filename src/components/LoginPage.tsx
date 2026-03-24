@@ -154,9 +154,13 @@ export default function LoginPage() {
         adminFromLocal = localAdminsList.find(a => a.id === uid) || 
                         localAdminsList.find(a => a.email?.toLowerCase() === userEmail) || 
                         null;
-        console.log('Local admins found:', localAdminsList.length, 'Looking for uid:', uid, 'email:', userEmail);
+        console.log('DEBUG - Local admins found:', localAdminsList.length);
+        console.log('DEBUG - Looking for uid:', uid, 'email:', userEmail);
+        console.log('DEBUG - Admin found:', adminFromLocal);
+        alert(`DEBUG: Found ${localAdminsList.length} local admins. Looking for UID: ${uid}, Email: ${userEmail}. Found: ${adminFromLocal ? adminFromLocal.name + ' (' + adminFromLocal.level + ')' : 'NONE'}`);
       } catch (err) {
         console.log('Local admin lookup failed:', err);
+        alert('DEBUG: Local lookup failed: ' + err);
       }
 
       // If not in local, try RTDB
@@ -164,13 +168,16 @@ export default function LoginPage() {
       if (!adminFromLocal) {
         try {
           adminFromRTDB = await rtdbAdmins.get(uid);
+          alert('DEBUG: RTDB result: ' + (adminFromRTDB ? adminFromRTDB.name : 'null'));
         } catch (err) {
           console.log('RTDB lookup failed:', err);
+          alert('DEBUG: RTDB failed: ' + err);
         }
       }
 
       // If no admin record anywhere, deny access
       if (!adminFromLocal && !adminFromRTDB) {
+        alert('DEBUG: No admin found - denying access');
         await firebaseAuth.signOut();
         setError('Access denied. You are not registered as an admin.');
         setIsLoading(false);
