@@ -3018,8 +3018,10 @@ function AdminForm({
   onCancel: () => void;
 }) {
   // Check if there's already a super_admin (excluding the admin being edited)
+  // Only block creating another super_admin, allow agent_admin and shop_admin
   const existingSuperAdmin = admins.find(a => a.level === 'super_admin' && a.id !== admin?.id);
   const isEditingExistingAdmin = admin?.level === 'super_admin';
+  const canSelectSuperAdmin = !existingSuperAdmin || isEditingExistingAdmin;
   const [formData, setFormData] = useState({
     name: admin?.name || '',
     email: admin?.email || '',
@@ -3100,20 +3102,19 @@ function AdminForm({
         </div>
         <div>
           <label className="block text-sm text-gray-400 mb-1">Admin Level</label>
-          {existingSuperAdmin && !isEditingExistingAdmin ? (
-            <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-400 text-sm">
-              ⚠️ Only one Super Admin allowed. You can create Agent Admin or Shop Admin.
+          {existingSuperAdmin && !isEditingExistingAdmin && (
+            <div className="p-2 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-400 text-sm mb-2">
+              ⚠️ Only one Super Admin exists. Creating Agent or Shop Admin.
             </div>
-          ) : (
-            <select
-              value={formData.level}
-              onChange={(e) => setFormData({ ...formData, level: e.target.value as AdminLevel })}
-              className="input"
-            >
-              <option value="agent_admin">Agent Admin</option>
-              <option value="shop_admin">Shop Admin</option>
-            </select>
           )}
+          <select
+            value={formData.level}
+            onChange={(e) => setFormData({ ...formData, level: e.target.value as AdminLevel })}
+            className="input"
+          >
+            <option value="agent_admin">Agent Admin</option>
+            <option value="shop_admin">Shop Admin</option>
+          </select>
         </div>
       </div>
 
