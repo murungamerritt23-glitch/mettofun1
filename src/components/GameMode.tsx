@@ -613,7 +613,14 @@ export default function GameMode() {
               className="text-center mb-6"
             >
               <div className="p-6 bg-gold-900/40 border-2 border-gold-500 rounded-xl">
-                <p className="text-gray-300 mb-2">You picked:</p>
+                {selectedItem && (
+                  <div className="mb-4 p-3 bg-gold-800/50 rounded-lg">
+                    <p className="text-gray-300 text-sm">Item picked:</p>
+                    <p className="text-gold-300 text-xl font-bold">{selectedItem.name}</p>
+                    <p className="text-gold-400 text-lg">KSh {selectedItem.value?.toLocaleString()}</p>
+                  </div>
+                )}
+                <p className="text-gray-300 mb-2">Number picked:</p>
                 <p className="gold-gradient-text text-6xl font-bold">{confirmedNumber}</p>
                 <p className="text-gold-400 mt-2 animate-pulse">Revealing result...</p>
               </div>
