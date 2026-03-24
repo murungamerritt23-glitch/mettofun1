@@ -41,7 +41,6 @@ export default function GameMode() {
   const [tappedItemId, setTappedItemId] = useState<string | null>(null); // Visual feedback for tapped item
   const [tappedBoxNum, setTappedBoxNum] = useState<number | null>(null); // Visual feedback for tapped box
   const [tappedNumber, setTappedNumber] = useState<number | null>(null); // Visual feedback for tapped number
-  const [confirmedNumber, setConfirmedNumber] = useState<number | null>(null); // Number confirmed by customer
 
   const { 
     gameStatus, setGameStatus, 
@@ -828,8 +827,8 @@ export default function GameMode() {
                 </h2>
                 <p className="text-gray-400 mb-4">
                   {language === 'sw'
-                    ? `Nambari sahihi ilikuwa ${correctNumber}`
-                    : `The correct number was ${correctNumber}`}
+                    ? `Nambari: ${correctNumber}`
+                    : `Number: ${correctNumber}`}
                 </p>
                 
                 <button onClick={handleNominate} className="btn-gold w-full mb-3 flex items-center justify-center gap-2">
