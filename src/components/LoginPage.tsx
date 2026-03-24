@@ -165,24 +165,14 @@ export default function LoginPage() {
           lastLogin: new Date()
         };
         await localAdmins.save(adminToUse);
+        console.log('Found admin by email:', adminToUse.email, 'level:', adminToUse.level);
       } else {
-        // Create new admin record - default to super_admin
-        adminToUse = {
-          id: uid,
-          email: userEmail,
-          phone: '',
-          name: userEmail.split('@')[0],
-          level: 'super_admin',
-          createdAt: new Date(),
-          lastLogin: new Date(),
-          isActive: true,
-          region: 'Default Region',
-          assignedShops: [],
-          deviceId: getDeviceId(),
-          deviceLocked: false
-        };
-        await localAdmins.save(adminToUse);
-        try { await rtdbAdmins.save(adminToUse); } catch {}
+        // DENY access if no admin record - require super_admin to create staff first
+        console.log('No admin found for email:', userEmail);
+        await firebaseAuth.signOut();
+        setError('Access denied. Please contact admin to create your account.');
+        setIsLoading(false);
+        return;
       }
 
       // Check if admin is active
