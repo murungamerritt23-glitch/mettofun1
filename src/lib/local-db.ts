@@ -595,16 +595,16 @@ export const localNominationItems = {
     ]);
   },
 
-  // Generate default nomination items for a shop (up to 100)
+  // Generate default nomination items for a shop (20 items - faster)
   async ensureDefaultItems(shopId: string): Promise<NominationItem[]> {
     const database = await initDB();
     const existing = await database.getAllFromIndex('nominationItems', 'by-shop', shopId);
     if (existing.length > 0) return existing.sort((a, b) => b.nominationCount - a.nominationCount);
 
-    // Create 100 default items
-    const defaultItems: NominationItem[] = Array.from({ length: 100 }, (_, i) => ({
+    // Create 20 default items (faster than 100)
+    const defaultItems: NominationItem[] = Array.from({ length: 20 }, (_, i) => ({
       id: `${shopId}-nom-${i + 1}`,
-      name: `Item ${i + 1}`,
+      name: `Prize ${i + 1}`,
       value: (i + 1) * 1000,
       nominationCount: 0,
       isActive: true,

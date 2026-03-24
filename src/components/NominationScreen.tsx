@@ -207,15 +207,8 @@ export default function NominationScreen() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1 }}
-            className="w-12 h-12 border-4 border-gold-500 border-t-transparent rounded-full mx-auto mb-4"
-          />
-          <p className="text-gray-400">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-[#0A1628]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-400"></div>
       </div>
     );
   }
@@ -242,13 +235,7 @@ export default function NominationScreen() {
         </button>
 
         <div className="text-center">
-          <motion.div
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ repeat: Infinity, duration: 1.5 }}
-            className="text-4xl mb-2"
-          >
-            <Heart className="w-12 h-12 mx-auto text-pink-500" />
-          </motion.div>
+          <Heart className="w-12 h-12 mx-auto text-pink-500 mb-2" />
           <h2 className="gold-gradient-text text-2xl font-bold mb-2">
             {t.title}
           </h2>
