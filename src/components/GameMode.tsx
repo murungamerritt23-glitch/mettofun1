@@ -244,8 +244,7 @@ export default function GameMode() {
     setTappedNumber(number);
     setConfirmedNumber(number);
     
-    // Wait 1 second before revealing result (faster)
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // No delay - show result immediately
     
     setTappedNumber(null);
     setSelectedNumber(number);
@@ -605,27 +604,18 @@ export default function GameMode() {
             {t.selectNumber}
           </h2>
           
-          {/* Confirmed number display */}
-          {confirmedNumber !== null ? (
-            <motion.div 
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              className="text-center mb-6"
-            >
-              <div className="p-6 bg-gold-900/40 border-2 border-gold-500 rounded-xl">
-                {selectedItem && (
-                  <div className="mb-4 p-3 bg-gold-800/50 rounded-lg">
-                    <p className="text-gray-300 text-sm">Item picked:</p>
-                    <p className="text-gold-300 text-xl font-bold">{selectedItem.name}</p>
-                    <p className="text-gold-400 text-lg">KSh {selectedItem.value?.toLocaleString()}</p>
-                  </div>
-                )}
-                <p className="text-gray-300 mb-2">Number picked:</p>
-                <p className="gold-gradient-text text-6xl font-bold">{confirmedNumber}</p>
-                <p className="text-gold-400 mt-2 animate-pulse">Revealing result...</p>
-              </div>
-            </motion.div>
-          ) : (
+          {/* Simple summary - no big display, just text */}
+          {selectedItem && confirmedNumber !== null && (
+            <div className="mb-4 p-3 bg-gold-900/30 border border-gold-500 rounded-lg text-center">
+              <p className="text-gray-300 text-sm">
+                You picked: <span className="text-gold-400 font-bold">{selectedItem.name}</span> • 
+                Number: <span className="text-gold-400 font-bold">{confirmedNumber}</span>
+              </p>
+            </div>
+          )}
+
+          {/* Only show this when NOT confirmed - during selection */}
+          {confirmedNumber === null && (
             <>
               <p className="text-gray-400 text-center mb-2">
                 {language === 'sw' 
