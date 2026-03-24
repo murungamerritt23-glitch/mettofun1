@@ -244,8 +244,8 @@ export default function GameMode() {
     setTappedNumber(number);
     setConfirmedNumber(number);
     
-    // Wait 2 seconds before revealing result
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Wait 1 second before revealing result (faster)
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     setTappedNumber(null);
     setSelectedNumber(number);
