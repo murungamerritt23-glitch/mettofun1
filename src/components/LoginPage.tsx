@@ -145,44 +145,47 @@ export default function LoginPage() {
 
       const uid = result.user.uid;
       
-      // Try RTDB lookup but don't block on it
-      let firebaseAdmin: Admin | null = null;
+      // Check local first (fast)
+      let existingAdmin: Admin | null = null;
       try {
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('timeout')), 5000)
-        );
-        firebaseAdmin = await Promise.race([rtdbAdmins.get(uid), timeoutPromise]) as Admin | null;
+        const localAdminsList = await localAdmins.getAll();
+        existingAdmin = localAdminsList.find(a => a.id === uid) || null;
       } catch (err) {
-        console.log('RTDB lookup skipped, using fallback');
+        console.log('Local admin lookup failed');
       }
 
-      // If no RTDB record, create from auth user (fallback)
-      const admin: Admin = firebaseAdmin ? {
+      // Try RTDB lookup in background
+      let firebaseAdmin: Admin | null = null;
+      if (!existingAdmin) {
+        try {
+          firebaseAdmin = await rtdbAdmins.get(uid);
+        } catch (err) {
+          console.log('RTDB lookup skipped');
+        }
+      }
+
+      // Use existing admin data from local or RTDB, or show error for unknown users
+      if (!existingAdmin && !firebaseAdmin) {
+        await firebaseAuth.signOut();
+        setError('Account not found. Please signup first.');
+        setIsLoading(false);
+        return;
+      }
+
+      const adminData = existingAdmin || firebaseAdmin;
+      const admin: Admin = {
         id: uid,
-        email: firebaseAdmin.email || email,
-        phone: firebaseAdmin.phone || '',
-        name: firebaseAdmin.name || email.split('@')[0],
-        level: firebaseAdmin.level,
-        createdAt: firebaseAdmin.createdAt || new Date(),
+        email: adminData!.email || email,
+        phone: adminData!.phone || '',
+        name: adminData!.name || email.split('@')[0],
+        level: adminData!.level,
+        createdAt: adminData!.createdAt || new Date(),
         lastLogin: new Date(),
-        isActive: firebaseAdmin.isActive ?? true,
-        region: firebaseAdmin.region || 'Default Region',
-        assignedShops: firebaseAdmin.assignedShops || [],
-        deviceId: firebaseAdmin.deviceId,
-        deviceLocked: firebaseAdmin.deviceLocked ?? false
-      } : {
-        id: uid,
-        email: email.toLowerCase(),
-        phone: '',
-        name: email.split('@')[0],
-        level: 'super_admin',
-        createdAt: new Date(),
-        lastLogin: new Date(),
-        isActive: true,
-        region: 'Default Region',
-        assignedShops: [],
-        deviceId: getDeviceId(),
-        deviceLocked: false
+        isActive: adminData!.isActive ?? true,
+        region: adminData!.region || 'Default Region',
+        assignedShops: adminData!.assignedShops || [],
+        deviceId: adminData!.deviceId,
+        deviceLocked: adminData!.deviceLocked ?? false
       };
 
       // Save to local (skip RTDB if failing)
