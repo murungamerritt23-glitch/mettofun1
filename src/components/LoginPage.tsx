@@ -164,15 +164,33 @@ export default function LoginPage() {
         }
       }
 
-      // Use existing admin data from local or RTDB, or show error for unknown users
-      if (!existingAdmin && !firebaseAdmin) {
-        await firebaseAuth.signOut();
-        setError('Account not found. Please signup first.');
-        setIsLoading(false);
-        return;
+      // If no admin record found but Firebase Auth succeeded, create one
+      let adminToUse = existingAdmin || firebaseAdmin;
+      if (!adminToUse) {
+        console.log('No admin record found, creating from auth user');
+        adminToUse = {
+          id: uid,
+          email: email.toLowerCase(),
+          phone: '',
+          name: email.split('@')[0],
+          level: 'super_admin',
+          createdAt: new Date(),
+          lastLogin: new Date(),
+          isActive: true,
+          region: 'Default Region',
+          assignedShops: [],
+          deviceId: getDeviceId(),
+          deviceLocked: false
+        };
+        // Try to save to RTDB in background
+        try {
+          await rtdbAdmins.save(adminToUse);
+        } catch (err) {
+          console.log('RTDB save failed, continuing with local only');
+        }
       }
 
-      const adminData = existingAdmin || firebaseAdmin;
+      const adminData = adminToUse;
       const admin: Admin = {
         id: uid,
         email: adminData!.email || email,
