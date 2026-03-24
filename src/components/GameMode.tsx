@@ -237,16 +237,9 @@ export default function GameMode() {
     setShowNumberPicker(true);
   };
 
-  const handleNumberSelect = async (number: number) => {
+  const handleNumberSelect = (number: number) => {
     if (selectedNumber !== null || !correctNumber) return;
     
-    // Show confirmation first - highlight the selected number
-    setTappedNumber(number);
-    setConfirmedNumber(number);
-    
-    // No delay - show result immediately
-    
-    setTappedNumber(null);
     setSelectedNumber(number);
     
     // Check if won - player wins only if selected number === correctNumber (exact match)
@@ -604,49 +597,19 @@ export default function GameMode() {
             {t.selectNumber}
           </h2>
           
-          {/* Simple summary - no big display, just text */}
-          {selectedItem && confirmedNumber !== null && (
-            <div className="mb-4 p-3 bg-gold-900/30 border border-gold-500 rounded-lg text-center">
-              <p className="text-gray-300 text-sm">
-                You picked: <span className="text-gold-400 font-bold">{selectedItem.name}</span> • 
-                Number: <span className="text-gold-400 font-bold">{confirmedNumber}</span>
-              </p>
-            </div>
-          )}
-
-          {/* Only show this when NOT confirmed - during selection */}
-          {confirmedNumber === null && (
-            <>
-              <p className="text-gray-400 text-center mb-2">
-                {language === 'sw' 
-                  ? `Chagua nambari kati ya ${startNumber} na ${endNumber}`
-                  : `Pick a number between ${startNumber} and ${endNumber}`}
-              </p>
-              
-              {/* Dynamic Odds Info */}
-              <div className="text-center mb-4 p-2 bg-gold-900/30 rounded-lg">
-                <p className="text-gold-400 text-sm">
-                  {language === 'sw' 
-                    ? `Muujiza: ${threshold} nambari hushinda`
-                    : `${threshold} number${threshold > 1 ? 's' : ''} can win`}
-                </p>
-                <p className="text-gray-500 text-xs mt-1">
-                  {language === 'sw'
-                    ? 'Nambari moja pekee ndiyo inashinda'
-                    : 'Only one number wins'}
-                </p>
-              </div>
-            </>
-          )}
+          <p className="text-gray-400 text-center mb-4">
+            {language === 'sw' 
+              ? `Chagua nambari: ${startNumber} - ${endNumber}`
+              : `Pick a number: ${startNumber} - ${endNumber}`}
+          </p>
           
-          {confirmedNumber === null && (
-            <div className={`grid gap-2 sm:gap-3 ${
-              availableNumbers <= 3 
-                ? 'grid-cols-3' 
-                : availableNumbers <= 6
-                  ? 'grid-cols-3 sm:grid-cols-6'
-                  : 'grid-cols-4 sm:grid-cols-5'
-            }`}>
+          <div className={`grid gap-2 sm:gap-3 ${
+            availableNumbers <= 3 
+              ? 'grid-cols-3' 
+              : availableNumbers <= 6
+                ? 'grid-cols-3 sm:grid-cols-6'
+                : 'grid-cols-4 sm:grid-cols-5'
+          }`}>
               {Array.from({ length: availableNumbers }, (_, i) => startNumber + i).map((num) => (
                 <motion.button
                   key={num}
@@ -659,7 +622,6 @@ export default function GameMode() {
                 </motion.button>
               ))}
             </div>
-          )}
         </div>
       </div>
     );
