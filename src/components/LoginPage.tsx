@@ -145,78 +145,76 @@ export default function LoginPage() {
 
       const uid = result.user.uid;
       
-      // Check local first (fast)
-      let existingAdmin: Admin | null = null;
+      // Check RTDB first for admin record (authoritative source)
+      let firebaseAdmin: Admin | null = null;
+      try {
+        firebaseAdmin = await rtdbAdmins.get(uid);
+      } catch (err) {
+        console.log('RTDB lookup failed:', err);
+      }
+
+      // If no admin record in RTDB, deny access
+      if (!firebaseAdmin) {
+        await firebaseAuth.signOut();
+        setError('Access denied. You are not registered as an admin.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if admin is active
+      if (firebaseAdmin.isActive === false) {
+        await firebaseAuth.signOut();
+        setError('Account has been deactivated.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Check valid role
+      if (!['super_admin', 'agent_admin', 'shop_admin'].includes(firebaseAdmin.level)) {
+        await firebaseAuth.signOut();
+        setError('Access denied. Invalid admin role.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Also check local for any cached updates
+      let localAdmin: Admin | null = null;
       try {
         const localAdminsList = await localAdmins.getAll();
-        existingAdmin = localAdminsList.find(a => a.id === uid) || null;
+        localAdmin = localAdminsList.find(a => a.id === uid) || null;
       } catch (err) {
         console.log('Local admin lookup failed');
       }
 
-      // Try RTDB lookup in background
-      let firebaseAdmin: Admin | null = null;
-      if (!existingAdmin) {
-        try {
-          firebaseAdmin = await rtdbAdmins.get(uid);
-        } catch (err) {
-          console.log('RTDB lookup skipped');
-        }
-      }
-
-      // If no admin record found but Firebase Auth succeeded, create one
-      let adminToUse = existingAdmin || firebaseAdmin;
-      if (!adminToUse) {
-        console.log('No admin record found, creating from auth user');
-        adminToUse = {
-          id: uid,
-          email: email.toLowerCase(),
-          phone: '',
-          name: email.split('@')[0],
-          level: 'super_admin',
-          createdAt: new Date(),
-          lastLogin: new Date(),
-          isActive: true,
-          region: 'Default Region',
-          assignedShops: [],
-          deviceId: getDeviceId(),
-          deviceLocked: false
-        };
-        // Try to save to RTDB in background
-        try {
-          await rtdbAdmins.save(adminToUse);
-        } catch (err) {
-          console.log('RTDB save failed, continuing with local only');
-        }
-      }
-
-      const adminData = adminToUse;
-      const admin: Admin = {
+      // Use RTDB as authoritative, merge with local if needed
+      const adminToUse: Admin = {
         id: uid,
-        email: adminData!.email || email,
-        phone: adminData!.phone || '',
-        name: adminData!.name || email.split('@')[0],
-        level: adminData!.level,
-        createdAt: adminData!.createdAt || new Date(),
+        email: firebaseAdmin.email || email,
+        phone: firebaseAdmin.phone || '',
+        name: firebaseAdmin.name || email.split('@')[0],
+        level: firebaseAdmin.level,
+        createdAt: firebaseAdmin.createdAt || new Date(),
         lastLogin: new Date(),
-        isActive: adminData!.isActive ?? true,
-        region: adminData!.region || 'Default Region',
-        assignedShops: adminData!.assignedShops || [],
-        deviceId: adminData!.deviceId,
-        deviceLocked: adminData!.deviceLocked ?? false
+        isActive: firebaseAdmin.isActive ?? true,
+        region: firebaseAdmin.region || 'Default Region',
+        assignedShops: firebaseAdmin.assignedShops || [],
+        deviceId: firebaseAdmin.deviceId || localAdmin?.deviceId,
+        deviceLocked: firebaseAdmin.deviceLocked ?? false
       };
 
-      // Save to local (skip RTDB if failing)
+      // Save to local for offline access
       try {
-        await localAdmins.save(admin);
+        await localAdmins.save(adminToUse);
       } catch (err) {
         console.error('Local save error:', err);
       }
       
-      setAdmin(admin);
-      localStorage.setItem('metofun-auth', JSON.stringify(admin));
+      setAdmin(adminToUse);
+      localStorage.setItem('metofun-auth', JSON.stringify(adminToUse));
 
-      if (admin.level === 'shop_admin') {
+      // Role-based navigation
+      if (adminToUse.level === 'shop_admin') {
+        // Load shop data for shop admin
         const deviceId = getDeviceId();
         let shop = await localShops.getByDeviceId(deviceId);
         if (!shop) {
