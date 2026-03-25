@@ -145,10 +145,19 @@ export default function LoginPage() {
       const userEmail = email.toLowerCase();
       
       // Check local first - prioritize email match to keep original level
-      const localAdminsList = await localAdmins.getAll();
-      console.log('DEBUG - Total admins in local:', localAdminsList.length);
+      let localAdminsList: Admin[] = [];
+      try {
+        localAdminsList = await localAdmins.getAll();
+        console.log('DEBUG - Total admins in local:', localAdminsList.length);
+        console.log('DEBUG - All emails:', localAdminsList.map(a => a.email + ' (' + a.level + ')'));
+      } catch (err) {
+        console.error('ERROR fetching admins from local:', err);
+        setError('Database error. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+      
       console.log('DEBUG - Looking for email:', userEmail);
-      console.log('DEBUG - All emails:', localAdminsList.map(a => a.email + ' (' + a.level + ')'));
       
       // Find by email first (to preserve level from staff creation)
       let adminFromLocal: Admin | undefined = localAdminsList.find(a => a.email?.toLowerCase() === userEmail);
