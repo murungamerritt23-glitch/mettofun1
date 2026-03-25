@@ -24,13 +24,19 @@ export default function LoginPage() {
   const { setCurrentView } = useUIStore();
   const { setCurrentShop } = useShopStore();
 
-  // Default to login mode - signup is for first time only
+  // Default to login mode - signup ONLY for first Super Admin
   useEffect(() => {
-    // Just check localStorage directly - don't wait for async
-    const hasAdmin = localStorage.getItem('metofun-auth');
-    if (!hasAdmin) {
-      setIsSignupMode(true); // First time user
-    }
+    const checkFirstTime = async () => {
+      try {
+        const admins = await localAdmins.getAll();
+        if (admins.length === 0) {
+          setIsSignupMode(true); // First time - no admin exists
+        }
+      } catch (err) {
+        // If error, stay in login mode
+      }
+    };
+    checkFirstTime();
   }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -73,24 +79,24 @@ export default function LoginPage() {
 
       const uid = result.user.uid;
 
-      // Check if super admin already exists (block creating another via signup)
+      // Check if any admin exists - signup only allowed when NO admin exists
       const existingAdmins = await localAdmins.getAll();
-      const existingSuperAdmin = existingAdmins.find(a => a.level === 'super_admin');
       
-      // If selecting super_admin but one already exists, deny
-      if (signupLevel === 'super_admin' && existingSuperAdmin) {
+      if (existingAdmins.length > 0) {
+        // Admins already exist - deny signup, force login
         await firebaseAuth.signOut();
-        setError('Super Admin already exists. Use Login or contact admin.');
+        setError('Admin already exists. Please Login.');
         setIsLoading(false);
         return;
       }
 
+      // First signup - create Super Admin
       const adminData: Admin = {
         id: uid,
         email: email.toLowerCase(),
         phone: '',
         name: signupName,
-        level: signupLevel,
+        level: 'super_admin', // First signup is always Super Admin
         createdAt: new Date(),
         lastLogin: new Date(),
         isActive: true,
