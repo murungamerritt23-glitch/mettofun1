@@ -384,15 +384,19 @@ export default function AdminDashboard() {
 
   // Admin handlers
   const handleSaveAdmin = async (adminData: Admin) => {
-    // Check if trying to set as admin
+    console.log('DEBUG handleSaveAdmin - received adminData:', adminData.email, 'level:', adminData.level);
+    
+    // Check if trying to set as super_admin
     if (adminData.level === 'super_admin') {
-      // Check if there's already a admin
+      // Check if there's already a super_admin
       const existingAdmins = admins.filter(a => a.level === 'super_admin' && a.id !== adminData.id);
       if (existingAdmins.length > 0) {
-        alert('There can only be ONE Admin. Please contact the existing Admin to change this.');
+        alert('There can only be ONE Super Admin. Please contact the existing Admin to change this.');
         return;
       }
     }
+    
+    console.log('DEBUG handleSaveAdmin - saving with level:', adminData.level);
     
     // Save to local database
     await localAdmins.save(adminData);
@@ -3038,8 +3042,13 @@ function AdminForm({
     e.preventDefault();
     if (!admin) return;
     
+    console.log('DEBUG AdminForm - formData.level:', formData.level);
+    console.log('DEBUG AdminForm - isEditingExistingAdmin:', isEditingExistingAdmin);
+    console.log('DEBUG AdminForm - admin.id:', admin.id);
+    
     // If editing existing admin, preserve the level
-    const finalLevel = isEditingExistingAdmin ? 'super_admin' : formData.level;
+    const finalLevel = isEditingExistingAdmin ? admin.level : formData.level;
+    console.log('DEBUG AdminForm - finalLevel:', finalLevel);
     
     onSave({
       ...admin,
