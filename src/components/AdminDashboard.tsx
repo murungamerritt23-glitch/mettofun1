@@ -3024,8 +3024,6 @@ function AdminForm({
   // Check if there's already a super_admin (excluding the admin being edited)
   // Only block creating another super_admin, allow agent_admin and shop_admin
   const existingSuperAdmin = admins.find(a => a.level === 'super_admin' && a.id !== admin?.id);
-  const isEditingExistingAdmin = admin?.level === 'super_admin';
-  const canSelectSuperAdmin = !existingSuperAdmin || isEditingExistingAdmin;
   const [formData, setFormData] = useState({
     name: admin?.name || '',
     email: admin?.email || '',
@@ -3042,13 +3040,8 @@ function AdminForm({
     e.preventDefault();
     if (!admin) return;
     
-    console.log('DEBUG AdminForm - formData.level:', formData.level);
-    console.log('DEBUG AdminForm - isEditingExistingAdmin:', isEditingExistingAdmin);
-    console.log('DEBUG AdminForm - admin.id:', admin.id);
-    
-    // If editing existing admin, preserve the level
-    const finalLevel = isEditingExistingAdmin ? admin.level : formData.level;
-    console.log('DEBUG AdminForm - finalLevel:', finalLevel);
+    // Always use the selected level from form (not the current user's level)
+    const finalLevel = formData.level;
     
     onSave({
       ...admin,
@@ -3111,7 +3104,7 @@ function AdminForm({
         </div>
         <div>
           <label className="block text-sm text-gray-400 mb-1">Admin Level</label>
-          {existingSuperAdmin && !isEditingExistingAdmin && (
+          {existingSuperAdmin && (
             <div className="p-2 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-400 text-sm mb-2">
               ⚠️ Only one Super Admin exists. Creating Agent or Shop Admin.
             </div>
