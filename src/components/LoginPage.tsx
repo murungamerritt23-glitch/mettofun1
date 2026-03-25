@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isSignupMode, setIsSignupMode] = useState(false); // Default to LOGIN
   const [signupName, setSignupName] = useState('');
+  const [signupLevel, setSignupLevel] = useState<AdminLevel>('shop_admin');
   const [confirmPassword, setConfirmPassword] = useState('');
   
   const { setAdmin } = useAuthStore();
@@ -72,12 +73,24 @@ export default function LoginPage() {
 
       const uid = result.user.uid;
 
+      // Check if super admin already exists (block creating another via signup)
+      const existingAdmins = await localAdmins.getAll();
+      const existingSuperAdmin = existingAdmins.find(a => a.level === 'super_admin');
+      
+      // If selecting super_admin but one already exists, deny
+      if (signupLevel === 'super_admin' && existingSuperAdmin) {
+        await firebaseAuth.signOut();
+        setError('Super Admin already exists. Use Login or contact admin.');
+        setIsLoading(false);
+        return;
+      }
+
       const adminData: Admin = {
         id: uid,
         email: email.toLowerCase(),
         phone: '',
         name: signupName,
-        level: 'super_admin' as AdminLevel,
+        level: signupLevel,
         createdAt: new Date(),
         lastLogin: new Date(),
         isActive: true,
@@ -286,6 +299,24 @@ export default function LoginPage() {
                   placeholder="Your full name"
                   required
                 />
+              </div>
+            )}
+
+            {isSignupMode && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Admin Level</label>
+                <select
+                  value={signupLevel}
+                  onChange={(e) => setSignupLevel(e.target.value as AdminLevel)}
+                  className="input"
+                >
+                  <option value="super_admin">Super Admin (Full Access)</option>
+                  <option value="agent_admin">Agent Admin (Manage Shops)</option>
+                  <option value="shop_admin">Shop Admin (Run Game)</option>
+                </select>
+                <p className="text-gray-500 text-xs mt-1">
+                  Super Admin = first admin. Agent = manage shops. Shop = run game.
+                </p>
               </div>
             )}
 
