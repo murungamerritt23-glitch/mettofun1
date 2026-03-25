@@ -310,12 +310,11 @@ export default function LoginPage() {
                   onChange={(e) => setSignupLevel(e.target.value as AdminLevel)}
                   className="input"
                 >
-                  <option value="super_admin">Super Admin (Full Access)</option>
-                  <option value="agent_admin">Agent Admin (Manage Shops)</option>
                   <option value="shop_admin">Shop Admin (Run Game)</option>
+                  <option value="agent_admin">Agent Admin (Manage Shops)</option>
                 </select>
                 <p className="text-gray-500 text-xs mt-1">
-                  Super Admin = first admin. Agent = manage shops. Shop = run game.
+                  One Super Admin controls entire platform. Create Shop or Agent Admin.
                 </p>
               </div>
             )}
