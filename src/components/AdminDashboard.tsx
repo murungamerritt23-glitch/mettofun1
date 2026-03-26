@@ -661,15 +661,18 @@ export default function AdminDashboard() {
     setEditingShop(null);
     setIsCreatingShop(false);
     setUserActive(false);
-    // Refresh from Firebase or local
-    try {
-      const fbShops = await rtdbShops.getAllActive();
-      setShops(fbShops);
-    } catch (e) {
-      // If Firebase fails, load from local
-      const localShopsData = await localShops.getAll();
-      setShops(localShopsData);
+    
+    // Update current shop if this is the active one
+    if (currentShop?.id === shop.id) {
+      setCurrentShop(shop);
     }
+    
+    // Update shops list with the saved shop (don't refetch - use saved data)
+    const updatedShops = shops.map(s => s.id === shop.id ? shop : s);
+    if (!editingShop) {
+      updatedShops.push(shop);
+    }
+    setShops(updatedShops);
   };
 
   const handleToggleShopActive = async (shop: Shop) => {
