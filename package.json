@@ -16,7 +16,6 @@
     "@capacitor/android": "^6.0.0",
     "@capacitor/cli": "^6.0.0",
     "@capacitor/core": "^6.0.0",
-    "@capacitor/ios": "^6.0.0",
     "crypto-js": "^4.2.0",
     "firebase": "^11.0.0",
     "framer-motion": "^11.0.0",
