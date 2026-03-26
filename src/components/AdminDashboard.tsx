@@ -2199,7 +2199,7 @@ export default function AdminDashboard() {
                                   <p className="text-white font-medium">{attempt.phoneNumber}</p>
                                   <p className="text-gray-400 text-sm">
                                     Purchase: KSh {attempt.purchaseAmount.toLocaleString()} | 
-                                    Selected: Box {attempt.selectedBox}
+                                    Selected: {attempt.selectedItem?.name || `Box ${attempt.selectedBox}`}
                                   </p>
                                   <p className="text-gray-500 text-xs">
                                     {new Date(attempt.timestamp).toLocaleString()}
@@ -2236,7 +2236,7 @@ export default function AdminDashboard() {
                         <p className="text-white font-medium">{attempt.phoneNumber}</p>
                         <p className="text-gray-400 text-sm">
                           Purchase: KSh {attempt.purchaseAmount.toLocaleString()} | 
-                          Selected: Box {attempt.selectedBox}
+                          Selected: {attempt.selectedItem?.name || `Box ${attempt.selectedBox}`}
                         </p>
                         <p className="text-gray-500 text-xs">
                           {new Date(attempt.timestamp).toLocaleString()}
