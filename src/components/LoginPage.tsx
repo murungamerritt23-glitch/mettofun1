@@ -136,6 +136,23 @@ export default function LoginPage() {
       return;
     }
 
+    // Check for existing session in localStorage (offline login)
+    const cachedAuth = localStorage.getItem('metofun-auth');
+    if (cachedAuth) {
+      const cachedAdmin: Admin = JSON.parse(cachedAuth);
+      // If same email, allow offline login
+      if (cachedAdmin.email?.toLowerCase() === email.toLowerCase()) {
+        setAdmin(cachedAdmin);
+        if (cachedAdmin.level === 'shop_admin') {
+          setCurrentView('customer');
+        } else {
+          setCurrentView('admin');
+        }
+        return;
+      }
+    }
+
+    // Online login with Firebase Auth
     setIsLoading(true);
 
     const timeoutId = setTimeout(() => {
