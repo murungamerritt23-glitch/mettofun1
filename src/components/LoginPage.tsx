@@ -129,7 +129,6 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login started', { email });
     setError('');
 
     if (!email || !password) {
@@ -167,25 +166,18 @@ export default function LoginPage() {
       let localAdminsList: Admin[] = [];
       try {
         localAdminsList = await localAdmins.getAll();
-        console.log('DEBUG - Total admins in local:', localAdminsList.length);
-        console.log('DEBUG - All emails:', localAdminsList.map(a => a.email + ' (' + a.level + ')'));
       } catch (err) {
-        console.error('ERROR fetching admins from local:', err);
         setError('Database error. Please try again.');
         setIsLoading(false);
         return;
       }
       
-      console.log('DEBUG - Looking for email:', userEmail);
-      
       // Find by email first (to preserve level from staff creation)
       let adminFromLocal: Admin | undefined = localAdminsList.find(a => a.email?.toLowerCase() === userEmail);
-      console.log('DEBUG - Found by email:', adminFromLocal ? adminFromLocal.email + ' - ' + adminFromLocal.level : 'NONE');
       
       // Also try by UID
       if (!adminFromLocal) {
         adminFromLocal = localAdminsList.find(a => a.id === uid);
-        console.log('DEBUG - Found by UID:', adminFromLocal ? adminFromLocal.email + ' - ' + adminFromLocal.level : 'NONE');
       }
 
       let adminToUse: Admin;
@@ -198,10 +190,8 @@ export default function LoginPage() {
           lastLogin: new Date()
         };
         await localAdmins.save(adminToUse);
-        console.log('Found admin by email:', adminToUse.email, 'level:', adminToUse.level);
       } else {
         // DENY access if no admin record - require super_admin to create staff first
-        console.log('No admin found for email:', userEmail);
         await firebaseAuth.signOut();
         setError('Access denied. Please contact admin to create your account.');
         setIsLoading(false);

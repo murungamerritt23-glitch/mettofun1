@@ -389,8 +389,6 @@ export default function AdminDashboard() {
 
   // Admin handlers
   const handleSaveAdmin = async (adminData: Admin) => {
-    console.log('DEBUG handleSaveAdmin - received adminData:', adminData.email, 'level:', adminData.level);
-    
     // Check if trying to set as super_admin
     if (adminData.level === 'super_admin') {
       // Check if there's already a super_admin
@@ -400,8 +398,6 @@ export default function AdminDashboard() {
         return;
       }
     }
-    
-    console.log('DEBUG handleSaveAdmin - saving with level:', adminData.level);
     
     // Save to local database
     await localAdmins.save(adminData);
