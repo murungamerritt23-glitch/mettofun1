@@ -24,14 +24,26 @@ export default function LoginPage() {
   const { setCurrentView } = useUIStore();
   const { setCurrentShop } = useShopStore();
 
-  // Default to login mode - signup ONLY for first Super Admin
+  // Check if any admin exists - check both local and Firebase
   useEffect(() => {
     const checkFirstTime = async () => {
       try {
-        const admins = await localAdmins.getAll();
-        if (admins.length === 0) {
-          setIsSignupMode(true); // First time - no admin exists
+        // Check local first
+        const localAdminsList = await localAdmins.getAll();
+        if (localAdminsList.length > 0) {
+          return; // Admin exists locally, stay in login mode
         }
+        // Also check Firebase RTDB
+        try {
+          const rtdbAdminsList = await rtdbAdmins.getAll();
+          if (rtdbAdminsList.length > 0) {
+            return; // Admin exists in Firebase, stay in login mode
+          }
+        } catch (e) {
+          // Firebase might be offline, continue
+        }
+        // No admin found - enable signup mode
+        setIsSignupMode(true);
       } catch (err) {
         // If error, stay in login mode
       }
@@ -82,7 +94,15 @@ export default function LoginPage() {
       // Check if any admin exists - signup only allowed when NO admin exists
       const existingAdmins = await localAdmins.getAll();
       
-      if (existingAdmins.length > 0) {
+      // Also check Firebase
+      let rtdbAdminsList: Admin[] = [];
+      try {
+        rtdbAdminsList = await rtdbAdmins.getAll();
+      } catch (e) {
+        // Firebase might be offline, continue
+      }
+      
+      if (existingAdmins.length > 0 || rtdbAdminsList.length > 0) {
         // Admins already exist - deny signup, force login
         await firebaseAuth.signOut();
         setError('Admin already exists. Please Login.');
@@ -316,18 +336,9 @@ export default function LoginPage() {
             )}
 
             {isSignupMode && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Admin Level</label>
-                <select
-                  value={signupLevel}
-                  onChange={(e) => setSignupLevel(e.target.value as AdminLevel)}
-                  className="input"
-                >
-                  <option value="shop_admin">Shop Admin (Run Game)</option>
-                  <option value="agent_admin">Agent Admin (Manage Shops)</option>
-                </select>
-                <p className="text-gray-500 text-xs mt-1">
-                  One Super Admin controls entire platform. Create Shop or Agent Admin.
+              <div className="p-3 bg-amber-900/30 border border-amber-500 rounded-lg">
+                <p className="text-amber-400 text-sm font-medium">
+                  You are the first admin - your account will be Super Admin
                 </p>
               </div>
             )}
