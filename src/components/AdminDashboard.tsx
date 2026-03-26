@@ -1262,24 +1262,20 @@ export default function AdminDashboard() {
                               const newValue = Number(qpInput) || 0;
                               const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
                               
-                              // Try to save to Firebase, but don't fail if Firebase is unavailable
-                              const saveResult = await rtdbShops.save(updatedShop);
-                              
-                              // Always save locally
+                              // Save locally first (always works)
                               await localShops.save(updatedShop);
                               setCurrentShop(updatedShop);
                               loadAttempts();
                               
-                              // Only re-fetch from Firebase if save was successful
-                              if (saveResult.success) {
-                                const fbShops = await rtdbShops.getAllActive();
-                                setShops(fbShops);
-                              } else {
-                                // Firebase save failed (likely not configured), update local list
-                                const localShopList = await localShops.getAll();
-                                setShops(localShopList);
-                                console.log('Saved locally (Firebase not available)');
-                              }
+                              // Update shops list immediately with new value
+                              setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
+                              
+                              // Try RTDB save (fire and forget, don't block UI)
+                              rtdbShops.save(updatedShop).catch(() => {});
+                              
+                              // Sync to localStorage
+                              localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+                              
                               alert('Qualifying purchase updated successfully!');
                             } catch (err) {
                               console.error('Error saving qualifying purchase:', err);
@@ -2056,24 +2052,20 @@ export default function AdminDashboard() {
                           const newValue = Number(qpInput) || 0;
                           const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
                           
-                          // Try to save to Firebase, but don't fail if Firebase is unavailable
-                          const saveResult = await rtdbShops.save(updatedShop);
-                          
-                          // Always save locally
+                          // Save locally first (always works)
                           await localShops.save(updatedShop);
                           setCurrentShop(updatedShop);
                           loadAttempts();
                           
-                          // Only re-fetch from Firebase if save was successful
-                          if (saveResult.success) {
-                            const fbShops = await rtdbShops.getAllActive();
-                            setShops(fbShops);
-                          } else {
-                            // Firebase save failed (likely not configured), update local list
-                            const localShopList = await localShops.getAll();
-                            setShops(localShopList);
-                            console.log('Saved locally (Firebase not available)');
-                          }
+                          // Update shops list immediately with new value
+                          setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
+                          
+                          // Try RTDB save (fire and forget, don't block UI)
+                          rtdbShops.save(updatedShop).catch(() => {});
+                          
+                          // Sync to localStorage
+                          localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+                          
                           alert('Qualifying purchase updated successfully!');
                         } catch (err) {
                           console.error('Error saving qualifying purchase:', err);
