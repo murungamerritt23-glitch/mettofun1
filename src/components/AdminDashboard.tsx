@@ -1270,8 +1270,8 @@ export default function AdminDashboard() {
                               // Update shops list immediately with new value
                               setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
                               
-                              // Try RTDB save (fire and forget, don't block UI)
-                              rtdbShops.save(updatedShop).catch(() => {});
+                              // Save to RTDB - AWAIT to prevent race condition
+                              await rtdbShops.save(updatedShop);
                               
                               // Sync to localStorage
                               localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
@@ -2060,8 +2060,8 @@ export default function AdminDashboard() {
                           // Update shops list immediately with new value
                           setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
                           
-                          // Try RTDB save (fire and forget, don't block UI)
-                          rtdbShops.save(updatedShop).catch(() => {});
+                          // Save to RTDB - AWAIT to prevent race condition
+                          await rtdbShops.save(updatedShop);
                           
                           // Sync to localStorage
                           localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
