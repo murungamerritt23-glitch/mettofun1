@@ -448,8 +448,8 @@ export default function GameMode() {
             {language === 'sw' ? 'Rudi' : 'Back'}
           </button>
 
-          {/* Admin Menu - Only visible to shop_admin */}
-          {admin?.level === 'shop_admin' && (
+          {/* Admin Menu - Visible to all admins */}
+          {admin && (
             <div className="absolute top-4 right-4 flex gap-2">
               <button
                 onClick={() => {
