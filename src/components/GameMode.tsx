@@ -125,6 +125,15 @@ export default function GameMode() {
   }, [isDemoMode, phoneNumber]);
 
   const handleAuthorize = async () => {
+    // Check if shop is active - block game if deactivated by super admin
+    if (currentShop && currentShop.isActive === false) {
+      alert(language === 'sw' 
+        ? 'Duka hili limezimwa. Wasiliana na msimamizi.' 
+        : 'This shop is deactivated. Contact admin.'
+      );
+      return;
+    }
+    
     // More lenient validation - accept any phone number with at least 7 digits
     const digits = phoneNumber.replace(/\D/g, '');
     if (digits.length < 7) {
@@ -472,6 +481,20 @@ export default function GameMode() {
               />
               <h2 className="gold-gradient-text text-2xl font-bold">{currentShop.shopName}</h2>
               <p className="text-gray-400 text-sm">{currentShop.promoMessage}</p>
+            </div>
+          )}
+
+          {/* Deactivated Shop Warning */}
+          {currentShop && currentShop.isActive === false && (
+            <div className="bg-red-900/50 border border-red-500 rounded-lg p-4 mb-6 text-center">
+              <p className="text-red-400 font-bold text-lg">
+                {language === 'sw' ? 'DUKA LIMEZIMWA' : 'SHOP DEACTIVATED'}
+              </p>
+              <p className="text-red-300 text-sm mt-1">
+                {language === 'sw' 
+                  ? 'Duka hili limezimwa na msimamizi. Wasiliana na admin kupata msaada.'
+                  : 'This shop has been deactivated by admin. Contact admin for help.'}
+              </p>
             </div>
           )}
 
