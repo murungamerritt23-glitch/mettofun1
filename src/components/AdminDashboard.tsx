@@ -415,9 +415,23 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteAdmin = async (adminId: string) => {
-    if (confirm('Are you sure you want to delete this admin?')) {
-      await localAdmins.delete(adminId);
-      localAdmins.getAll().then(setAdmins);
+    if (confirm('Are you sure you want to delete this admin? This action cannot be undone.')) {
+      try {
+        // Delete from local database
+        await localAdmins.delete(adminId);
+        
+        // Delete from Firebase RTDB
+        await rtdbAdmins.delete(adminId);
+        
+        // Refresh admins list
+        const updatedAdmins = await localAdmins.getAll();
+        setAdmins(updatedAdmins);
+        
+        alert('Admin deleted successfully.');
+      } catch (err) {
+        console.error('Error deleting admin:', err);
+        alert('Failed to delete admin. Please try again.');
+      }
     }
   };
 
