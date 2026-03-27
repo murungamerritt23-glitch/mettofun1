@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useUIStore, useShopStore, useAuthStore } from '@/store';
-import { localShops } from '@/lib/local-db';
+import { localShops, localAdmins } from '@/lib/local-db';
 import { getDeviceId } from '@/lib/device';
 import type { Admin } from '@/types';
 
@@ -25,14 +25,26 @@ export default function Home() {
         if (authData) {
           const adminData: Admin = JSON.parse(authData);
           if (adminData && adminData.isActive) {
-            setAdmin(adminData);
+            // Verify admin exists in local database to prevent localStorage tampering
+            const localAdmin = await localAdmins.getAll();
+            const verifiedAdmin = localAdmin.find(a => a.id === adminData.id || a.email === adminData.email);
+            if (!verifiedAdmin) {
+              // Admin record not found locally - clear invalid auth
+              localStorage.removeItem('metofun-auth');
+              localStorage.removeItem('metofun-auth-pw');
+              setReady(true);
+              setLoading(false);
+              return;
+            }
+            // Use verified admin data from database, not localStorage
+            setAdmin(verifiedAdmin);
             
-            if (adminData.level === 'shop_admin') {
+            if (verifiedAdmin.level === 'shop_admin') {
               const deviceId = getDeviceId();
               let shop = await localShops.getByDeviceId(deviceId);
               if (!shop) {
                 const shops = await localShops.getAll();
-                shop = shops.find(s => s.adminEmail?.toLowerCase() === adminData.email?.toLowerCase());
+                shop = shops.find(s => s.adminEmail?.toLowerCase() === verifiedAdmin.email?.toLowerCase());
               }
               if (shop) {
                 setCurrentShop(shop);

@@ -9,6 +9,15 @@ import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
 import type { Admin, AdminLevel } from '@/types';
 
+// Simple password hash for offline verification
+const hashPassword = async (password: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -138,6 +147,9 @@ export default function LoginPage() {
       await localAdmins.save(adminData);
       setAdmin(adminData);
       localStorage.setItem('metofun-auth', JSON.stringify(adminData));
+      // Store password hash for offline login verification
+      const pwHash = await hashPassword(password);
+      localStorage.setItem('metofun-auth-pw', pwHash);
       setCurrentView('admin');
 
     } catch (err: any) {
@@ -158,17 +170,21 @@ export default function LoginPage() {
 
     // Check for existing session in localStorage (offline login)
     const cachedAuth = localStorage.getItem('metofun-auth');
-    if (cachedAuth) {
+    const cachedPwHash = localStorage.getItem('metofun-auth-pw');
+    if (cachedAuth && cachedPwHash) {
       const cachedAdmin: Admin = JSON.parse(cachedAuth);
-      // If same email, allow offline login
+      // Verify email and password hash
       if (cachedAdmin.email?.toLowerCase() === email.toLowerCase()) {
-        setAdmin(cachedAdmin);
-        if (cachedAdmin.level === 'shop_admin') {
-          setCurrentView('customer');
-        } else {
-          setCurrentView('admin');
+        const inputHash = await hashPassword(password);
+        if (inputHash === cachedPwHash) {
+          setAdmin(cachedAdmin);
+          if (cachedAdmin.level === 'shop_admin') {
+            setCurrentView('customer');
+          } else {
+            setCurrentView('admin');
+          }
+          return;
         }
-        return;
       }
     }
 
@@ -253,6 +269,9 @@ export default function LoginPage() {
 
       setAdmin(adminToUse);
       localStorage.setItem('metofun-auth', JSON.stringify(adminToUse));
+      // Store password hash for offline login verification
+      const pwHash = await hashPassword(password);
+      localStorage.setItem('metofun-auth-pw', pwHash);
 
       // Role-based navigation
       if (adminToUse.level === 'shop_admin') {

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import CryptoJS from 'crypto-js';
 
-export const dynamic = 'force-static';
-
 /**
  * Game result validation API endpoint
  * Provides server-side verification for game results

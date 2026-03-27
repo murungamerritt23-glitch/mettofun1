@@ -15,13 +15,13 @@
     "attempts": {
       "$shopId": {
         ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
-        ".write": true
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
       }
     },
     "customerNominations": {
       "$shopId": {
         ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
-        ".write": true
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
       }
     },
     "nominationItems": {
