@@ -244,11 +244,33 @@ export default function LoginPage() {
         };
         await localAdmins.save(adminToUse);
       } else {
-        // DENY access if no admin record - require super_admin to create staff first
-        await firebaseAuth.signOut();
-        setError('Access denied. Please contact admin to create your account.');
-        setIsLoading(false);
-        return;
+        // Not found locally - try to fetch from Firebase RTDB
+        try {
+          const rtdbAdminsList = await rtdbAdmins.getAll();
+          const adminFromRTDB = rtdbAdminsList.find(a => a.email?.toLowerCase() === userEmail);
+          
+          if (adminFromRTDB) {
+            // Found in RTDB - save to local and use it
+            adminToUse = {
+              ...adminFromRTDB,
+              id: uid,
+              lastLogin: new Date()
+            };
+            await localAdmins.save(adminToUse);
+          } else {
+            // Not found in RTDB either - deny access
+            await firebaseAuth.signOut();
+            setError('Access denied. Please contact admin to create your account.');
+            setIsLoading(false);
+            return;
+          }
+        } catch (rtdbErr) {
+          // RTDB fetch failed - deny access
+          await firebaseAuth.signOut();
+          setError('Access denied. Please contact admin to create your account.');
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Check if admin is active
