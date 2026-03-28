@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
   Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap, ShoppingCart,
-  Upload, RefreshCw, FlaskConical, Gift, Star, Heart
+  Upload, RefreshCw, FlaskConical, Gift, Star, Heart, Lock
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
@@ -2504,6 +2504,70 @@ export default function AdminDashboard() {
                     Restore
                   </button>
                 </div>
+              </div>
+
+              {/* Change Dashboard PIN */}
+              <div className="card">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold text-white">Change Dashboard PIN</h3>
+                    <p className="text-gray-400 text-sm">Change your 4-digit dashboard access PIN</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsChangingPassword(!isChangingPassword)}
+                    className="btn-gold-outline"
+                  >
+                    <Lock size={16} className="mr-2" />
+                    {isChangingPassword ? 'Cancel' : 'Change PIN'}
+                  </button>
+                </div>
+                
+                {isChangingPassword && (
+                  <div className="space-y-3 mt-4 pt-4 border-t border-gray-700">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Current PIN</label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        pattern="[0-9]*"
+                        inputMode="numeric"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        className="input"
+                        placeholder="Enter current PIN"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">New PIN</label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        pattern="[0-9]*"
+                        inputMode="numeric"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        className="input"
+                        placeholder="Enter new PIN"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Confirm New PIN</label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        pattern="[0-9]*"
+                        inputMode="numeric"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        className="input"
+                        placeholder="Confirm new PIN"
+                      />
+                    </div>
+                    <button onClick={handlePasswordChange} className="btn-gold w-full">
+                      Update PIN
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Terms and Conditions - Admin Only */}
