@@ -327,8 +327,11 @@ export default function AdminDashboard() {
           }
         };
 
-        // Try RTDB first (source of truth), then local as fallback
-        const tryLoadFromRTDB = async () => {
+        // Always load local first for offline support
+        await loadShopsFromLocal();
+
+        // Then try to sync from RTDB if online (non-blocking)
+        const trySyncFromRTDB = async () => {
           try {
             let fbShops;
             if (admin?.level === 'super_admin') {
@@ -351,14 +354,12 @@ export default function AdminDashboard() {
               }
             }
           } catch (err) {
-            console.log('RTDB shops unavailable, using local');
-            // Fallback to local if RTDB fails
-            await loadShopsFromLocal();
+            // RTDB unavailable - already loaded from local above
           }
         };
 
-        // Load from RTDB first (authoritative), then local
-        await tryLoadFromRTDB();
+        // Try RTDB sync in background (don't block UI)
+        trySyncFromRTDB();
       } catch (error) {
         console.error('Error in loadShops:', error);
       }
