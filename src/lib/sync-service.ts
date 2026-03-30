@@ -168,7 +168,7 @@ const startAutoSync = (): void => {
     return;
   }
   
-  autoSyncInterval = setInterval(async () => {
+  autoSyncInterval = setInterval(() => {
     // Don't sync if user is active
     if (userIsActive) {
       console.log('[Sync] Auto-sync skipped - user is active');
@@ -177,14 +177,7 @@ const startAutoSync = (): void => {
     
     if (isOnline()) {
       console.log('[Sync] Auto-sync triggered');
-      // Push local changes to RTDB
       processSyncQueue();
-      // Pull RTDB changes to local (bidirectional sync)
-      try {
-        await pullFromRTDB();
-      } catch (e) {
-        // Pull failed
-      }
     } else {
       // Stop auto-sync if we go offline
       console.log('[Sync] Auto-sync stopping - offline');

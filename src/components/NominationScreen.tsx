@@ -38,25 +38,7 @@ export default function NominationScreen() {
     const loadItems = async () => {
       if (!currentShop) return;
       
-      // Try to pull from RTDB first (for cross-device sync)
-      try {
-        const { rtdbNominationItems } = await import('@/lib/firebase');
-        const fbItems = await rtdbNominationItems.getAll();
-        // Filter by current shop
-        const shopItems = fbItems.filter((item: any) => item.shopId === currentShop.id);
-        if (shopItems && shopItems.length > 0) {
-          for (const item of shopItems) {
-            await localNominationItems.save(item);
-          }
-          setItems(shopItems);
-          setIsLoading(false);
-          return;
-        }
-      } catch (e) {
-        // RTDB fetch failed, use local
-      }
-      
-      // Load or create default items from local
+      // Load or create default items
       const nominationItems = await localNominationItems.ensureDefaultItems(currentShop.id);
       setItems(nominationItems);
       setIsLoading(false);

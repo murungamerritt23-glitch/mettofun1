@@ -365,26 +365,7 @@ export default function AdminDashboard() {
       }
     };
     loadShops();
-    
-    // Load admins - pull from RTDB first, then local
-    const loadAdmins = async () => {
-      try {
-        // Pull from RTDB (non-blocking)
-        const { rtdbAdmins: rtdbAdminsApi } = await import('@/lib/firebase');
-        const fbAdmins = await rtdbAdminsApi.getAll();
-        if (fbAdmins && fbAdmins.length > 0) {
-          for (const fbAdmin of fbAdmins) {
-            await localAdmins.save(fbAdmin);
-          }
-        }
-      } catch (e) {
-        // RTDB pull failed, use local
-      }
-      
-      const localAdminsList = await localAdmins.getAll();
-      setAdmins(localAdminsList);
-    };
-    loadAdmins();
+    localAdmins.getAll().then(setAdmins).catch(console.error);
   }, [admin]);
 
   // Load terms content for admin
@@ -496,6 +477,17 @@ export default function AdminDashboard() {
     
     return (permissions as any)[tab.requiredPermission];
   });
+
+  // Load attempts when tab changes to attempts or dashboard
+  useEffect(() => {
+    if (activeTab === 'attempts' || activeTab === 'dashboard') {
+      if (currentShop) {
+        loadAttempts();
+      } else if (admin?.level === 'super_admin') {
+        loadAllAttempts();
+      }
+    }
+  }, [activeTab, currentShop, admin?.level]);
 
   // Password protection check
   if (needsPassword && !isPasswordVerified) {
