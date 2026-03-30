@@ -61,21 +61,31 @@ export default function LoginPage() {
 
     // Check if this is first time (no admin exists)
     let isFirstTime = false;
+    let firebaseOnline = false;
     try {
       const localAdminsList = await localAdmins.getAll();
       if (localAdminsList.length === 0) {
         try {
           const rtdbAdminsList = await rtdbAdmins.getAll();
+          firebaseOnline = true; // Firebase responded
           if (rtdbAdminsList.length === 0) {
             isFirstTime = true;
           }
         } catch (e) {
-          // Firebase offline, assume first time
-          isFirstTime = true;
+          // Firebase offline - DO NOT create Super Admin, deny access
+          firebaseOnline = false;
         }
       }
     } catch (e) {
       // DB error, proceed with normal login
+    }
+
+    // If offline and no local admin, deny access (don't create Super Admin)
+    if (!firebaseOnline && !isFirstTime) {
+      // No local admin but can't reach Firebase - deny
+      setError('No internet connection. Please connect to login.');
+      setIsLoading(false);
+      return;
     }
 
     // First time login - create Super Admin automatically
@@ -85,42 +95,13 @@ export default function LoginPage() {
         const signUpResult = await firebaseAuth.signUp(email, password);
         
         if (signUpResult.error) {
-          // If email already exists, try to sign in
-          const signInResult = await firebaseAuth.signIn(email, password);
-          if (signInResult.error) {
-            setError('Failed to create account. Please try again.');
-            setIsLoading(false);
-            return;
-          }
-          // Signed in successfully with existing account
-          const uid = signInResult.user!.uid;
-          const adminData: Admin = {
-            id: uid,
-            email: email.toLowerCase(),
-            phone: '',
-            name: email.split('@')[0],
-            level: 'super_admin',
-            createdAt: new Date(),
-            lastLogin: new Date(),
-            isActive: true,
-            region: 'Default Region',
-            assignedShops: [],
-            deviceId: getDeviceId(),
-            deviceLocked: false
-          };
-          
-          await rtdbAdmins.save(adminData);
-          await localAdmins.save(adminData);
-          setAdmin(adminData);
-          localStorage.setItem('metofun-auth', JSON.stringify(adminData));
-          const pwHash = await hashPassword(password);
-          localStorage.setItem('metofun-auth-pw', pwHash);
-          setCurrentView('admin');
+          // If email already exists, DO NOT create Super Admin - this means someone already registered
+          setError('This email is already registered. Please login.');
           setIsLoading(false);
           return;
         }
 
-        // Account created successfully
+        // Account created successfully - create Super Admin
         const uid = signUpResult.user!.uid;
         const adminData: Admin = {
           id: uid,
