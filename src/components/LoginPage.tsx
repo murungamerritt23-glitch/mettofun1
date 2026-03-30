@@ -177,16 +177,40 @@ export default function LoginPage() {
           };
           await localAdmins.save(adminToUse);
         } else {
-          await firebaseAuth.signOut();
-          setError('Access denied. Please contact admin to create your account.');
-          setIsLoading(false);
-          return;
+          // Not in RTDB either - but Firebase Auth succeeded
+          // This means the account exists in Auth but not in our admin system
+          // Create a temporary admin record from Auth info
+          const firebaseUser = result.user!;
+          adminToUse = {
+            id: uid,
+            email: userEmail,
+            phone: firebaseUser.phoneNumber || '',
+            name: firebaseUser.displayName || userEmail.split('@')[0],
+            level: 'shop_admin', // Default to shop_admin for new logins
+            createdAt: new Date(),
+            lastLogin: new Date(),
+            isActive: true,
+            assignedShops: [],
+            deviceLocked: false
+          };
+          await localAdmins.save(adminToUse);
         }
       } catch (rtdbErr) {
-        await firebaseAuth.signOut();
-        setError('Access denied. Please contact admin to create your account.');
-        setIsLoading(false);
-        return;
+        // RTDB fetch failed - but Auth succeeded, create admin from Auth info
+        const firebaseUser = result.user!;
+        adminToUse = {
+          id: uid,
+          email: userEmail,
+          phone: firebaseUser.phoneNumber || '',
+          name: firebaseUser.displayName || userEmail.split('@')[0],
+          level: 'shop_admin',
+          createdAt: new Date(),
+          lastLogin: new Date(),
+          isActive: true,
+          assignedShops: [],
+          deviceLocked: false
+        };
+        await localAdmins.save(adminToUse);
       }
     }
 

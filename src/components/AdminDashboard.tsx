@@ -380,9 +380,23 @@ export default function AdminDashboard() {
   // Load Item of the Day on mount
   useEffect(() => {
     const loadItemOfDay = async () => {
+      // Try local first
       const savedItem = await localSettings.get('itemOfTheDay');
       if (savedItem) {
         setItemOfTheDay(savedItem);
+      } else {
+        // Try to fetch from RTDB for new devices
+        try {
+          const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+          const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
+          if (rtdbItem) {
+            // Save to local for offline access
+            await localSettings.set('itemOfTheDay', rtdbItem);
+            setItemOfTheDay(rtdbItem);
+          }
+        } catch (e) {
+          // RTDB fetch failed
+        }
       }
     };
     loadItemOfDay();
@@ -528,6 +542,15 @@ export default function AdminDashboard() {
     // Save to local for offline support
     await localSettings.set('itemOfTheDay', newItem);
     setItemOfTheDay(newItem);
+    
+    // Also sync to RTDB for other devices
+    try {
+      const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+      await rtdbSettingsApi.set('itemOfTheDay', newItem);
+    } catch (e) {
+      // RTDB sync failed, but local save succeeded
+    }
+    
     setIsEditingItemOfDay(false);
     setItemOfDaySaved(true);
     setTimeout(() => setItemOfDaySaved(false), 3000);
@@ -537,6 +560,14 @@ export default function AdminDashboard() {
   const handleClearItemOfDay = async () => {
     if (confirm('Are you sure you want to remove the Item of the Day?')) {
       await localSettings.set('itemOfTheDay', null);
+      
+      // Also clear from RTDB
+      try {
+        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+        await rtdbSettingsApi.set('itemOfTheDay', null);
+      } catch (e) {
+        // RTDB sync failed
+      }
       setItemOfTheDay(null);
       setItemOfDayForm({ name: '', value: '', imageUrl: '' });
     }
