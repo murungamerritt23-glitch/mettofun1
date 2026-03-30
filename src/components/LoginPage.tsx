@@ -238,6 +238,55 @@ export default function LoginPage() {
           const shops = await localShops.getAll();
           shop = shops.find(s => assignedShopIds.includes(s.id));
         }
+
+        // If still not found, fetch from RTDB
+        if (!shop) {
+          try {
+            const rtdbShops = await localShops.getAll(); // Try local first
+            // Then try to fetch from Firebase
+            const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
+            const fbShops = await rtdbShopApi.getAll();
+            if (fbShops && fbShops.length > 0) {
+              // Save to local for offline access
+              for (const s of fbShops) {
+                await localShops.save(s);
+              }
+              // Find shop by admin email or assigned shops
+              shop = fbShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase()) ||
+                     (assignedShopIds.length > 0 ? fbShops.find(s => assignedShopIds.includes(s.id)) : undefined);
+            }
+          } catch (err) {
+            // RTDB fetch failed
+          }
+        }
+
+        // Handle device lock for shop_admin
+        if (shop && shop.deviceLocked && shop.deviceId !== deviceId) {
+          // Shop is device-locked to a different device
+          // Update to lock to this new device
+          const updatedShop = { ...shop, deviceId: deviceId };
+          await localShops.save(updatedShop);
+          try {
+            const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
+            await rtdbShopApi.save(updatedShop);
+          } catch (err) {
+            // RTDB save failed
+          }
+          shop = updatedShop;
+        } else if (shop && shop.deviceLocked && shop.deviceId === deviceId) {
+          // Same device, keep lock
+        } else if (shop && !shop.deviceLocked) {
+          // Not locked, lock to this device
+          const updatedShop = { ...shop, deviceId: deviceId, deviceLocked: true };
+          await localShops.save(updatedShop);
+          try {
+            const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
+            await rtdbShopApi.save(updatedShop);
+          } catch (err) {
+            // RTDB save failed
+          }
+          shop = updatedShop;
+        }
         
         if (shop) {
           setCurrentShop(shop);

@@ -743,6 +743,34 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLockDevice = async () => {
+    if (!currentShop) {
+      alert('No shop selected.');
+      return;
+    }
+    
+    if (currentShop.deviceLocked) {
+      alert('Device is already locked to this shop.');
+      return;
+    }
+    
+    if (confirm('Lock this device to this shop? The shop can only run games on this device.')) {
+      try {
+        const deviceId = getDeviceId();
+        const updatedShop = { ...currentShop, deviceId: deviceId, deviceLocked: true };
+        await localShops.save(updatedShop);
+        setCurrentShop(updatedShop);
+        setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
+        localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+        await rtdbShops.save(updatedShop);
+        alert('Device locked successfully!');
+      } catch (err) {
+        console.error('Error locking device:', err);
+        alert('Failed to lock device. Please try again.');
+      }
+    }
+  };
+
   const handleBackup = async () => {
     const data = {
       shops: await localShops.getAll(),
@@ -2473,9 +2501,9 @@ export default function AdminDashboard() {
                     <h3 className="font-semibold text-white">Device Lock</h3>
                     <p className="text-gray-400 text-sm">Lock this shop to this device</p>
                   </div>
-                  <button className="btn-gold-outline">
+                  <button onClick={handleLockDevice} className="btn-gold-outline">
                     <Smartphone size={16} className="mr-2" />
-                    Lock Device
+                    {currentShop?.deviceLocked ? 'Locked' : 'Lock Device'}
                   </button>
                 </div>
               </div>
