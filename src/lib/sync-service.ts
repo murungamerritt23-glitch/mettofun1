@@ -168,7 +168,7 @@ const startAutoSync = (): void => {
     return;
   }
   
-  autoSyncInterval = setInterval(() => {
+  autoSyncInterval = setInterval(async () => {
     // Don't sync if user is active
     if (userIsActive) {
       console.log('[Sync] Auto-sync skipped - user is active');
@@ -177,7 +177,14 @@ const startAutoSync = (): void => {
     
     if (isOnline()) {
       console.log('[Sync] Auto-sync triggered');
+      // Push local changes to RTDB
       processSyncQueue();
+      // Pull RTDB changes to local (bidirectional sync)
+      try {
+        await pullFromRTDB();
+      } catch (e) {
+        // Pull failed
+      }
     } else {
       // Stop auto-sync if we go offline
       console.log('[Sync] Auto-sync stopping - offline');
@@ -647,3 +654,74 @@ export const setUserActive = (active: boolean): void => {
 
 // Check if user is active
 export const isUserActive = (): boolean => userIsActive;
+
+// Pull data from RTDB to local - bidirectional sync
+export const pullFromRTDB = async (shopId?: string): Promise<void> => {
+  if (!isOnline()) return;
+  
+  try {
+    const { rtdbShops, rtdbItems, rtdbAdmins } = await import('./firebase');
+    const { localShops, localItems, localAdmins } = await import('./local-db');
+    
+    // Pull shops
+    const fbShops = await rtdbShops.getAll();
+    if (fbShops && fbShops.length > 0) {
+      for (const shop of fbShops) {
+        await localShops.save(shop);
+      }
+    }
+    
+    // Pull items for specific shop or all shops
+    if (shopId) {
+      const fbItems = await rtdbItems.getByShop(shopId);
+      if (fbItems && fbItems.length > 0) {
+        for (const item of fbItems) {
+          await localItems.save(item);
+        }
+      }
+    } else {
+      // Pull items for all shops
+      for (const shop of fbShops || []) {
+        const fbItems = await rtdbItems.getByShop(shop.id);
+        if (fbItems && fbItems.length > 0) {
+          for (const item of fbItems) {
+            await localItems.save(item);
+          }
+        }
+      }
+    }
+    
+    // Pull admins
+    const fbAdmins = await rtdbAdmins.getAll();
+    if (fbAdmins && fbAdmins.length > 0) {
+      for (const admin of fbAdmins) {
+        await localAdmins.save(admin);
+      }
+    }
+    
+    console.log('[Sync] Pull from RTDB completed');
+  } catch (error) {
+    console.error('[Sync] Pull from RTDB failed:', error);
+  }
+};
+
+// Pull attempts from RTDB
+export const pullAttemptsFromRTDB = async (shopId: string): Promise<void> => {
+  if (!isOnline()) return;
+  
+  try {
+    const { rtdbAttempts } = await import('./firebase');
+    const { localAttempts } = await import('./local-db');
+    
+    const fbAttempts = await rtdbAttempts.getByShop(shopId);
+    if (fbAttempts && fbAttempts.length > 0) {
+      for (const attempt of fbAttempts) {
+        await localAttempts.save(attempt);
+      }
+    }
+    
+    console.log('[Sync] Pull attempts from RTDB completed');
+  } catch (error) {
+    console.error('[Sync] Pull attempts from RTDB failed:', error);
+  }
+};

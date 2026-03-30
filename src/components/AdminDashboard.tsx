@@ -365,7 +365,26 @@ export default function AdminDashboard() {
       }
     };
     loadShops();
-    localAdmins.getAll().then(setAdmins).catch(console.error);
+    
+    // Load admins - pull from RTDB first, then local
+    const loadAdmins = async () => {
+      try {
+        // Pull from RTDB (non-blocking)
+        const { rtdbAdmins: rtdbAdminsApi } = await import('@/lib/firebase');
+        const fbAdmins = await rtdbAdminsApi.getAll();
+        if (fbAdmins && fbAdmins.length > 0) {
+          for (const fbAdmin of fbAdmins) {
+            await localAdmins.save(fbAdmin);
+          }
+        }
+      } catch (e) {
+        // RTDB pull failed, use local
+      }
+      
+      const localAdminsList = await localAdmins.getAll();
+      setAdmins(localAdminsList);
+    };
+    loadAdmins();
   }, [admin]);
 
   // Load terms content for admin
@@ -595,6 +614,14 @@ export default function AdminDashboard() {
 
   const loadAttempts = async () => {
     if (currentShop) {
+      // Pull from RTDB first (non-blocking)
+      try {
+        const { pullAttemptsFromRTDB } = await import('@/lib/sync-service');
+        await pullAttemptsFromRTDB(currentShop.id);
+      } catch (e) {
+        // RTDB pull failed, use local
+      }
+      
       const shopAttempts = await localAttempts.getByShop(currentShop.id);
       setAttempts(shopAttempts);
     }
@@ -602,12 +629,28 @@ export default function AdminDashboard() {
 
   // Load all attempts (for super admin to view all shops)
   const loadAllAttempts = async () => {
+    // Pull from RTDB first (non-blocking)
+    try {
+      const { pullFromRTDB } = await import('@/lib/sync-service');
+      await pullFromRTDB();
+    } catch (e) {
+      // RTDB pull failed, use local
+    }
+    
     const allAttempts = await localAttempts.getAll();
     setAttempts(allAttempts);
   };
 
   const loadItems = async () => {
     if (currentShop) {
+      // Pull from RTDB first (non-blocking)
+      try {
+        const { pullFromRTDB } = await import('@/lib/sync-service');
+        await pullFromRTDB(currentShop.id);
+      } catch (e) {
+        // RTDB pull failed, use local
+      }
+      
       const shopItems = await localItems.getByShop(currentShop.id);
       setItems(shopItems.length > 0 ? shopItems : generateDefaultItems(currentShop.id));
     }
