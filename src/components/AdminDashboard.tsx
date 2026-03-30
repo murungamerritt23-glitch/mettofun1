@@ -1291,19 +1291,14 @@ export default function AdminDashboard() {
                               const newValue = Number(qpInput) || 0;
                               const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
                               
-                              // Save locally first (always works)
-                              await localShops.save(updatedShop);
+                              // Save using sync service (handles offline)
+                              await saveShopWithSync(updatedShop, false);
+                              
+                              // Update state
                               setCurrentShop(updatedShop);
-                              loadAttempts();
-                              
-                              // Update shops list immediately with new value
                               setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
-                              
-                              // Save to RTDB - AWAIT to prevent race condition
-                              await rtdbShops.save(updatedShop);
-                              
-                              // Sync to localStorage
                               localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+                              loadAttempts();
                               
                               alert('Qualifying purchase updated successfully!');
                             } catch (err) {
@@ -2081,19 +2076,14 @@ export default function AdminDashboard() {
                           const newValue = Number(qpInput) || 0;
                           const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
                           
-                          // Save locally first (always works)
-                          await localShops.save(updatedShop);
+                          // Save using sync service (handles offline)
+                          await saveShopWithSync(updatedShop, false);
+                          
+                          // Update state
                           setCurrentShop(updatedShop);
-                          loadAttempts();
-                          
-                          // Update shops list immediately with new value
                           setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
-                          
-                          // Save to RTDB - AWAIT to prevent race condition
-                          await rtdbShops.save(updatedShop);
-                          
-                          // Sync to localStorage
                           localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+                          loadAttempts();
                           
                           alert('Qualifying purchase updated successfully!');
                         } catch (err) {
