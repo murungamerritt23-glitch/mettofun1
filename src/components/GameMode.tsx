@@ -16,7 +16,8 @@ import {
   createGameAttempt,
   getCurrentDateString,
   isValidPhoneNumber,
-  formatPhoneNumber
+  formatPhoneNumber,
+  validateGameAttempt
 } from '@/lib/game-utils';
 import type { Item, GameAttempt } from '@/types';
 import { verifyShopLocation } from '@/lib/location';
@@ -262,6 +263,26 @@ export default function GameMode() {
     
     // Save attempt in background - don't await to avoid blocking
     try {
+      // Validate attempt before saving
+      const validation = validateGameAttempt(
+        currentShop?.id || 'demo',
+        customerSession?.phoneNumber || phoneNumber,
+        parseFloat(purchaseAmount),
+        currentShop?.qualifyingPurchase || 0,
+        selectedBox || 0,
+        correctNumber,
+        won,
+        thresholdNumber ?? undefined
+      );
+      
+      if (!validation.valid) {
+        console.error('Invalid game attempt:', validation.error);
+        // Still show result to user but don't save invalid attempt
+        setShowResult(true);
+        setGameStatus(won ? 'won' : 'lost');
+        return;
+      }
+      
       const attempt = createGameAttempt(
         currentShop?.id || 'demo',
         customerSession?.phoneNumber || phoneNumber,

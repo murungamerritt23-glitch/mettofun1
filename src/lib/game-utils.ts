@@ -37,28 +37,17 @@ export const calculateBoxConfiguration = (purchaseAmount: number, qualifyingAmou
   return { boxCount: 17, threshold, ratio: ratio.toString() };
 };
 
-// Secure random number generation with complete entropy
+// Secure random number generation using Web Crypto API (CSPRNG)
 export const generateSecureRandomNumber = (max: number): number => {
-  // Generate entropy from multiple sources for complete reshuffle
-  const timestamp = Date.now();
-  const randomBytes = CryptoJS.lib.WordArray.random(8);
-  const randomMath = Math.random() * 1000000;
-  const randomTime = performance.now() * 1000;
+  if (max <= 0) return 1;
   
-  // Combine all entropy sources
-  const entropy = `${timestamp}-${randomBytes}-${randomMath}-${randomTime}-${Math.random()}-${Date.now()}`;
+  // Use Web Crypto API for proper CSPRNG
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
   
-  // Hash multiple times for extra randomness
-  let hash = CryptoJS.SHA256(entropy);
-  hash = CryptoJS.SHA256(hash.toString() + entropy);
-  hash = CryptoJS.SHA256(hash.toString(CryptoJS.enc.Hex).substring(0, 16) + randomBytes);
+  // Convert to number in range 1 to max
+  const result = (array[0] % max) + 1;
   
-  // Convert to number and mod by max
-  const hexStr = hash.toString(CryptoJS.enc.Hex);
-  const num = parseInt(hexStr.substring(0, 8), 16);
-  const result = (num % max) + 1;
-  
-  // Ensure result is within valid range
   return Math.min(Math.max(result, 1), max);
 };
 
@@ -121,6 +110,51 @@ export const generateDefaultItems = (shopId: string): Item[] => {
 };
 
 // Create a game attempt record with anti-tamper hash
+/**
+ * Validate game attempt parameters before creation
+ * Returns true if valid, false if suspicious
+ */
+export const validateGameAttempt = (
+  shopId: string,
+  phoneNumber: string,
+  purchaseAmount: number,
+  qualifyingAmount: number,
+  selectedBox: number,
+  correctNumber: number,
+  won: boolean,
+  threshold?: number
+): { valid: boolean; error?: string } => {
+  // Check required fields
+  if (!shopId || shopId.trim() === '') {
+    return { valid: false, error: 'Missing shop ID' };
+  }
+  
+  if (!phoneNumber || phoneNumber.trim().length < 7) {
+    return { valid: false, error: 'Invalid phone number' };
+  }
+  
+  if (typeof purchaseAmount !== 'number' || purchaseAmount < 0) {
+    return { valid: false, error: 'Invalid purchase amount' };
+  }
+  
+  if (typeof correctNumber !== 'number' || correctNumber < 1 || correctNumber > 18) {
+    return { valid: false, error: 'Invalid winning number' };
+  }
+  
+  if (typeof selectedBox !== 'number' || selectedBox < 0 || selectedBox > 6) {
+    return { valid: false, error: 'Invalid selected box' };
+  }
+  
+  // Verify win is mathematically possible based on threshold
+  if (threshold !== undefined && won) {
+    if (selectedBox > threshold) {
+      return { valid: false, error: 'Win not possible with this threshold' };
+    }
+  }
+  
+  return { valid: true };
+};
+
 export const createGameAttempt = (
   shopId: string,
   phoneNumber: string,
