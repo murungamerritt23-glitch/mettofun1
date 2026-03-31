@@ -90,19 +90,40 @@ export const cleanStaleQueueItems = async (): Promise<void> => {
   }
 };
 
+// Reset failed sync items back to pending for retry
+export const resetFailedSyncItems = async (): Promise<void> => {
+  const { localDB } = await import('./local-db');
+  const pendingItems = await localDB.getPendingSyncItems();
+  
+  let resetCount = 0;
+  for (const item of pendingItems) {
+    if (item.status === 'failed') {
+      await localDB.updateSyncItemStatus(item.id, 'pending', 0);
+      resetCount++;
+    }
+  }
+  
+  if (resetCount > 0) {
+    console.log(`[Sync] Reset ${resetCount} failed items to pending for retry`);
+  }
+};
+
 // Initialize online/offline detection
 export const initSyncService = (): (() => void) => {
   if (typeof window === 'undefined') {
     return () => {};
   }
 
-  const handleOnline = () => {
+  const handleOnline = async () => {
     console.log('[Sync] Back online - starting sync');
     lastOnlineTime = Date.now();
     useUIStore.getState().setOnline(true);
     
     // Clean stale queue items before syncing
-    cleanStaleQueueItems();
+    await cleanStaleQueueItems();
+    
+    // Reset failed items to pending so they get retried
+    await resetFailedSyncItems();
     
     // Trigger immediate sync after 2 seconds
     setTimeout(() => {
@@ -331,6 +352,14 @@ export const processSyncQueue = async (): Promise<void> => {
     useSyncStore.getState().setLastSyncTime(new Date());
     useSyncStore.getState().setSyncing(false);
     console.log(`[Sync] Sync complete: ${processed} processed, ${failed} failed, ${pendingItems.length - processed - failed} remaining`);
+
+    // Pull latest data from RTDB to keep local in sync with other devices
+    // This ensures the super admin dashboard sees data from all devices
+    try {
+      await pullFromRTDB();
+    } catch (pullError) {
+      console.error('[Sync] Post-sync pull failed:', pullError);
+    }
   } catch (error) {
     console.error('[Sync] Sync error:', error);
     useSyncStore.getState().setSyncing(false);
@@ -535,9 +564,10 @@ export const saveShopWithSync = async (shop: Shop, isNew: boolean = true): Promi
   }
 };
 
-// Force sync (bypass user active check)
+// Force sync (bypass user active check, reset failed items)
 export const forceSyncNow = async (): Promise<void> => {
   userIsActive = false;
+  await resetFailedSyncItems();
   await processSyncQueue();
 };
 
@@ -603,6 +633,9 @@ export const triggerSync = async (): Promise<void> => {
   // Clean stale items first
   await cleanStaleQueueItems();
   
+  // Reset failed items for retry
+  await resetFailedSyncItems();
+  
   await processSyncQueue();
 };
 
@@ -653,8 +686,8 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
   if (!isOnline()) return;
   
   try {
-    const { rtdbShops, rtdbItems, rtdbAdmins, rtdbAttempts } = await import('./firebase');
-    const { localShops, localItems, localAdmins, localAttempts } = await import('./local-db');
+    const { rtdbShops, rtdbItems, rtdbAdmins, rtdbAttempts, rtdbNominationItems, rtdbCustomerNominations } = await import('./firebase');
+    const { localShops, localItems, localAdmins, localAttempts, localNominationItems, localCustomerNominations } = await import('./local-db');
     
     // Pull shops
     const fbShops = await rtdbShops.getAll();
@@ -664,7 +697,7 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
       }
     }
     
-    // Pull items and attempts for specific shop or all shops
+    // Pull items, attempts, nominations for specific shop or all shops
     if (shopId) {
       // Pull items for specific shop
       const fbItems = await rtdbItems.getByShop(shopId);
@@ -681,8 +714,25 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
           await localAttempts.save(attempt);
         }
       }
+
+      // Pull nomination items for specific shop
+      const fbNominationItems = await rtdbNominationItems.getAll();
+      const shopNominationItems = fbNominationItems.filter(item => item.shopId === shopId);
+      if (shopNominationItems.length > 0) {
+        for (const item of shopNominationItems) {
+          await localNominationItems.save(item);
+        }
+      }
+
+      // Pull customer nominations for specific shop
+      const fbCustomerNominations = await rtdbCustomerNominations.getByShop(shopId);
+      if (fbCustomerNominations && fbCustomerNominations.length > 0) {
+        for (const nomination of fbCustomerNominations) {
+          await localCustomerNominations.save(nomination);
+        }
+      }
     } else {
-      // Pull items and attempts for all shops
+      // Pull items, attempts, nominations for all shops
       for (const shop of fbShops || []) {
         const fbItems = await rtdbItems.getByShop(shop.id);
         if (fbItems && fbItems.length > 0) {
@@ -697,6 +747,22 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
           for (const attempt of fbAttempts) {
             await localAttempts.save(attempt);
           }
+        }
+
+        // Pull customer nominations for this shop
+        const fbNominations = await rtdbCustomerNominations.getByShop(shop.id);
+        if (fbNominations && fbNominations.length > 0) {
+          for (const nomination of fbNominations) {
+            await localCustomerNominations.save(nomination);
+          }
+        }
+      }
+
+      // Pull all nomination items (not shop-specific in RTDB structure)
+      const fbNominationItems = await rtdbNominationItems.getAll();
+      if (fbNominationItems && fbNominationItems.length > 0) {
+        for (const item of fbNominationItems) {
+          await localNominationItems.save(item);
         }
       }
     }

@@ -353,6 +353,16 @@ export default function AdminDashboard() {
                 autoSelectShop(filteredFbShops);
               }
             }
+
+            // For super_admin/agent_admin, pull all data from RTDB to ensure
+            // attempts, items, nominations from all devices are visible
+            if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
+              const { pullFromRTDB } = await import('@/lib/sync-service');
+              await pullFromRTDB();
+              // Reload attempts from local after pull
+              const allAttempts = await localAttempts.getAll();
+              setAttempts(allAttempts);
+            }
           } catch (err) {
             // RTDB unavailable - already loaded from local above
           }
