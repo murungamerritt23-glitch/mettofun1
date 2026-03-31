@@ -1093,9 +1093,9 @@ export const rtdbItems = {
 
   async create(shopId: string, item: Item): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const newRef = push(ref(rtdb, `shops/${shopId}/items`));
-      await set(newRef, serializeForRTDB({ ...item, shopId }));
-      return { success: true, id: newRef.key || item.id };
+      // Use original item.id as the key for consistent cross-device sync
+      await set(ref(rtdb, `shops/${shopId}/items/${item.id}`), serializeForRTDB({ ...item, shopId }));
+      return { success: true, id: item.id };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -1124,9 +1124,9 @@ export const rtdbItems = {
 export const rtdbAttempts = {
   async create(shopId: string, attempt: GameAttempt): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const newRef = push(ref(rtdb, `shops/${shopId}/attempts`));
-      await set(newRef, serializeForRTDB(attempt));
-      return { success: true, id: newRef.key || attempt.id };
+      // Use original attempt.id as the key for consistent cross-device sync
+      await set(ref(rtdb, `shops/${shopId}/attempts/${attempt.id}`), serializeForRTDB(attempt));
+      return { success: true, id: attempt.id };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -1211,9 +1211,9 @@ export const rtdbNominationItems = {
 
   async create(item: NominationItem): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const newRef = push(ref(rtdb, 'nominationItems'));
-      await set(newRef, serializeForRTDB(item));
-      return { success: true, id: newRef.key || item.id };
+      // Use original item.id as the key for consistent cross-device sync
+      await set(ref(rtdb, `nominationItems/${item.id}`), serializeForRTDB(item));
+      return { success: true, id: item.id };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -1254,7 +1254,8 @@ export const rtdbCustomerNominations = {
 
   async getByShop(shopId: string): Promise<CustomerNomination[]> {
     try {
-      const q = rtdbQuery(ref(rtdb, 'customerNominations'), equalTo('shopId', shopId));
+      // Use orderByChild before equalTo for proper Firebase RTDB query
+      const q = rtdbQuery(ref(rtdb, 'customerNominations'), orderByChild('shopId'), equalTo(shopId));
       const snapshot = await get(q);
       if (!snapshot.exists()) return [];
       const data = snapshot.val();
@@ -1267,9 +1268,9 @@ export const rtdbCustomerNominations = {
 
   async create(nomination: CustomerNomination): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const newRef = push(ref(rtdb, 'customerNominations'));
-      await set(newRef, serializeForRTDB(nomination));
-      return { success: true, id: newRef.key || nomination.id };
+      // Use original nomination.id as the key for consistent cross-device sync
+      await set(ref(rtdb, `customerNominations/${nomination.id}`), serializeForRTDB(nomination));
+      return { success: true, id: nomination.id };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
