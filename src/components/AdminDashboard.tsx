@@ -380,23 +380,24 @@ export default function AdminDashboard() {
   // Load Item of the Day on mount
   useEffect(() => {
     const loadItemOfDay = async () => {
-      // Try local first
+      // Always try to fetch latest from RTDB (source of truth)
+      try {
+        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+        const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
+        if (rtdbItem) {
+          // Save to local for offline access
+          await localSettings.set('itemOfTheDay', rtdbItem);
+          setItemOfTheDay(rtdbItem);
+          return;
+        }
+      } catch (e) {
+        // RTDB fetch failed, fall back to local
+      }
+      
+      // Fall back to local if RTDB failed
       const savedItem = await localSettings.get('itemOfTheDay');
       if (savedItem) {
         setItemOfTheDay(savedItem);
-      } else {
-        // Try to fetch from RTDB for new devices
-        try {
-          const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-          const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
-          if (rtdbItem) {
-            // Save to local for offline access
-            await localSettings.set('itemOfTheDay', rtdbItem);
-            setItemOfTheDay(rtdbItem);
-          }
-        } catch (e) {
-          // RTDB fetch failed
-        }
       }
     };
     loadItemOfDay();
