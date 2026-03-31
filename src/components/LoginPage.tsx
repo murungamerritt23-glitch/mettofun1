@@ -48,6 +48,15 @@ export default function LoginPage() {
         if (inputHash === cachedPwHash) {
           setAdmin(cachedAdmin);
           if (cachedAdmin.level === 'shop_admin') {
+            // Resolve the correct shop for this admin
+            const localShopsList = await localShops.getAll();
+            let shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
+            if (!shop && cachedAdmin.assignedShops?.length) {
+              shop = localShopsList.find(s => cachedAdmin.assignedShops!.includes(s.id));
+            }
+            if (shop) {
+              setCurrentShop(shop);
+            }
             setCurrentView('customer');
           } else {
             setCurrentView('admin');
@@ -236,20 +245,28 @@ export default function LoginPage() {
     // Role-based navigation
     if (adminToUse!.level === 'shop_admin') {
       const deviceId = getDeviceId();
-      let shop = await localShops.getByDeviceId(deviceId);
-      
-      if (!shop) {
-        const shops = await localShops.getAll();
-        shop = shops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
-      }
-      
       const assignedShopIds = adminToUse!.assignedShops || [];
+      let shop: Awaited<ReturnType<typeof localShops.getByDeviceId>> = undefined;
+      
+      // Priority 1: Match by adminEmail (most reliable - each email links to exactly one shop)
+      const localShopsList = await localShops.getAll();
+      shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
+      
+      // Priority 2: Match by assignedShops (set by super_admin when creating the admin)
       if (!shop && assignedShopIds.length > 0) {
-        const shops = await localShops.getAll();
-        shop = shops.find(s => assignedShopIds.includes(s.id));
+        shop = localShopsList.find(s => assignedShopIds.includes(s.id));
       }
 
-      // If still not found, fetch from RTDB
+      // Priority 3: Match by deviceId (least reliable - can cause collisions across shops)
+      if (!shop) {
+        const shopsByDevice = localShopsList.filter(s => s.deviceId === deviceId);
+        // Only use deviceId match if exactly one shop matches (no ambiguity)
+        if (shopsByDevice.length === 1) {
+          shop = shopsByDevice[0];
+        }
+      }
+
+      // Priority 4: Fetch from RTDB if still not found
       if (!shop) {
         try {
           const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
@@ -259,9 +276,12 @@ export default function LoginPage() {
             for (const s of fbShops) {
               await localShops.save(s);
             }
-            // Find shop by admin email or assigned shops
-            shop = fbShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase()) ||
-                   (assignedShopIds.length > 0 ? fbShops.find(s => assignedShopIds.includes(s.id)) : undefined);
+            // Find shop by admin email first
+            shop = fbShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
+            // Then by assigned shops
+            if (!shop && assignedShopIds.length > 0) {
+              shop = fbShops.find(s => assignedShopIds.includes(s.id));
+            }
           }
         } catch (err) {
           // RTDB fetch failed

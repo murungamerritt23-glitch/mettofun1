@@ -442,6 +442,11 @@ export default function AdminDashboard() {
   const handleDeleteAdmin = async (adminId: string) => {
     if (confirm('Are you sure you want to delete this admin?')) {
       await localAdmins.delete(adminId);
+      try {
+        await rtdbAdmins.delete(adminId);
+      } catch (e) {
+        console.log('RTDB delete skipped (local only mode)');
+      }
       localAdmins.getAll().then(setAdmins);
     }
   };

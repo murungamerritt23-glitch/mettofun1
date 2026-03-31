@@ -41,10 +41,19 @@ export default function Home() {
             
             if (verifiedAdmin.level === 'shop_admin') {
               const deviceId = getDeviceId();
-              let shop = await localShops.getByDeviceId(deviceId);
+              const allShops = await localShops.getAll();
+              // Priority 1: Match by adminEmail (most reliable)
+              let shop = allShops.find(s => s.adminEmail?.toLowerCase() === verifiedAdmin.email?.toLowerCase());
+              // Priority 2: Match by assignedShops
+              if (!shop && verifiedAdmin.assignedShops?.length) {
+                shop = allShops.find(s => verifiedAdmin.assignedShops!.includes(s.id));
+              }
+              // Priority 3: Match by deviceId (only if exactly one match to avoid ambiguity)
               if (!shop) {
-                const shops = await localShops.getAll();
-                shop = shops.find(s => s.adminEmail?.toLowerCase() === verifiedAdmin.email?.toLowerCase());
+                const shopsByDevice = allShops.filter(s => s.deviceId === deviceId);
+                if (shopsByDevice.length === 1) {
+                  shop = shopsByDevice[0];
+                }
               }
               if (shop) {
                 setCurrentShop(shop);
