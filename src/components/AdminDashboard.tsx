@@ -380,24 +380,23 @@ export default function AdminDashboard() {
   // Load Item of the Day on mount
   useEffect(() => {
     const loadItemOfDay = async () => {
-      // Always try to fetch latest from RTDB (source of truth)
-      try {
-        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-        const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
-        if (rtdbItem) {
-          // Save to local for offline access
-          await localSettings.set('itemOfTheDay', rtdbItem);
-          setItemOfTheDay(rtdbItem);
-          return;
-        }
-      } catch (e) {
-        // RTDB fetch failed, fall back to local
-      }
-      
-      // Fall back to local if RTDB failed
+      // Try local first
       const savedItem = await localSettings.get('itemOfTheDay');
       if (savedItem) {
         setItemOfTheDay(savedItem);
+      } else {
+        // Try to fetch from RTDB for new devices
+        try {
+          const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+          const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
+          if (rtdbItem) {
+            // Save to local for offline access
+            await localSettings.set('itemOfTheDay', rtdbItem);
+            setItemOfTheDay(rtdbItem);
+          }
+        } catch (e) {
+          // RTDB fetch failed
+        }
       }
     };
     loadItemOfDay();
@@ -478,6 +477,17 @@ export default function AdminDashboard() {
     
     return (permissions as any)[tab.requiredPermission];
   });
+
+  // Load attempts when tab changes to attempts or dashboard
+  useEffect(() => {
+    if (activeTab === 'attempts' || activeTab === 'dashboard') {
+      if (currentShop) {
+        loadAttempts();
+      } else if (admin?.level === 'super_admin') {
+        loadAllAttempts();
+      }
+    }
+  }, [activeTab, currentShop, admin?.level]);
 
   // Password protection check
   if (needsPassword && !isPasswordVerified) {

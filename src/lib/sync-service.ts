@@ -653,8 +653,8 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
   if (!isOnline()) return;
   
   try {
-    const { rtdbShops, rtdbItems, rtdbAdmins } = await import('./firebase');
-    const { localShops, localItems, localAdmins } = await import('./local-db');
+    const { rtdbShops, rtdbItems, rtdbAdmins, rtdbAttempts } = await import('./firebase');
+    const { localShops, localItems, localAdmins, localAttempts } = await import('./local-db');
     
     // Pull shops
     const fbShops = await rtdbShops.getAll();
@@ -664,21 +664,38 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
       }
     }
     
-    // Pull items for specific shop or all shops
+    // Pull items and attempts for specific shop or all shops
     if (shopId) {
+      // Pull items for specific shop
       const fbItems = await rtdbItems.getByShop(shopId);
       if (fbItems && fbItems.length > 0) {
         for (const item of fbItems) {
           await localItems.save(item);
         }
       }
+      
+      // Pull attempts for specific shop
+      const fbAttempts = await rtdbAttempts.getByShop(shopId);
+      if (fbAttempts && fbAttempts.length > 0) {
+        for (const attempt of fbAttempts) {
+          await localAttempts.save(attempt);
+        }
+      }
     } else {
-      // Pull items for all shops
+      // Pull items and attempts for all shops
       for (const shop of fbShops || []) {
         const fbItems = await rtdbItems.getByShop(shop.id);
         if (fbItems && fbItems.length > 0) {
           for (const item of fbItems) {
             await localItems.save(item);
+          }
+        }
+        
+        // Pull attempts for this shop
+        const fbAttempts = await rtdbAttempts.getByShop(shop.id);
+        if (fbAttempts && fbAttempts.length > 0) {
+          for (const attempt of fbAttempts) {
+            await localAttempts.save(attempt);
           }
         }
       }

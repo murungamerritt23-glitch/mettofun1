@@ -75,24 +75,23 @@ export default function GameMode() {
   // Load Item of the Day on mount
   useEffect(() => {
     const loadItemOfDay = async () => {
-      // Always try to fetch latest from RTDB (source of truth)
-      try {
-        const { rtdbSettings } = await import('@/lib/firebase');
-        const rtdbItem = await rtdbSettings.get('itemOfTheDay');
-        if (rtdbItem) {
-          // Save to local for offline access
-          await localSettings.set('itemOfTheDay', rtdbItem);
-          useGameStore.getState().setItemOfTheDay(rtdbItem);
-          return;
-        }
-      } catch (e) {
-        // RTDB fetch failed, fall back to local
-      }
-      
-      // Fall back to local if RTDB failed
+      // Try local first
       const savedItem = await localSettings.get('itemOfTheDay');
       if (savedItem) {
         useGameStore.getState().setItemOfTheDay(savedItem);
+      } else {
+        // Try to fetch from RTDB for new devices
+        try {
+          const { rtdbSettings } = await import('@/lib/firebase');
+          const rtdbItem = await rtdbSettings.get('itemOfTheDay');
+          if (rtdbItem) {
+            // Save to local for offline access
+            await localSettings.set('itemOfTheDay', rtdbItem);
+            useGameStore.getState().setItemOfTheDay(rtdbItem);
+          }
+        } catch (e) {
+          // RTDB fetch failed
+        }
       }
     };
     loadItemOfDay();
