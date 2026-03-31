@@ -8,6 +8,20 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix super admin dashboard not synchronizing all devices
+  - Issue: Super admin couldn't see data from all devices/shops
+  - Root causes:
+    1. `pullFromRTDB()` was missing customer nominations and nomination items
+    2. Initial dashboard load only read from local IndexedDB, never pulled from RTDB for super admin
+    3. Failed sync items were permanently skipped after 3 retries with no retry mechanism
+    4. Auto-sync only pushed data, never pulled from RTDB
+  - Solution:
+    1. Added `rtdbCustomerNominations` and `rtdbNominationItems` to `pullFromRTDB()` (both shop-specific and all-shops paths)
+    2. Added `pullFromRTDB()` call in dashboard initial load for super_admin/agent_admin after fetching shops from RTDB
+    3. Added `resetFailedSyncItems()` function that resets failed items to pending with retry count 0
+    4. Call `resetFailedSyncItems()` when going back online, on force sync, and on manual trigger sync
+    5. Added `pullFromRTDB()` call at end of `processSyncQueue()` so local stays in sync with all devices after every sync cycle
+
 - [x] Enhance offline feature for extended operation (hours/days offline)
   - Add automatic periodic sync (every 5 minutes) when online
   - Implement exponential backoff for failed sync retries (2s base, max 5min)
@@ -354,3 +368,4 @@ export async function GET() {
 | Today | Update branding from METOFUN to ETO FUN - remove M from logo and app name |
 | Today | Enhance offline feature for extended operation - auto sync every 5 min, exponential backoff, queue limits, stale cleanup, batch processing, time offline tracking |
 | Today | Verified build - TypeScript passes (0 errors), lint passes (12 img warnings), build succeeds |
+| Today | Fix super admin dashboard not synchronizing all devices - add nominations to pullFromRTDB, auto-pull on load, reset failed items on reconnect, post-sync pull in processSyncQueue |
