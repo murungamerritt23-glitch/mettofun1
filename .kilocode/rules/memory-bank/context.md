@@ -8,6 +8,25 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix super admin delete staff not persisting
+  - Issue: Deleting a staff member only removed them from local IndexedDB, not from Firebase RTDB
+  - Root cause: `handleDeleteAdmin` was missing `rtdbAdmins.delete(adminId)` call
+  - After any sync, `pullFromRTDB()` re-downloaded all admins from RTDB, resurrecting deleted staff
+  - Solution: Added `rtdbAdmins.delete(adminId)` to `handleDeleteAdmin` with try/catch for offline mode
+
+- [x] Fix shop credentials logging into wrong shop
+  - Issue: A shop with valid credentials could log into a different shop instead of their own
+  - Root causes:
+    1. Shop resolution used deviceId first, which could match multiple shops (collision)
+    2. Device lock override unconditionally overwrote shop's deviceId with current device's ID
+    3. Offline login path never called `setCurrentShop()` for shop_admin
+    4. `page.tsx` session restore didn't check `assignedShops` fallback
+  - Solution:
+    1. Changed shop resolution priority: adminEmail (most specific) → assignedShops → deviceId (only if exactly 1 match)
+    2. Offline login now resolves shop by adminEmail/assignedShops and calls setCurrentShop
+    3. Added assignedShops fallback to page.tsx session restore
+    4. deviceId only used if exactly one shop matches to prevent ambiguity
+
 - [x] Fix super admin dashboard not synchronizing all devices
   - Issue: Super admin couldn't see data from all devices/shops
   - Root causes:
@@ -369,3 +388,5 @@ export async function GET() {
 | Today | Enhance offline feature for extended operation - auto sync every 5 min, exponential backoff, queue limits, stale cleanup, batch processing, time offline tracking |
 | Today | Verified build - TypeScript passes (0 errors), lint passes (12 img warnings), build succeeds |
 | Today | Fix super admin dashboard not synchronizing all devices - add nominations to pullFromRTDB, auto-pull on load, reset failed items on reconnect, post-sync pull in processSyncQueue |
+| Today | Fix super admin delete staff not persisting - add rtdbAdmins.delete() to prevent resurrection after sync |
+| Today | Fix shop credentials logging into wrong shop - prioritize adminEmail over deviceId, fix offline login shop resolution, add assignedShops fallback to session restore |
