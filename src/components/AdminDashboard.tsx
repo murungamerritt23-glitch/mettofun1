@@ -478,17 +478,6 @@ export default function AdminDashboard() {
     return (permissions as any)[tab.requiredPermission];
   });
 
-  // Load attempts when tab changes to attempts or dashboard
-  useEffect(() => {
-    if (activeTab === 'attempts' || activeTab === 'dashboard') {
-      if (currentShop) {
-        loadAttempts();
-      } else if (admin?.level === 'super_admin') {
-        loadAllAttempts();
-      }
-    }
-  }, [activeTab, currentShop, admin?.level]);
-
   // Password protection check
   if (needsPassword && !isPasswordVerified) {
     return (
