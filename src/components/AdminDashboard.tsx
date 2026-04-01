@@ -609,15 +609,27 @@ export default function AdminDashboard() {
   };
 
   const loadAttempts = async () => {
+    // Super admin and agent admin see attempts from ALL shops/devices
+    if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
+      try {
+        const { pullFromRTDB } = await import('@/lib/sync-service');
+        await pullFromRTDB();
+      } catch (e) {
+        // RTDB pull failed, use local
+      }
+      const allAttempts = await localAttempts.getAll();
+      setAttempts(allAttempts);
+      return;
+    }
+
+    // shop_admin: only load attempts for their shop
     if (currentShop) {
-      // Pull from RTDB first (non-blocking)
       try {
         const { pullAttemptsFromRTDB } = await import('@/lib/sync-service');
         await pullAttemptsFromRTDB(currentShop.id);
       } catch (e) {
         // RTDB pull failed, use local
       }
-      
       const shopAttempts = await localAttempts.getByShop(currentShop.id);
       setAttempts(shopAttempts);
     }
@@ -625,14 +637,12 @@ export default function AdminDashboard() {
 
   // Load all attempts (for super admin to view all shops)
   const loadAllAttempts = async () => {
-    // Pull from RTDB first (non-blocking)
     try {
       const { pullFromRTDB } = await import('@/lib/sync-service');
       await pullFromRTDB();
     } catch (e) {
       // RTDB pull failed, use local
     }
-    
     const allAttempts = await localAttempts.getAll();
     setAttempts(allAttempts);
   };
