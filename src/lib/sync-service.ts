@@ -471,7 +471,7 @@ const syncCustomerNomination = async (operation: SyncOperation, data: CustomerNo
       await rtdbCustomerNominations.update(data.id, data);
       break;
     case 'delete':
-      await rtdbCustomerNominations.delete(data.id);
+      await rtdbCustomerNominations.delete(data.id, data.shopId);
       break;
   }
 };
@@ -689,11 +689,30 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
     const { rtdbShops, rtdbItems, rtdbAdmins, rtdbAttempts, rtdbNominationItems, rtdbCustomerNominations } = await import('./firebase');
     const { localShops, localItems, localAdmins, localAttempts, localNominationItems, localCustomerNominations } = await import('./local-db');
     
-    // Pull shops
+    // Pull shops - with conflict resolution to prevent overwriting newer local data
     const fbShops = await rtdbShops.getAll();
     if (fbShops && fbShops.length > 0) {
-      for (const shop of fbShops) {
-        await localShops.save(shop);
+      const existingLocalShops = await localShops.getAll();
+      const localShopMap = new Map(existingLocalShops.map(s => [s.id, s]));
+
+      for (const remoteShop of fbShops) {
+        const localShop = localShopMap.get(remoteShop.id);
+        if (!localShop) {
+          // New shop from RTDB - save it
+          await localShops.save(remoteShop);
+        } else {
+          // Shop exists locally - only overwrite if RTDB version is newer
+          const localTime = localShop.updatedAt instanceof Date
+            ? localShop.updatedAt.getTime()
+            : new Date(localShop.updatedAt || 0).getTime();
+          const remoteTime = remoteShop.updatedAt instanceof Date
+            ? remoteShop.updatedAt.getTime()
+            : new Date(remoteShop.updatedAt || 0).getTime();
+          if (remoteTime > localTime) {
+            await localShops.save(remoteShop);
+          }
+          // else: keep local version (it's newer, sync hasn't propagated yet)
+        }
       }
     }
     

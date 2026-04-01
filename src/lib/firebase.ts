@@ -1239,13 +1239,23 @@ export const rtdbNominationItems = {
 };
 
 // Customer Nominations - Realtime Database
+// Paths match security rules: customerNominations/{shopId}/{nominationId}
 export const rtdbCustomerNominations = {
   async getAll(): Promise<CustomerNomination[]> {
     try {
       const snapshot = await get(ref(rtdb, 'customerNominations'));
       if (!snapshot.exists()) return [];
       const data = snapshot.val();
-      return Object.entries(data).map(([id, nom]: [string, any]) => ({ ...nom, id }));
+      const all: CustomerNomination[] = [];
+      // Structure is customerNominations/{shopId}/{nominationId}
+      for (const [shopId, nominations] of Object.entries(data as Record<string, any>)) {
+        if (nominations && typeof nominations === 'object') {
+          for (const [id, nom] of Object.entries(nominations)) {
+            all.push({ ...(nom as any), id, shopId });
+          }
+        }
+      }
+      return all;
     } catch (error) {
       console.error('RTDB Error fetching nominations:', error);
       return [];
@@ -1254,12 +1264,11 @@ export const rtdbCustomerNominations = {
 
   async getByShop(shopId: string): Promise<CustomerNomination[]> {
     try {
-      // Use orderByChild before equalTo for proper Firebase RTDB query
-      const q = rtdbQuery(ref(rtdb, 'customerNominations'), orderByChild('shopId'), equalTo(shopId));
-      const snapshot = await get(q);
+      // Read from the nested path that matches security rules
+      const snapshot = await get(ref(rtdb, `customerNominations/${shopId}`));
       if (!snapshot.exists()) return [];
       const data = snapshot.val();
-      return Object.entries(data).map(([id, nom]: [string, any]) => ({ ...nom, id }));
+      return Object.entries(data).map(([id, nom]: [string, any]) => ({ ...nom, id, shopId }));
     } catch (error) {
       console.error('RTDB Error fetching nominations by shop:', error);
       return [];
@@ -1268,8 +1277,9 @@ export const rtdbCustomerNominations = {
 
   async create(nomination: CustomerNomination): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      // Use original nomination.id as the key for consistent cross-device sync
-      await set(ref(rtdb, `customerNominations/${nomination.id}`), serializeForRTDB(nomination));
+      // Write to nested path matching security rules: customerNominations/{shopId}/{id}
+      const shopId = nomination.shopId || 'unknown';
+      await set(ref(rtdb, `customerNominations/${shopId}/${nomination.id}`), serializeForRTDB(nomination));
       return { success: true, id: nomination.id };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -1278,16 +1288,18 @@ export const rtdbCustomerNominations = {
 
   async update(id: string, data: Partial<CustomerNomination>): Promise<{ success: boolean; error?: string }> {
     try {
-      await update(ref(rtdb, `customerNominations/${id}`), serializeForRTDB(data));
+      const shopId = data.shopId || 'unknown';
+      await update(ref(rtdb, `customerNominations/${shopId}/${id}`), serializeForRTDB(data));
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   },
 
-  async delete(id: string): Promise<{ success: boolean; error?: string }> {
+  async delete(id: string, shopId?: string): Promise<{ success: boolean; error?: string }> {
     try {
-      await remove(ref(rtdb, `customerNominations/${id}`));
+      const sid = shopId || 'unknown';
+      await remove(ref(rtdb, `customerNominations/${sid}/${id}`));
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
