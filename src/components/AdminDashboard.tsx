@@ -441,13 +441,18 @@ export default function AdminDashboard() {
 
   const handleDeleteAdmin = async (adminId: string) => {
     if (confirm('Are you sure you want to delete this admin?')) {
-      await localAdmins.delete(adminId);
       try {
-        await rtdbAdmins.delete(adminId);
-      } catch (e) {
-        console.log('RTDB delete skipped (local only mode)');
+        const result = await rtdbAdmins.delete(adminId);
+        if (result.success) {
+          await localAdmins.delete(adminId);
+          setAdmins(prev => prev.filter(a => a.id !== adminId));
+          alert('Admin deleted successfully.');
+        } else {
+          alert('Failed to delete admin from server: ' + (result.error || 'Unknown error'));
+        }
+      } catch (e: any) {
+        alert('Failed to delete admin: ' + (e.message || 'Network error'));
       }
-      localAdmins.getAll().then(setAdmins);
     }
   };
 

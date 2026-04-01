@@ -488,7 +488,12 @@ export const saveAttemptWithSync = async (attempt: GameAttempt): Promise<void> =
       const { rtdbAttempts } = await import('./firebase');
       const shopId = attempt.shopId || 'unknown';
       const result = await rtdbAttempts.create(shopId, attempt);
-      console.log('[Sync] Attempt synced to Realtime Database:', result);
+      if (result.success) {
+        console.log('[Sync] Attempt synced to Realtime Database');
+      } else {
+        console.error('[Sync] Attempt sync failed, queuing for retry:', result.error);
+        await queueForSync({ type: 'attempt', operation: 'create', data: attempt });
+      }
     } catch (error) {
       console.error('[Sync] Error syncing attempt to Realtime Database:', error);
       await queueForSync({ type: 'attempt', operation: 'create', data: attempt });
@@ -508,27 +513,25 @@ export const saveItemWithSync = async (item: Item, isNew: boolean = true): Promi
     try {
       const { rtdbItems } = await import('./firebase');
       const shopId = item.shopId || 'unknown';
+      let result;
       if (isNew) {
-        await rtdbItems.create(shopId, item);
+        result = await rtdbItems.create(shopId, item);
       } else {
-        await rtdbItems.update(shopId, item.id, item);
+        result = await rtdbItems.update(shopId, item.id, item);
       }
-      console.log('[Sync] Item synced to Realtime Database');
+      if (result?.success !== false) {
+        console.log('[Sync] Item synced to Realtime Database');
+      } else {
+        console.error('[Sync] Item sync failed, queuing for retry:', result?.error);
+        await queueForSync({ type: 'item', operation: isNew ? 'create' : 'update', data: item });
+      }
     } catch (error) {
       console.error('[Sync] Error syncing item to Realtime Database, queuing:', error);
-      await queueForSync({ 
-        type: 'item', 
-        operation: isNew ? 'create' : 'update', 
-        data: item 
-      });
+      await queueForSync({ type: 'item', operation: isNew ? 'create' : 'update', data: item });
     }
   } else {
     console.log('[Sync] Offline - queued item for sync');
-    await queueForSync({ 
-      type: 'item', 
-      operation: isNew ? 'create' : 'update', 
-      data: item 
-    });
+    await queueForSync({ type: 'item', operation: isNew ? 'create' : 'update', data: item });
   }
 };
 
@@ -540,27 +543,25 @@ export const saveShopWithSync = async (shop: Shop, isNew: boolean = true): Promi
   if (isOnline()) {
     try {
       const { rtdbShops } = await import('./firebase');
+      let result;
       if (isNew) {
-        await rtdbShops.save(shop);
+        result = await rtdbShops.save(shop);
       } else {
-        await rtdbShops.update(shop.id, shop);
+        result = await rtdbShops.update(shop.id, shop);
       }
-      console.log('[Sync] Shop synced to Realtime Database');
+      if (result?.success !== false) {
+        console.log('[Sync] Shop synced to Realtime Database');
+      } else {
+        console.error('[Sync] Shop sync failed, queuing for retry:', result?.error);
+        await queueForSync({ type: 'shop', operation: isNew ? 'create' : 'update', data: shop });
+      }
     } catch (error) {
       console.error('[Sync] Error syncing shop to Realtime Database, queuing:', error);
-      await queueForSync({ 
-        type: 'shop', 
-        operation: isNew ? 'create' : 'update', 
-        data: shop 
-      });
+      await queueForSync({ type: 'shop', operation: isNew ? 'create' : 'update', data: shop });
     }
   } else {
     console.log('[Sync] Offline - queued shop for sync');
-    await queueForSync({ 
-      type: 'shop', 
-      operation: isNew ? 'create' : 'update', 
-      data: shop 
-    });
+    await queueForSync({ type: 'shop', operation: isNew ? 'create' : 'update', data: shop });
   }
 };
 
