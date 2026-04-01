@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useUIStore, useShopStore, useAuthStore } from '@/store';
 import { localShops, localAdmins } from '@/lib/local-db';
+import { rtdbAdmins } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import type { Admin } from '@/types';
 
@@ -38,6 +39,13 @@ export default function Home() {
             }
             // Use verified admin data from database, not localStorage
             setAdmin(verifiedAdmin);
+            
+            // Save admin to RTDB so security rules pass for all RTDB operations
+            try {
+              await rtdbAdmins.save(verifiedAdmin);
+            } catch (e) {
+              // RTDB save failed - will rely on local data
+            }
             
             if (verifiedAdmin.level === 'shop_admin') {
               const deviceId = getDeviceId();

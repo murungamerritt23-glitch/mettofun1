@@ -242,6 +242,15 @@ export default function LoginPage() {
     const pwHash = await hashPassword(password);
     localStorage.setItem('metofun-auth-pw', pwHash);
 
+    // Save admin to RTDB with Firebase Auth UID so security rules pass
+    // This is critical: RTDB rules check root.child('admins').child(auth.uid).exists()
+    // Without this, all RTDB writes fail because admin record ID doesn't match auth.uid
+    try {
+      await rtdbAdmins.save(adminToUse!);
+    } catch (e) {
+      console.log('Could not save admin to RTDB on login');
+    }
+
     // Role-based navigation
     if (adminToUse!.level === 'shop_admin') {
       const deviceId = getDeviceId();
