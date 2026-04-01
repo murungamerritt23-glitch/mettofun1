@@ -786,12 +786,16 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
       }
     }
     
-    // Pull admins
-    const fbAdmins = await rtdbAdmins.getAll();
-    if (fbAdmins && fbAdmins.length > 0) {
-      for (const admin of fbAdmins) {
-        await localAdmins.save(admin);
+    // Pull admins - wrapped in try/catch since admins rule requires auth
+    try {
+      const fbAdmins = await rtdbAdmins.getAll();
+      if (fbAdmins && fbAdmins.length > 0) {
+        for (const admin of fbAdmins) {
+          await localAdmins.save(admin);
+        }
       }
+    } catch (adminErr) {
+      console.log('[Sync] Admin pull skipped (auth may not be active)');
     }
     
     console.log('[Sync] Pull from RTDB completed');

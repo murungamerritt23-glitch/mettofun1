@@ -14,7 +14,7 @@
     },
     "attempts": {
       "$shopId": {
-        ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+        ".read": true,
         ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
       }
     },
