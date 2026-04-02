@@ -47,6 +47,7 @@ export default function AdminDashboard() {
   const [demoQualifyingPurchase, setDemoQualifyingPurchase] = useState<number>(0);
   const [qpInput, setQpInput] = useState<string>(''); // Local state for qualifying purchase input
   const [qpSaving, setQpSaving] = useState(false); // Saving state for qualifying purchase
+  const [refreshing, setRefreshing] = useState(false); // Refreshing data from RTDB
   
   // Top nominations state
   const [topNominations, setTopNominations] = useState<NominationItem[]>([]);
@@ -891,7 +892,36 @@ export default function AdminDashboard() {
 
         <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-6xl mx-auto">
-            <h1 className="gold-gradient-text text-3xl font-bold mb-6">Dashboard</h1>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="gold-gradient-text text-3xl font-bold">Dashboard</h1>
+              <button
+                onClick={async () => {
+                  setRefreshing(true);
+                  try {
+                    await loadAttempts();
+                    // Also refresh shops
+                    const { pullFromRTDB } = await import('@/lib/sync-service');
+                    await pullFromRTDB();
+                    const allShops = await localShops.getAll();
+                    if (admin?.level === 'super_admin') {
+                      setShops(allShops);
+                    } else {
+                      setShops(allShops.filter((s: Shop) => s.isActive));
+                    }
+                    const allAttempts = await localAttempts.getAll();
+                    setAttempts(allAttempts);
+                  } catch (e) {
+                    console.error('Refresh failed:', e);
+                  }
+                  setRefreshing(false);
+                }}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-4 py-2 bg-gold-600 hover:bg-gold-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
               {/* Analytics - Only for super_admin and shop_admin, hide for agent_admin */}
