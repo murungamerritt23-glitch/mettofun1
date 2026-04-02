@@ -318,7 +318,7 @@ export const generateGameAttemptHash = (
   selectedBox: number,
   correctNumber: number,
   won: boolean,
-  timestamp: Date,
+  timestamp: Date | string,
   seed: string
 ): string => {
   const data = {
@@ -329,7 +329,7 @@ export const generateGameAttemptHash = (
     selectedBox,
     correctNumber,
     won,
-    timestamp: timestamp.toISOString(),
+    timestamp: timestamp instanceof Date ? timestamp.toISOString() : timestamp,
     seed
   };
   return generateIntegrityHash(data);
@@ -345,7 +345,7 @@ export const verifyGameAttemptIntegrity = (
     selectedBox: number;
     correctNumber: number;
     won: boolean;
-    timestamp: Date;
+    timestamp: Date | string;
     hashSeed?: string;
   },
   expectedHash: string
