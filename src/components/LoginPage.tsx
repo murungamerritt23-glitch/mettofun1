@@ -244,16 +244,28 @@ export default function LoginPage() {
 
     // Save admin to RTDB with Firebase Auth UID so security rules pass
     // This is critical: RTDB rules check root.child('admins').child(auth.uid).exists()
-    // Without this, all RTDB writes fail because admin record ID doesn't match auth.uid
-    const adminSaveResult = await rtdbAdmins.save(adminToUse!);
-    if (!adminSaveResult.success) {
-      console.error('CRITICAL: Failed to save admin to RTDB:', adminSaveResult.error);
-      // Retry once after delay (Firebase Auth token might need time to propagate)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const retryResult = await rtdbAdmins.save(adminToUse!);
-      if (!retryResult.success) {
-        console.error('CRITICAL: Admin RTDB save retry also failed:', retryResult.error);
+    // Without this, ALL RTDB writes fail (attempts, shops, items, deletes)
+    let adminInRTDB = false;
+    for (let attempt = 0; attempt < 3 && !adminInRTDB; attempt++) {
+      const saveResult = await rtdbAdmins.save(adminToUse!);
+      if (saveResult.success) {
+        // Verify it actually saved by reading it back
+        const verify = await rtdbAdmins.get(adminToUse!.id);
+        if (verify) {
+          adminInRTDB = true;
+          console.log('[Auth] Admin synced to RTDB successfully');
+        } else {
+          console.error(`[Auth] Admin save verification failed on attempt ${attempt + 1}`);
+        }
+      } else {
+        console.error(`[Auth] Admin save attempt ${attempt + 1} failed:`, saveResult.error);
       }
+      if (!adminInRTDB && attempt < 2) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
+    }
+    if (!adminInRTDB) {
+      console.error('[Auth] CRITICAL: Admin could not be saved to RTDB - all writes will fail');
     }
 
     // Role-based navigation
