@@ -391,23 +391,23 @@ export default function AdminDashboard() {
   // Load Item of the Day on mount
   useEffect(() => {
     const loadItemOfDay = async () => {
-      // Try local first
+      // Try local first for immediate display
       const savedItem = await localSettings.get('itemOfTheDay');
       if (savedItem) {
         setItemOfTheDay(savedItem);
-      } else {
-        // Try to fetch from RTDB for new devices
-        try {
-          const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-          const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
-          if (rtdbItem) {
-            // Save to local for offline access
-            await localSettings.set('itemOfTheDay', rtdbItem);
-            setItemOfTheDay(rtdbItem);
-          }
-        } catch (e) {
-          // RTDB fetch failed
+      }
+      // Always try to fetch latest from RTDB
+      try {
+        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+        const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
+        if (rtdbItem) {
+          await localSettings.set('itemOfTheDay', rtdbItem);
+          setItemOfTheDay(rtdbItem);
+        } else if (!savedItem) {
+          setItemOfTheDay(null);
         }
+      } catch (e) {
+        // RTDB fetch failed, use local
       }
     };
     loadItemOfDay();
@@ -566,6 +566,7 @@ export default function AdminDashboard() {
     
     // Also sync to RTDB for other devices
     try {
+      await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
       const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
       await rtdbSettingsApi.set('itemOfTheDay', newItem);
     } catch (e) {
@@ -584,6 +585,7 @@ export default function AdminDashboard() {
       
       // Also clear from RTDB
       try {
+        await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
         const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
         await rtdbSettingsApi.set('itemOfTheDay', null);
       } catch (e) {
@@ -951,18 +953,6 @@ export default function AdminDashboard() {
                   <div>
                     <p className="text-gray-400 text-sm">Total Attempts</p>
                     <p className="text-2xl font-bold text-white">{realAttempts.length}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="card">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-blue-900/50 flex items-center justify-center">
-                    <Package className="text-blue-500" size={24} />
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-sm">Active Items</p>
-                    <p className="text-2xl font-bold text-white">{items.filter(i => i.isActive).length}</p>
                   </div>
                 </div>
               </div>
@@ -2785,6 +2775,24 @@ export default function AdminDashboard() {
                     </div>
                     {!isEditingItemOfDay ? (
                       <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+                              const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
+                              if (rtdbItem) {
+                                await localSettings.set('itemOfTheDay', rtdbItem);
+                                setItemOfTheDay(rtdbItem);
+                              } else {
+                                setItemOfTheDay(null);
+                              }
+                            } catch (e) { /* ignore */ }
+                          }}
+                          className="p-2 text-gray-400 hover:text-white transition-colors"
+                          title="Refresh from server"
+                        >
+                          <RefreshCw size={16} />
+                        </button>
                         {itemOfTheDay && (
                           <button 
                             onClick={handleEditItemOfDay}
