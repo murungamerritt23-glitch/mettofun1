@@ -717,7 +717,7 @@ export default function GameMode() {
               <div className="text-center">
                 <p className="text-gray-300 text-sm mb-2">✓ {language === 'sw' ? 'Umechagua:' : 'You selected:'}</p>
                 <p className="gold-gradient-text text-2xl font-bold">{selectedItem.name}</p>
-                <p className="text-gold-400 text-xl font-bold">KSh {selectedItem.value.toLocaleString()}</p>
+                <p className="text-gold-400 text-xl font-bold">KSh {(selectedItem.value || 0).toLocaleString()}</p>
                 <p className="text-gray-400 text-xs mt-2">Tap &quot;Next&quot; to continue</p>
               </div>
             ) : (
@@ -747,7 +747,7 @@ export default function GameMode() {
                     ✨ {language === 'sw' ? 'Ombi la Leo' : 'Item of the Day'}
                   </p>
                   <p className="text-white text-lg font-bold">{itemOfTheDay.name}</p>
-                  <p className="text-amber-400 text-xl font-bold">KSh {itemOfTheDay.value.toLocaleString()}</p>
+                  <p className="text-amber-400 text-xl font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -795,7 +795,7 @@ export default function GameMode() {
                   {item.name}
                 </span>
                 <span className={`text-xs sm:text-sm ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`}>
-                  KSh {item.value.toLocaleString()}
+                  KSh {(item.value || 0).toLocaleString()}
                 </span>
               </motion.button>
             ))}
@@ -860,7 +860,7 @@ export default function GameMode() {
                     <Sparkles className="w-8 h-8 mx-auto text-gold-400 mb-2" />
                     <p className="text-gray-400 text-sm">{language === 'sw' ? 'Umepata' : 'You won'}</p>
                     <p className="gold-gradient-text text-2xl font-bold">{winningItem.name}</p>
-                    <p className="text-gold-400 text-xl">KSh {winningItem.value.toLocaleString()}</p>
+                    <p className="text-gold-400 text-xl">KSh {(winningItem.value || 0).toLocaleString()}</p>
                   </div>
                 )}
 
@@ -978,7 +978,7 @@ export default function GameMode() {
                   {/* Item Price */}
                   {item?.value && (
                     <span className={`text-[10px] ${tappedBoxNum === boxNum ? 'text-white' : 'text-gold-400'}`}>
-                      KSh {item.value.toLocaleString()}
+                      KSh {(item.value || 0).toLocaleString()}
                     </span>
                   )}
                 </div>

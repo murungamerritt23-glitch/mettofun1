@@ -433,8 +433,9 @@ export default function AdminDashboard() {
     // Save to local database
     await localAdmins.save(adminData);
     
-    // Also sync to RTDB
+    // Also sync to RTDB (ensure our admin is in RTDB first so security rules pass)
     try {
+      await rtdbAdmins.save(admin!);
       await rtdbAdmins.save(adminData);
     } catch (e) {
       console.log('RTDB sync skipped (local only mode)');
@@ -836,11 +837,10 @@ export default function AdminDashboard() {
       try {
         const deviceId = getDeviceId();
         const updatedShop = { ...currentShop, deviceId: deviceId, deviceLocked: true };
-        await localShops.save(updatedShop);
+        await saveShopWithSync(updatedShop, false);
         setCurrentShop(updatedShop);
         setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
         localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
-        await rtdbShops.save(updatedShop);
         alert('Device locked successfully!');
       } catch (err) {
         console.error('Error locking device:', err);
@@ -1136,7 +1136,7 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-3 flex-1">
                                 <div className="flex-1">
                                   <p className="text-white font-medium">{item.name || '(No name)'}</p>
-                                  <p className="text-gray-400 text-sm">Value: {item.value.toLocaleString()} | Nominations: {item.nominationCount}</p>
+                                  <p className="text-gray-400 text-sm">Value: {(item.value || 0).toLocaleString()} | Nominations: {item.nominationCount}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -1327,7 +1327,7 @@ export default function AdminDashboard() {
                             <h4 className="font-semibold text-white">{shop.shopName}</h4>
                             <p className="text-gray-400 text-sm">Code: {shop.shopCode}</p>
                             <p className="text-gray-500 text-xs">
-                              Qualifying: KSh {shop.qualifyingPurchase.toLocaleString()}
+                              Qualifying: KSh {(shop.qualifyingPurchase || 0).toLocaleString()}
                             </p>
                             {shop.addedByName && (
                               <p className="text-blue-400 text-xs mt-1">
@@ -1440,7 +1440,7 @@ export default function AdminDashboard() {
                     <h3 className="font-semibold text-white mb-4">Quick Edit Items</h3>
                     <p className="text-gray-400 text-sm mb-4">
                       Go to the Items tab to edit prize values. 
-                      Item values must be ≤ 60% of qualifying purchase (KSh {(effectiveShop?.qualifyingPurchase * 0.6).toLocaleString()})
+                      Item values must be ≤ 60% of qualifying purchase (KSh {((effectiveShop?.qualifyingPurchase || 0) * 0.6).toLocaleString()})
                     </p>
                     <button
                       onClick={() => setActiveTab('items')}
@@ -1651,7 +1651,7 @@ export default function AdminDashboard() {
                             <option value="">Select item</option>
                             {itemsList.filter(i => i.isActive).map(item => (
                               <option key={item.id} value={item.id}>
-                                {item.name} - KSh {item.value.toLocaleString()}
+                                {item.name} - KSh {(item.value || 0).toLocaleString()}
                               </option>
                             ))}
                           </select>
@@ -1839,7 +1839,7 @@ export default function AdminDashboard() {
                       <h3 className="font-semibold text-white">{shop.shopName}</h3>
                       <p className="text-gray-400 text-sm">Code: {shop.shopCode}</p>
                       <p className="text-gray-500 text-xs">
-                        Qualifying: KSh {shop.qualifyingPurchase.toLocaleString()}
+                        Qualifying: KSh {(shop.qualifyingPurchase || 0).toLocaleString()}
                       </p>
                       {shop.addedByName && (
                         <p className="text-blue-400 text-xs mt-1">
@@ -2014,7 +2014,7 @@ export default function AdminDashboard() {
                       
                       {/* Item Price */}
                       <p className="text-gold-400 font-bold text-lg">
-                        KSh {item.value.toLocaleString()}
+                        KSh {(item.value || 0).toLocaleString()}
                       </p>
                       
                       {/* Status & Stock */}
@@ -2224,7 +2224,7 @@ export default function AdminDashboard() {
               <h3 className="font-semibold text-white mb-3">Important Notes</h3>
               <ul className="text-gray-400 text-sm space-y-2">
                 <li>• Item values must be ≤ 60% of qualifying purchase</li>
-                <li>• Current limit: KSh {(currentShop.qualifyingPurchase * 0.6).toLocaleString()} per item</li>
+                <li>• Current limit: KSh {((currentShop.qualifyingPurchase || 0) * 0.6).toLocaleString()} per item</li>
                 <li>• Go to Items tab to edit prize values</li>
               </ul>
             </div>
@@ -2316,7 +2316,7 @@ export default function AdminDashboard() {
                                     Selected: {attempt.selectedItem?.name || `Box ${attempt.selectedBox || '?'}`}
                                   </p>
                                   <p className="text-gray-500 text-xs">
-                                    {new Date(attempt.timestamp).toLocaleString()}
+                                    {new Date(attempt.timestamp || Date.now()).toLocaleString()}
                                   </p>
                                 </div>
                                 <div className={`px-3 py-1 rounded ${
@@ -2353,7 +2353,7 @@ export default function AdminDashboard() {
                           Selected: {attempt.selectedItem?.name || `Box ${attempt.selectedBox || '?'}`}
                         </p>
                         <p className="text-gray-500 text-xs">
-                          {new Date(attempt.timestamp).toLocaleString()}
+                          {new Date(attempt.timestamp || Date.now()).toLocaleString()}
                         </p>
                       </div>
                       <div className={`px-3 py-1 rounded ${
@@ -2875,7 +2875,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex-1">
                           <p className="text-amber-400 font-semibold">{itemOfTheDay.name}</p>
-                          <p className="text-white text-lg font-bold">KSh {itemOfTheDay.value.toLocaleString()}</p>
+                          <p className="text-white text-lg font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-gray-500 text-xs">
                               Last updated: {new Date(itemOfTheDay.updatedAt).toLocaleDateString()}
