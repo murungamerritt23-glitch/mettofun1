@@ -41,10 +41,9 @@ export default function Home() {
             setAdmin(verifiedAdmin);
             
             // Save admin to RTDB so security rules pass for all RTDB operations
-            try {
-              await rtdbAdmins.save(verifiedAdmin);
-            } catch (e) {
-              // RTDB save failed - will rely on local data
+            const saveResult = await rtdbAdmins.save(verifiedAdmin);
+            if (!saveResult.success) {
+              console.error('Failed to sync admin to RTDB:', saveResult.error);
             }
             
             if (verifiedAdmin.level === 'shop_admin') {
