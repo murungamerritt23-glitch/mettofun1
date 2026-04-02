@@ -1695,7 +1695,7 @@ export default function AdminDashboard() {
                           <div className="flex-1">
                             <p className="text-white font-medium">{c.phoneNumber}</p>
                             <p className="text-gray-400 text-sm">
-                              {c.itemName} - KSh {c.purchaseAmount.toLocaleString()}
+                              {c.itemName} - KSh {(c.purchaseAmount || 0).toLocaleString()}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1745,7 +1745,7 @@ export default function AdminDashboard() {
                           <div>
                             <p className="text-white font-medium">{c.phoneNumber}</p>
                             <p className="text-gray-400 text-sm">
-                              {c.itemName} - KSh {c.purchaseAmount.toLocaleString()}
+                              {c.itemName} - KSh {(c.purchaseAmount || 0).toLocaleString()}
                             </p>
                             <p className="text-gray-500 text-xs">
                               Recorded: {new Date(c.recordedAt).toLocaleTimeString()}
@@ -2322,8 +2322,8 @@ export default function AdminDashboard() {
                                 <div>
                                   <p className="text-white font-medium">{attempt.phoneNumber}</p>
                                   <p className="text-gray-400 text-sm">
-                                    Purchase: KSh {attempt.purchaseAmount.toLocaleString()} | 
-                                    Selected: {attempt.selectedItem?.name || `Box ${attempt.selectedBox}`}
+                                    Purchase: KSh {(attempt.purchaseAmount || 0).toLocaleString()} | 
+                                    Selected: {attempt.selectedItem?.name || `Box ${attempt.selectedBox || '?'}`}
                                   </p>
                                   <p className="text-gray-500 text-xs">
                                     {new Date(attempt.timestamp).toLocaleString()}
@@ -2359,8 +2359,8 @@ export default function AdminDashboard() {
                       <div>
                         <p className="text-white font-medium">{attempt.phoneNumber}</p>
                         <p className="text-gray-400 text-sm">
-                          Purchase: KSh {attempt.purchaseAmount.toLocaleString()} | 
-                          Selected: {attempt.selectedItem?.name || `Box ${attempt.selectedBox}`}
+                          Purchase: KSh {(attempt.purchaseAmount || 0).toLocaleString()} | 
+                          Selected: {attempt.selectedItem?.name || `Box ${attempt.selectedBox || '?'}`}
                         </p>
                         <p className="text-gray-500 text-xs">
                           {new Date(attempt.timestamp).toLocaleString()}
