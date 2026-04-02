@@ -159,10 +159,10 @@ export default function AdminDashboard() {
     setNominationsLoading(true);
     try {
       const nominations = await localNominationItems.getByShop(currentShop.id);
-      // Get top 10 with nominations > 0, sorted by count descending
+      // Get top 100 with nominations > 0, sorted by count descending
       const top10 = nominations
         .filter(item => item.nominationCount > 0)
-        .slice(0, 10);
+        .slice(0, 100);
       setTopNominations(top10);
     } catch (error) {
       console.error('Error loading nominations:', error);
@@ -763,34 +763,19 @@ export default function AdminDashboard() {
   const handleToggleShopActive = async (shop: Shop) => {
     const updatedShop = { ...shop, isActive: !shop.isActive };
     await saveShopWithSync(updatedShop, false);
-    // Reload shops
-    if (admin?.level === 'super_admin') {
-      const allShops = await rtdbShops.getAll();
-      setShops(allShops);
-    } else {
-      const fbShops = await rtdbShops.getAllActive();
-      setShops(fbShops);
+    // Update state directly instead of reloading from RTDB (avoids overwriting with stale data)
+    setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
+    if (currentShop?.id === updatedShop.id) {
+      setCurrentShop(updatedShop);
     }
   };
 
   const handleUpdateSubscription = async (shopId: string, subscriptionTier: 'basic' | 'medium' | 'pro') => {
-    await rtdbShops.update(shopId, { 
-      subscriptionTier, 
-      subscriptionStatus: 'active' as const 
-    });
-    await localShops.save({ 
-      ...shops.find(s => s.id === shopId)!, 
-      subscriptionTier, 
-      subscriptionStatus: 'active' 
-    });
-    // Reload shops
-    if (admin?.level === 'super_admin') {
-      const allShops = await rtdbShops.getAll();
-      setShops(allShops);
-    } else {
-      const fbShops = await rtdbShops.getAllActive();
-      setShops(fbShops);
-    }
+    const existingShop = shops.find(s => s.id === shopId);
+    if (!existingShop) return;
+    const updatedShop = { ...existingShop, subscriptionTier, subscriptionStatus: 'active' as const };
+    await saveShopWithSync(updatedShop, false);
+    setShops(prev => prev.map(s => s.id === shopId ? updatedShop : s));
   };
 
   const handleDeleteShop = async (shopId: string) => {
