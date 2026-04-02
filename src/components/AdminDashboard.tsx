@@ -159,10 +159,10 @@ export default function AdminDashboard() {
     setNominationsLoading(true);
     try {
       const nominations = await localNominationItems.getByShop(currentShop.id);
-      // Get top 100 with nominations > 0, sorted by count descending
+      // Get top 10 with nominations > 0, sorted by count descending
       const top10 = nominations
         .filter(item => item.nominationCount > 0)
-        .slice(0, 100);
+        .slice(0, 10);
       setTopNominations(top10);
     } catch (error) {
       console.error('Error loading nominations:', error);
@@ -193,6 +193,11 @@ export default function AdminDashboard() {
 
   // Save nomination item
   const handleSaveNominationItem = async (item: NominationItem) => {
+    // Limit total nominatable items to 100 (only when creating new)
+    if (!editingNominationItem && nominationItems.length >= 100) {
+      alert('Maximum 100 nomination items reached. Delete some items first.');
+      return;
+    }
     await saveNominationItemWithSync(item, !editingNominationItem);
     setEditingNominationItem(null);
     setIsCreatingNominationItem(false);
