@@ -1,7 +1,33 @@
 import { useUIStore, useSyncStore } from '@/store';
 import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations, localSettings } from './local-db';
-import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations } from './firebase';
+import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations, rtdbAdmins } from './firebase';
 import type { GameAttempt, Item, Shop, NominationItem, CustomerNomination } from '@/types';
+
+// Ensure admin record exists in RTDB before any write operation
+// This is critical because RTDB security rules check root.child('admins').child(auth.uid).exists()
+// Without the admin in RTDB, ALL writes fail with permission denied
+let adminSyncedToRTDB = false;
+const ensureAdminInRTDB = async (): Promise<boolean> => {
+  if (adminSyncedToRTDB) return true;
+  
+  try {
+    const { useAuthStore } = await import('@/store');
+    const admin = useAuthStore.getState().admin;
+    if (!admin) return false;
+    
+    const result = await rtdbAdmins.save(admin);
+    if (result.success) {
+      adminSyncedToRTDB = true;
+      console.log('[Sync] Admin ensured in RTDB');
+      return true;
+    }
+    console.error('[Sync] Failed to ensure admin in RTDB:', result.error);
+    return false;
+  } catch (e) {
+    console.error('[Sync] Error ensuring admin in RTDB:', e);
+    return false;
+  }
+};
 
 // Sync service types
 export type SyncItemType = 'attempt' | 'item' | 'shop' | 'nominationItem' | 'customerNomination';
@@ -485,6 +511,8 @@ export const saveAttemptWithSync = async (attempt: GameAttempt): Promise<void> =
   if (isOnline()) {
     console.log('[Sync] Online - attempting to sync...');
     try {
+      // Ensure admin exists in RTDB before writing (security rules require it)
+      await ensureAdminInRTDB();
       const { rtdbAttempts } = await import('./firebase');
       const shopId = attempt.shopId || 'unknown';
       const result = await rtdbAttempts.create(shopId, attempt);
@@ -511,6 +539,7 @@ export const saveItemWithSync = async (item: Item, isNew: boolean = true): Promi
 
   if (isOnline()) {
     try {
+      await ensureAdminInRTDB();
       const { rtdbItems } = await import('./firebase');
       const shopId = item.shopId || 'unknown';
       let result;
@@ -542,6 +571,7 @@ export const saveShopWithSync = async (shop: Shop, isNew: boolean = true): Promi
 
   if (isOnline()) {
     try {
+      await ensureAdminInRTDB();
       const { rtdbShops } = await import('./firebase');
       let result;
       if (isNew) {
@@ -579,6 +609,7 @@ export const saveNominationWithSync = async (nomination: CustomerNomination): Pr
 
   if (isOnline()) {
     try {
+      await ensureAdminInRTDB();
       const { rtdbCustomerNominations } = await import('./firebase');
       await rtdbCustomerNominations.create(nomination);
       console.log('[Sync] Nomination synced to Realtime Database');
@@ -599,6 +630,7 @@ export const saveNominationItemWithSync = async (item: NominationItem, isNew: bo
 
   if (isOnline()) {
     try {
+      await ensureAdminInRTDB();
       const { rtdbNominationItems } = await import('./firebase');
       if (isNew) {
         await rtdbNominationItems.create(item);
