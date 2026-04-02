@@ -2789,7 +2789,7 @@ export default function AdminDashboard() {
                             } catch (e) { /* ignore */ }
                           }}
                           className="p-2 text-gray-400 hover:text-white transition-colors"
-                          title="Refresh from server"
+                          title="Refresh Item of the Day"
                         >
                           <RefreshCw size={16} />
                         </button>
