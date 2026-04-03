@@ -27,6 +27,8 @@ export default function AdminDashboard() {
   const [isCreatingShop, setIsCreatingShop] = useState(false);
   const [attempts, setAttempts] = useState<any[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
+  const [shopPage, setShopPage] = useState(1);
+  const SHOPS_PER_PAGE = 20;
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
@@ -1861,7 +1863,8 @@ export default function AdminDashboard() {
                   <p className="text-gray-500">No shops yet</p>
                 </div>
               ) : (
-                shops.map((shop) => (
+                <>
+                  {shops.slice((shopPage - 1) * SHOPS_PER_PAGE, shopPage * SHOPS_PER_PAGE).map((shop) => (
                   <div key={shop.id} className="card flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-white">{shop.shopName}</h3>
@@ -1968,8 +1971,31 @@ export default function AdminDashboard() {
                         </button>
                       )}
                     </div>
-                  </div>
-                ))
+</div>
+                  ))}
+                  {/* Shop Pagination */}
+                  {shops.length > SHOPS_PER_PAGE && (
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-800">
+                      <button
+                        onClick={() => setShopPage(p => Math.max(1, p - 1))}
+                        disabled={shopPage === 1}
+                        className="btn-gold-outline disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-gray-400">
+                        {shopPage} / {Math.ceil(shops.length / SHOPS_PER_PAGE)}
+                      </span>
+                      <button
+                        onClick={() => setShopPage(p => Math.min(Math.ceil(shops.length / SHOPS_PER_PAGE), p + 1))}
+                        disabled={shopPage >= Math.ceil(shops.length / SHOPS_PER_PAGE)}
+                        className="btn-gold-outline disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -3380,11 +3406,11 @@ function AdminForm({
           <label className="block text-sm text-gray-400 mb-2">
             {formData.level === 'agent_admin' ? 'Shops to Oversee' : 'Assigned Shops'}
           </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto bg-gray-800 rounded-lg p-3">
-            {shops.length === 0 ? (
-              <p className="text-gray-500 text-sm">No shops available</p>
-            ) : (
-              shops.map(shop => (
+<div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto bg-gray-800 rounded-lg p-3">
+              {shops.length === 0 ? (
+                <p className="text-gray-500 text-sm">No shops available</p>
+              ) : (
+                shops.slice(0, 50).map(shop => (
                 <label key={shop.id} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
