@@ -663,14 +663,7 @@ export default function AdminDashboard() {
 
   const loadItems = async () => {
     if (currentShop) {
-      // Pull from RTDB first (non-blocking)
-      try {
-        const { pullFromRTDB } = await import('@/lib/sync-service');
-        await pullFromRTDB(currentShop.id);
-      } catch (e) {
-        // RTDB pull failed, use local
-      }
-      
+      // Load from local first (fast)
       let shopItems = await localItems.getByShop(currentShop.id);
       
       // Ensure exactly 17 items with all active
@@ -687,12 +680,16 @@ export default function AdminDashboard() {
             order: i
           };
         });
-        // Make sure all are active
         shopItems = shopItems.map(item => ({ ...item, isActive: true }));
         await localItems.saveMultiple(shopItems);
       }
       
       setItems(shopItems);
+      
+      // Then sync in background (non-blocking)
+      import('@/lib/sync-service').then(({ pullFromRTDB }) => {
+        pullFromRTDB(currentShop.id).then(() => loadItems());
+      }).catch(() => {});
     }
   };
 
