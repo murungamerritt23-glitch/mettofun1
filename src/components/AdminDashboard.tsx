@@ -816,6 +816,10 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteItem = async (itemId: string) => {
+    if (items.length <= 17) {
+      alert('Cannot delete items. A minimum of 17 items must be maintained.');
+      return;
+    }
     if (confirm('Are you sure you want to delete this item?')) {
       await localItems.delete(itemId);
       loadItems();
@@ -1972,6 +1976,30 @@ export default function AdminDashboard() {
 
             {currentShop ? (
               <>
+                <div className="mb-4">
+                  <button
+                    onClick={() => {
+                      const newItem: Item = {
+                        id: `${currentShop.id}-item-${Date.now()}`,
+                        name: '',
+                        value: 0,
+                        stockStatus: 'unlimited',
+                        isActive: true,
+                        shopId: currentShop.id,
+                        order: items.length
+                      };
+                      setEditingItem(newItem);
+                      setUserActive(true);
+                    }}
+                    className="btn-gold flex items-center gap-2"
+                  >
+                    <Plus size={18} /> Add New Item
+                  </button>
+                  <p className="text-gray-500 text-sm mt-2">
+                    {items.length} of 17 items • Minimum 17 items required
+                  </p>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   {items.map((item) => (
                     <div key={item.id} className="card">
