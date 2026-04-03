@@ -3510,19 +3510,43 @@ function ItemForm({
       return;
     }
 
-    // Validate file size (max 500KB for offline storage)
-    if (file.size > 500 * 1024) {
-      alert('Image too large. Please use an image under 500KB');
-      return;
-    }
-
     setIsUploading(true);
+    
+    // Compress image before storing (for offline storage efficiency)
+    const compressImage = (img: HTMLImageElement): string => {
+      const canvas = document.createElement('canvas');
+      const maxSize = 400; // Compress to 400x400 max
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        if (width > height) {
+          height = (height / width) * maxSize;
+          width = maxSize;
+        } else {
+          width = (width / height) * maxSize;
+          height = maxSize;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, width, height);
+      return canvas.toDataURL('image/jpeg', 0.7); // Compress to 70% quality
+    };
+
     const reader = new FileReader();
     reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      setImagePreview(base64);
-      setFormData({ ...formData, imageUrl: base64 });
-      setIsUploading(false);
+      const img = new Image();
+      img.onload = () => {
+        const compressed = compressImage(img);
+        setImagePreview(compressed);
+        setFormData({ ...formData, imageUrl: compressed });
+        setIsUploading(false);
+      };
+      img.onerror = () => {
+        alert('Failed to process image');
+        setIsUploading(false);
+      };
+      img.src = event.target?.result as string;
     };
     reader.onerror = () => {
       alert('Failed to read file');
