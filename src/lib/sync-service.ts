@@ -18,13 +18,17 @@ const ensureAdminInRTDB = async (): Promise<boolean> => {
     const result = await rtdbAdmins.save(admin);
     if (result.success) {
       adminSyncedToRTDB = true;
-      console.log('[Sync] Admin ensured in RTDB');
       return true;
     }
-    console.error('[Sync] Failed to ensure admin in RTDB:', result.error);
+    // Permission denied is expected for unlinked devices - don't log as error
+    if (result.error?.includes('PERMISSION_DENIED')) {
+      console.warn('[Sync] Device not linked to shop - local-only mode');
+      return false;
+    }
+    console.warn('[Sync] Admin sync issue:', result.error);
     return false;
   } catch (e) {
-    console.error('[Sync] Error ensuring admin in RTDB:', e);
+    console.warn('[Sync] Admin sync error (non-critical):', e);
     return false;
   }
 };
