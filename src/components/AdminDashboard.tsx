@@ -826,10 +826,17 @@ export default function AdminDashboard() {
   };
 
   const handleSaveItem = async (item: Item) => {
-    await saveItemWithSync(item, !editingItem);
+    // Save locally first (fast)
+    await localItems.save(item);
     setEditingItem(null);
     setUserActive(false);
-    loadItems();
+    // Reload immediately from local (fast)
+    if (currentShop) {
+      const updatedItems = await localItems.getByShop(currentShop.id);
+      setItems(updatedItems);
+    }
+    // Then sync to RTDB in background (non-blocking)
+    saveItemWithSync(item, !editingItem).catch(() => {});
   };
 
   const handleDeleteItem = async (itemId: string) => {
