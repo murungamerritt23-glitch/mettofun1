@@ -671,8 +671,28 @@ export default function AdminDashboard() {
         // RTDB pull failed, use local
       }
       
-      const shopItems = await localItems.getByShop(currentShop.id);
-      setItems(shopItems.length > 0 ? shopItems : generateDefaultItems(currentShop.id));
+      let shopItems = await localItems.getByShop(currentShop.id);
+      
+      // Ensure exactly 17 items with all active
+      if (shopItems.length !== 17) {
+        shopItems = Array.from({ length: 17 }, (_, i) => {
+          const existing = shopItems[i];
+          return existing || {
+            id: `${currentShop.id}-item-${i + 1}`,
+            name: `Prize ${i + 1}`,
+            value: (i + 1) * 1000,
+            stockStatus: 'unlimited',
+            isActive: true,
+            shopId: currentShop.id,
+            order: i
+          };
+        });
+        // Make sure all are active
+        shopItems = shopItems.map(item => ({ ...item, isActive: true }));
+        await localItems.saveMultiple(shopItems);
+      }
+      
+      setItems(shopItems);
     }
   };
 

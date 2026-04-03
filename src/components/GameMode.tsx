@@ -102,22 +102,28 @@ export default function GameMode() {
     const loadItems = async () => {
       if (currentShop) {
         const shopItems = await localItems.getByShop(currentShop.id);
-        if (shopItems.length > 0) {
-          setItems(shopItems);
-        } else {
-          // Generate default items if none exist
-          const defaultItems = Array.from({ length: 17 }, (_, i) => ({
-            id: `${currentShop.id}-item-${i + 1}`,
-            name: `Prize ${i + 1}`,
-            value: (i + 1) * 1000,
-            stockStatus: 'unlimited' as const,
-            isActive: true,
-            shopId: currentShop.id,
-            order: i
-          }));
-          setItems(defaultItems);
-          await localItems.saveMultiple(defaultItems);
+        let finalItems = shopItems.length > 0 ? shopItems : [];
+        
+        // Ensure exactly 17 items with all active
+        if (finalItems.length !== 17) {
+          finalItems = Array.from({ length: 17 }, (_, i) => {
+            const existing = finalItems[i];
+            return existing || {
+              id: `${currentShop.id}-item-${i + 1}`,
+              name: `Prize ${i + 1}`,
+              value: (i + 1) * 1000,
+              stockStatus: 'unlimited' as const,
+              isActive: true,
+              shopId: currentShop.id,
+              order: i
+            };
+          });
+          // Make sure all are active
+          finalItems = finalItems.map(item => ({ ...item, isActive: true }));
+          await localItems.saveMultiple(finalItems);
         }
+        
+        setItems(finalItems);
       }
       setIsLoading(false);
     };
