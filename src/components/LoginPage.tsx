@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, Loader2, LogIn, AlertCircle } from 'lucide-react';
 import { useAuthStore, useUIStore, useShopStore } from '@/store';
@@ -28,6 +28,17 @@ export default function LoginPage() {
   const { setAdmin } = useAuthStore();
   const { setCurrentView } = useUIStore();
   const { setCurrentShop } = useShopStore();
+
+  // Safety timeout - reset loading after 20 seconds to prevent infinite hang
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+        setError('Request timed out. Please try again.');
+      }, 20000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
