@@ -20,7 +20,15 @@ import { ADMIN_PERMISSIONS, SUBSCRIPTION_CHANNELS } from '@/types';
 type TabType = 'dashboard' | 'shops' | 'items' | 'qualifyingPurchase' | 'attempts' | 'analytics' | 'settings' | 'customers' | 'myShop' | 'staff';
 
 export default function AdminDashboard() {
+  // Safety timeout - ensure loading stops after 15 seconds to prevent hang
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, []);
+  
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [editingShop, setEditingShop] = useState<Shop | null>(null);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
@@ -339,8 +347,12 @@ export default function AdminDashboard() {
         // Always load local first for offline support
         await loadShopsFromLocal();
 
-        // Then try to sync from RTDB if online (non-blocking)
+        // Then try to sync from RTDB if online (non-blocking with timeout)
         const trySyncFromRTDB = async () => {
+          const syncTimeout = setTimeout(() => {
+            console.warn('[Admin] RTDB sync timed out - using local data');
+          }, 8000); // 8 second timeout
+          
           try {
             let fbShops;
             if (admin?.level === 'super_admin') {
@@ -363,18 +375,20 @@ export default function AdminDashboard() {
               }
             }
 
-            // For super_admin/agent_admin, pull all data from RTDB to ensure
-            // attempts, items, nominations from all devices are visible
-            if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
-              const { pullFromRTDB } = await import('@/lib/sync-service');
-              await pullFromRTDB();
-              // Reload attempts from local after pull
-              const allAttempts = await localAttempts.getAll();
-              setAttempts(allAttempts);
+// For super_admin/agent_admin, pull all data from RTDB to ensure
+              // attempts, items, nominations from all devices are visible
+              if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
+                const { pullFromRTDB } = await import('@/lib/sync-service');
+                await pullFromRTDB();
+                // Reload attempts from local after pull
+                const allAttempts = await localAttempts.getAll();
+                setAttempts(allAttempts);
+              }
+              clearTimeout(syncTimeout);
+            } catch (err) {
+              clearTimeout(syncTimeout);
+              // RTDB unavailable - already loaded from local above
             }
-          } catch (err) {
-            // RTDB unavailable - already loaded from local above
-          }
         };
 
         // Try RTDB sync in background (don't block UI)
