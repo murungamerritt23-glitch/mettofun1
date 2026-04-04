@@ -59,16 +59,17 @@ export default function LoginPage() {
         if (inputHash === cachedPwHash) {
           setAdmin(cachedAdmin);
           if (cachedAdmin.level === 'shop_admin') {
-            // Resolve the correct shop for this admin
-            const localShopsList = await localShops.getAll();
-            let shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
-            if (!shop && cachedAdmin.assignedShops?.length) {
-              shop = localShopsList.find(s => cachedAdmin.assignedShops!.includes(s.id));
-            }
-            if (shop) {
-              setCurrentShop(shop);
-            }
-            setCurrentView('customer');
+            // Resolve the correct shop - non-blocking
+            localShops.getAll().then((shops: any[]) => {
+              let shop = shops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
+              if (!shop && cachedAdmin.assignedShops?.length) {
+                shop = shops.find(s => cachedAdmin.assignedShops!.includes(s.id));
+              }
+              if (shop) {
+                setCurrentShop(shop);
+              }
+              setCurrentView('customer');
+            }).catch(() => setCurrentView('customer'));
           } else {
             setCurrentView('admin');
           }
