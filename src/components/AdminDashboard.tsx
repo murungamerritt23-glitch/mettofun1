@@ -3538,7 +3538,19 @@ function ItemForm({
       return;
     }
 
+    // Reject files over 5MB immediately (before hanging)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image too large. Please use an image under 5MB');
+      return;
+    }
+
     setIsUploading(true);
+    
+    // Set timeout to prevent hang
+    const timeout = setTimeout(() => {
+      setIsUploading(false);
+      alert('Image processing timed out. Try a smaller image or use URL instead.');
+    }, 10000); // 10 second timeout
     
     // Compress image before storing (for offline storage efficiency)
     const compressImage = (img: HTMLImageElement): string => {
@@ -3565,18 +3577,21 @@ function ItemForm({
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
+        clearTimeout(timeout);
         const compressed = compressImage(img);
         setImagePreview(compressed);
         setFormData({ ...formData, imageUrl: compressed });
         setIsUploading(false);
       };
       img.onerror = () => {
+        clearTimeout(timeout);
         alert('Failed to process image');
         setIsUploading(false);
       };
       img.src = event.target?.result as string;
     };
     reader.onerror = () => {
+      clearTimeout(timeout);
       alert('Failed to read file');
       setIsUploading(false);
     };
