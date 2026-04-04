@@ -46,31 +46,28 @@ export default function Home() {
             
             // Skip blocking RTDB sync - do in background only
             if (verifiedAdmin.level === 'shop_admin') {
-              const deviceId = getDeviceId();
-              const allShops = await localShops.getAll();
-              // Priority 1: Match by adminEmail (most reliable)
-              let shop = allShops.find(s => s.adminEmail?.toLowerCase() === verifiedAdmin.email?.toLowerCase());
-              // Priority 2: Match by assignedShops
-              if (!shop && verifiedAdmin.assignedShops?.length) {
-                shop = allShops.find(s => verifiedAdmin.assignedShops!.includes(s.id));
-              }
-              // Priority 3: Match by deviceId (only if exactly one match to avoid ambiguity)
-              if (!shop) {
-                const shopsByDevice = allShops.filter(s => s.deviceId === deviceId);
-                if (shopsByDevice.length === 1) {
-                  shop = shopsByDevice[0];
+              // Show customer view immediately
+              setCurrentView('customer');
+              
+              // Load shop in background
+              localShops.getAll().then((allShops: any[]) => {
+                const deviceId = getDeviceId();
+                let shop = allShops.find(s => s.adminEmail?.toLowerCase() === verifiedAdmin.email?.toLowerCase());
+                if (!shop && verifiedAdmin.assignedShops?.length) {
+                  shop = allShops.find(s => verifiedAdmin.assignedShops!.includes(s.id));
                 }
-              }
-              if (shop) {
-                setCurrentShop(shop);
-                setCurrentView('customer');
-              } else {
-                setCurrentView('admin');
-              }
+                if (!shop) {
+                  const shopsByDevice = allShops.filter(s => s.deviceId === deviceId);
+                  if (shopsByDevice.length === 1) shop = shopsByDevice[0];
+                }
+                if (shop) setCurrentShop(shop);
+              }).catch(() => setCurrentView('admin'));
             } else {
-              const shops = await localShops.getAll();
-              setShops(shops);
-              setCurrentView('admin');
+              // super_admin or agent_admin - load shops in background
+              localShops.getAll().then((shops: any[]) => {
+                setShops(shops);
+                setCurrentView('admin');
+              }).catch(() => setCurrentView('admin'));
             }
           }
         }
