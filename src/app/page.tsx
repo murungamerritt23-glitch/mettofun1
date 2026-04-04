@@ -21,6 +21,10 @@ export default function Home() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // Show UI immediately first
+      setReady(true);
+      setLoading(false);
+      
       try {
         const authData = localStorage.getItem('metofun-auth');
         if (authData) {
@@ -40,18 +44,7 @@ export default function Home() {
             // Use verified admin data from database, not localStorage
             setAdmin(verifiedAdmin);
             
-            // Save admin to RTDB so security rules pass for all RTDB operations
-            for (let attempt = 0; attempt < 3; attempt++) {
-              const saveResult = await rtdbAdmins.save(verifiedAdmin);
-              if (saveResult.success) {
-                console.log('[Auth] Admin synced to RTDB on session restore');
-                break;
-              }
-              if (attempt < 2) {
-                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
-              }
-            }
-            
+            // Skip blocking RTDB sync - do in background only
             if (verifiedAdmin.level === 'shop_admin') {
               const deviceId = getDeviceId();
               const allShops = await localShops.getAll();
