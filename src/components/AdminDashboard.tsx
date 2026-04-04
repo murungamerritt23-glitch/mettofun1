@@ -57,6 +57,7 @@ export default function AdminDashboard() {
   
   // Nomination Items Management state
   const [nominationItems, setNominationItems] = useState<NominationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // Initial loading state
   const [isEditingNominationItems, setIsEditingNominationItems] = useState(false);
   const [editingNominationItem, setEditingNominationItem] = useState<NominationItem | null>(null);
   const [isCreatingNominationItem, setIsCreatingNominationItem] = useState(false);
@@ -384,6 +385,7 @@ export default function AdminDashboard() {
     };
     loadShops();
     localAdmins.getAll().then(setAdmins).catch(console.error);
+    setIsLoading(false);
   }, [admin]);
 
   // Load terms content for admin
