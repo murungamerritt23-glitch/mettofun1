@@ -63,6 +63,10 @@ export default function AdminDashboard() {
   const [topNominations, setTopNominations] = useState<NominationItem[]>([]);
   const [nominationsLoading, setNominationsLoading] = useState(false);
   
+  // Nomination pagination to prevent scroll hang with 100+ items
+  const [nominationPage, setNominationPage] = useState(1);
+  const NOMINATION_PAGE_SIZE = 20;
+  
   // Nomination Items Management state
   const [nominationItems, setNominationItems] = useState<NominationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true); // Initial loading state
@@ -1168,7 +1172,7 @@ export default function AdminDashboard() {
                         </div>
                         
                         <div className="space-y-2">
-                          {nominationItems.map((item) => (
+                          {nominationItems.slice((nominationPage - 1) * NOMINATION_PAGE_SIZE, nominationPage * NOMINATION_PAGE_SIZE).map((item) => (
                             <div 
                               key={item.id} 
                               className={`flex items-center justify-between p-3 rounded-lg ${item.isActive ? 'bg-gray-800/50' : 'bg-gray-800/20 opacity-50'}`}
@@ -1204,6 +1208,28 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                           ))}
+                          {/* Nomination pagination */}
+                          {nominationItems.length > NOMINATION_PAGE_SIZE && (
+                            <div className="flex items-center justify-between pt-4 border-t border-gray-800">
+                              <button
+                                onClick={() => setNominationPage(p => Math.max(1, p - 1))}
+                                disabled={nominationPage === 1}
+                                className="btn-gold-outline disabled:opacity-50"
+                              >
+                                Previous
+                              </button>
+                              <span className="text-gray-400">
+                                {nominationPage} / {Math.ceil(nominationItems.length / NOMINATION_PAGE_SIZE)}
+                              </span>
+                              <button
+                                onClick={() => setNominationPage(p => Math.min(Math.ceil(nominationItems.length / NOMINATION_PAGE_SIZE), p + 1))}
+                                disabled={nominationPage >= Math.ceil(nominationItems.length / NOMINATION_PAGE_SIZE)}
+                                className="btn-gold-outline disabled:opacity-50"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </>
                     )}
@@ -2069,6 +2095,7 @@ export default function AdminDashboard() {
                           <img 
                             src={item.imageUrl} 
                             alt={item.name}
+                            loading="lazy"
                             className="w-full h-full object-cover"
                           />
                         ) : (
