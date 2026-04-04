@@ -80,18 +80,15 @@ export default function GameMode() {
       if (savedItem) {
         useGameStore.getState().setItemOfTheDay(savedItem);
       } else {
-        // Try to fetch from RTDB for new devices
-        try {
-          const { rtdbSettings } = await import('@/lib/firebase');
-          const rtdbItem = await rtdbSettings.get('itemOfTheDay');
-          if (rtdbItem) {
-            // Save to local for offline access
-            await localSettings.set('itemOfTheDay', rtdbItem);
-            useGameStore.getState().setItemOfTheDay(rtdbItem);
-          }
-        } catch (e) {
-          // RTDB fetch failed
-        }
+        // Non-blocking RTDB fetch for new devices
+        import('@/lib/firebase').then(({ rtdbSettings }) => {
+          rtdbSettings.get('itemOfTheDay').then((rtdbItem: any) => {
+            if (rtdbItem) {
+              localSettings.set('itemOfTheDay', rtdbItem);
+              useGameStore.getState().setItemOfTheDay(rtdbItem);
+            }
+          }).catch(() => {});
+        }).catch(() => {});
       }
     };
     loadItemOfDay();
