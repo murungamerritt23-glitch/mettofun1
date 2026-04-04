@@ -682,6 +682,49 @@ export default function AdminDashboard() {
       // Load from local first (fast)
       let shopItems = await localItems.getByShop(currentShop.id);
       
+      // Fix large images - compress them if needed
+      const compressImageIfLarge = (item: Item): Promise<Item> => {
+        return new Promise((resolve) => {
+          if (!item.imageUrl || item.imageUrl.length < 100000) {
+            resolve(item);
+            return;
+          }
+          // Image is large (>~30KB), compress it
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxSize = 400;
+            let { width, height } = img;
+            if (width > maxSize || height > maxSize) {
+              if (width > height) {
+                height = (height / width) * maxSize;
+                width = maxSize;
+              } else {
+                width = (width / height) * maxSize;
+                height = maxSize;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.7);
+            resolve({ ...item, imageUrl: compressed });
+          };
+          img.onerror = () => resolve(item);
+          img.src = item.imageUrl;
+        });
+      };
+
+      // Compress any large images in background
+      Promise.all(shopItems.map(compressImageIfLarge)).then(async (compressedItems) => {
+        // Save compressed items back
+        const changed = compressedItems.some((item, i) => item.imageUrl !== shopItems[i].imageUrl);
+        if (changed) {
+          await localItems.saveMultiple(compressedItems);
+        }
+      }).catch(() => {});
+      
       // Ensure exactly 17 items with all active
       if (shopItems.length !== 17) {
         shopItems = Array.from({ length: 17 }, (_, i) => {
@@ -697,7 +740,6 @@ export default function AdminDashboard() {
           };
         });
         shopItems = shopItems.map(item => ({ ...item, isActive: true }));
-        await localItems.saveMultiple(shopItems);
       }
       
       setItems(shopItems);

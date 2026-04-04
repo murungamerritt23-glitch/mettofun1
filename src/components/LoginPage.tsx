@@ -59,7 +59,8 @@ export default function LoginPage() {
         if (inputHash === cachedPwHash) {
           setAdmin(cachedAdmin);
           if (cachedAdmin.level === 'shop_admin') {
-            // Resolve the correct shop - non-blocking
+            // Set view FIRST immediately, then load shop in background
+            setCurrentView('customer');
             localShops.getAll().then((shops: any[]) => {
               let shop = shops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
               if (!shop && cachedAdmin.assignedShops?.length) {
@@ -68,8 +69,7 @@ export default function LoginPage() {
               if (shop) {
                 setCurrentShop(shop);
               }
-              setCurrentView('customer');
-            }).catch(() => setCurrentView('customer'));
+            }).catch(() => {});
           } else {
             setCurrentView('admin');
           }
