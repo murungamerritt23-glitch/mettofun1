@@ -29,13 +29,13 @@ export default function LoginPage() {
   const { setCurrentView } = useUIStore();
   const { setCurrentShop } = useShopStore();
 
-  // Safety timeout - reset loading after 20 seconds to prevent infinite hang
+  // Safety timeout - reset loading after 60 seconds to prevent infinite hang
   useEffect(() => {
     if (isLoading) {
       const timer = setTimeout(() => {
         setIsLoading(false);
         setError('Request timed out. Please try again.');
-      }, 20000);
+      }, 60000);
       return () => clearTimeout(timer);
     }
   }, [isLoading]);
