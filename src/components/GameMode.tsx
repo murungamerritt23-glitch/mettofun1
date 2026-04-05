@@ -98,6 +98,7 @@ export default function GameMode() {
   useEffect(() => {
     const loadItems = async () => {
       if (currentShop) {
+        // Always reload from local to get latest edits
         const shopItems = await localItems.getByShop(currentShop.id);
         let finalItems = shopItems.length > 0 ? shopItems : [];
         
@@ -115,7 +116,6 @@ export default function GameMode() {
               order: i
             };
           });
-          // Make sure all are active
           finalItems = finalItems.map(item => ({ ...item, isActive: true }));
           await localItems.saveMultiple(finalItems);
         }
@@ -125,7 +125,7 @@ export default function GameMode() {
       setIsLoading(false);
     };
     loadItems();
-  }, [currentShop, setItems]);
+  }, [currentShop, setItems, items]); // Added items to dependency array
 
   // Check today's attempts for demo mode
   useEffect(() => {

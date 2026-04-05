@@ -891,6 +891,7 @@ export default function AdminDashboard() {
     // Reload immediately from local (fast)
     if (currentShop) {
       const updatedItems = await localItems.getByShop(currentShop.id);
+      // Update shared item store so GameMode sees changes immediately
       setItems(updatedItems);
     }
     // Then sync to RTDB in background (non-blocking)
