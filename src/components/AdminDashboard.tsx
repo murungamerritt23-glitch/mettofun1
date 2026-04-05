@@ -1345,10 +1345,64 @@ export default function AdminDashboard() {
                       <input
                         name="imageUrl"
                         type="url"
+                        id="nominationImageUrl"
                         defaultValue={editingNominationItem.imageUrl || ''}
-                        className="input w-full"
+                        className="input w-full mb-2"
                         placeholder="https://example.com/image.jpg"
                       />
+                      <div className="flex items-center gap-2">
+                        <label className="btn-gold-outline cursor-pointer text-sm py-2 px-3">
+                          <Upload size={16} className="inline mr-1" /> Upload Image
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 5 * 1024 * 1024) {
+                                alert('Image too large. Max 5MB');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                const img = new Image();
+                                img.onload = () => {
+                                  const canvas = document.createElement('canvas');
+                                  const maxSize = 400;
+                                  let { width, height } = img;
+                                  if (width > maxSize || height > maxSize) {
+                                    if (width > height) {
+                                      height = (height / width) * maxSize;
+                                      width = maxSize;
+                                    } else {
+                                      width = (width / height) * maxSize;
+                                      height = maxSize;
+                                    }
+                                  }
+                                  canvas.width = width;
+                                  canvas.height = height;
+                                  const ctx = canvas.getContext('2d');
+                                  ctx?.drawImage(img, 0, 0, width, height);
+                                  const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                                  (document.getElementById('nominationImageUrl') as HTMLInputElement).value = compressed;
+                                };
+                                img.src = event.target?.result as string;
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            (document.getElementById('nominationImageUrl') as HTMLInputElement).value = '';
+                          }}
+                          className="text-red-400 text-sm"
+                        >
+                          Clear
+                        </button>
+                      </div>
                     </div>
                     
                     <div className="flex gap-2 pt-4">
@@ -3016,9 +3070,67 @@ export default function AdminDashboard() {
                           type="url"
                           value={itemOfDayForm.imageUrl}
                           onChange={(e) => setItemOfDayForm({ ...itemOfDayForm, imageUrl: e.target.value })}
-                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-amber-500 focus:outline-none"
+                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white focus:border-amber-500 focus:outline-none mb-2"
                           placeholder="https://example.com/image.jpg"
                         />
+                        <div className="flex items-center gap-2">
+                          <label className="btn-gold-outline cursor-pointer text-sm py-2 px-3">
+                            <Upload size={16} className="inline mr-1" /> Upload Image
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 5 * 1024 * 1024) {
+                                  alert('Image too large. Max 5MB');
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  const img = new Image();
+                                  img.onload = () => {
+                                    const canvas = document.createElement('canvas');
+                                    const maxSize = 400;
+                                    let { width, height } = img;
+                                    if (width > maxSize || height > maxSize) {
+                                      if (width > height) {
+                                        height = (height / width) * maxSize;
+                                        width = maxSize;
+                                      } else {
+                                        width = (width / height) * maxSize;
+                                        height = maxSize;
+                                      }
+                                    }
+                                    canvas.width = width;
+                                    canvas.height = height;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx?.drawImage(img, 0, 0, width, height);
+                                    const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                                    setItemOfDayForm({ ...itemOfDayForm, imageUrl: compressed });
+                                  };
+                                  img.src = event.target?.result as string;
+                                };
+                                reader.readAsDataURL(file);
+                              }}
+                            />
+                          </label>
+                          {itemOfDayForm.imageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setItemOfDayForm({ ...itemOfDayForm, imageUrl: '' })}
+                              className="text-red-400 text-sm"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        {itemOfDayForm.imageUrl && (
+                          <div className="mt-2 w-20 h-20 rounded-lg overflow-hidden">
+                            <img src={itemOfDayForm.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : itemOfTheDay ? (
