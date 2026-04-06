@@ -39,14 +39,22 @@ export default function Home() {
               return;
             }
             // Verify admin exists in local database to prevent localStorage tampering
-            const localAdmin = await localAdmins.getAll();
+            let localAdmin;
+            try {
+              localAdmin = await localAdmins.getAll();
+            } catch (dbError) {
+              console.error('Failed to load local admins:', dbError);
+              localStorage.removeItem('metofun-auth');
+              localStorage.removeItem('metofun-auth-pw');
+              setCurrentShop(null);
+              return;
+            }
             const verifiedAdmin = localAdmin.find(a => a.id === adminData.id || a.email === adminData.email);
             if (!verifiedAdmin) {
               // Admin record not found locally - clear invalid auth
               localStorage.removeItem('metofun-auth');
               localStorage.removeItem('metofun-auth-pw');
-              setReady(true);
-              setLoading(false);
+              setCurrentShop(null);
               return;
             }
             // Use verified admin data from database, not localStorage
@@ -55,27 +63,44 @@ export default function Home() {
             // Skip blocking RTDB sync - do in background only
             if (verifiedAdmin.level === 'shop_admin') {
               // Load shop first, then set view
-              localShops.getAll().then((allShops: any[]) => {
-                const deviceId = getDeviceId();
-                let shop = allShops.find(s => s.adminEmail?.toLowerCase() === verifiedAdmin.email?.toLowerCase());
-                if (!shop && verifiedAdmin.assignedShops?.length) {
-                  shop = allShops.find(s => verifiedAdmin.assignedShops!.includes(s.id));
-                }
-                if (!shop) {
-                  const shopsByDevice = allShops.filter(s => s.deviceId === deviceId);
-                  if (shopsByDevice.length === 1) shop = shopsByDevice[0];
-                }
-                if (shop) {
-                  setCurrentShop(shop);
-                  setCurrentView('customer');
-                }
-              }).catch(() => setCurrentView('admin'));
+              let allShops;
+              try {
+                allShops = await localShops.getAll();
+              } catch (dbError) {
+                console.error('Failed to load shops:', dbError);
+                localStorage.removeItem('metofun-auth');
+                localStorage.removeItem('metofun-auth-pw');
+                setCurrentShop(null);
+                return;
+              }
+              const deviceId = getDeviceId();
+              let shop = allShops.find(s => s.adminEmail?.toLowerCase() === verifiedAdmin.email?.toLowerCase());
+              if (!shop && verifiedAdmin.assignedShops?.length) {
+                shop = allShops.find(s => verifiedAdmin.assignedShops!.includes(s.id));
+              }
+              if (!shop) {
+                const shopsByDevice = allShops.filter(s => s.deviceId === deviceId);
+                if (shopsByDevice.length === 1) shop = shopsByDevice[0];
+              }
+              if (shop) {
+                setCurrentShop(shop);
+                setCurrentView('customer');
+              }
+              // If no shop found, stay on login (don't crash or close)
             } else {
               // super_admin or agent_admin - load shops in background
-              localShops.getAll().then((shops: any[]) => {
-                setShops(shops);
-                setCurrentView('admin');
-              }).catch(() => setCurrentView('admin'));
+              let shops;
+              try {
+                shops = await localShops.getAll();
+              } catch (dbError) {
+                console.error('Failed to load shops:', dbError);
+                localStorage.removeItem('metofun-auth');
+                localStorage.removeItem('metofun-auth-pw');
+                setCurrentShop(null);
+                return;
+              }
+              setShops(shops);
+              setCurrentView('admin');
             }
           }
         }
