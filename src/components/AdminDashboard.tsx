@@ -743,6 +743,7 @@ export default function AdminDashboard() {
       }
       
       setItems(shopItems);
+      setItemsList(shopItems);
       
       // Then sync in background (non-blocking)
       import('@/lib/sync-service').then(({ pullFromRTDB }) => {
@@ -893,6 +894,7 @@ export default function AdminDashboard() {
       const updatedItems = await localItems.getByShop(currentShop.id);
       // Update shared item store so GameMode sees changes immediately
       setItems(updatedItems);
+      setItemsList(updatedItems);
     }
     // Then sync to RTDB in background (non-blocking)
     saveItemWithSync(item, !editingItem).catch(() => {});
