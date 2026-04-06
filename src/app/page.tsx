@@ -46,10 +46,7 @@ export default function Home() {
             
             // Skip blocking RTDB sync - do in background only
             if (verifiedAdmin.level === 'shop_admin') {
-              // Show customer view immediately
-              setCurrentView('customer');
-              
-              // Load shop in background
+              // Load shop first, then set view
               localShops.getAll().then((allShops: any[]) => {
                 const deviceId = getDeviceId();
                 let shop = allShops.find(s => s.adminEmail?.toLowerCase() === verifiedAdmin.email?.toLowerCase());
@@ -60,7 +57,10 @@ export default function Home() {
                   const shopsByDevice = allShops.filter(s => s.deviceId === deviceId);
                   if (shopsByDevice.length === 1) shop = shopsByDevice[0];
                 }
-                if (shop) setCurrentShop(shop);
+                if (shop) {
+                  setCurrentShop(shop);
+                  setCurrentView('customer');
+                }
               }).catch(() => setCurrentView('admin'));
             } else {
               // super_admin or agent_admin - load shops in background
