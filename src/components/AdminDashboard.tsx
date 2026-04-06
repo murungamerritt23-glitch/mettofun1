@@ -639,8 +639,14 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
-    // Immediate navigation - don't wait for any cleanup
+    // Clear local storage auth
+    localStorage.removeItem('metofun-auth');
+    localStorage.removeItem('metofun-auth-pw');
+    // Clear shop from store
+    setCurrentShop(null);
+    // Navigate to login
     setCurrentView('login');
+    // Reset auth state
     logout();
   };
 

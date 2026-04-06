@@ -63,7 +63,7 @@ export default function GameMode() {
     clearTestData
   } = useGameStore();
   
-  const { currentShop } = useShopStore();
+  const { currentShop, setCurrentShop } = useShopStore();
   const { items, setItems } = useItemStore();
   const { setCurrentView } = useUIStore();
   const { admin, logout } = useAuthStore();
@@ -491,8 +491,15 @@ export default function GameMode() {
             <div className="absolute top-4 right-4 flex gap-2">
               <button
                 onClick={() => {
-                  logout();
+                  // Clear local storage auth
+                  localStorage.removeItem('metofun-auth');
+                  localStorage.removeItem('metofun-auth-pw');
+                  // Clear shop from store
+                  setCurrentShop(null);
+                  // Navigate to login
                   setCurrentView('login');
+                  // Reset auth state
+                  logout();
                 }}
                 className="p-2 text-gray-400 hover:text-red-400"
                 title={language === 'sw' ? 'Toka' : 'Logout'}
