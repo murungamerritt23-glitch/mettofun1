@@ -35,6 +35,9 @@ export default function LoginPage() {
       const timer = setTimeout(() => {
         setIsLoading(false);
         setError('Request timed out. Please try again.');
+        // Clear auth to prevent auto-login loop on restart
+        localStorage.removeItem('metofun-auth');
+        localStorage.removeItem('metofun-auth-pw');
       }, 60000);
       return () => clearTimeout(timer);
     }

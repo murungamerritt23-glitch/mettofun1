@@ -19,7 +19,23 @@ export default function Home() {
   const { setShops, setCurrentShop, setShops: setLocalShops } = useShopStore();
   const { setAdmin, admin } = useAuthStore();
 
+  // Timeout to prevent infinite hang during auth restore
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let isHandled = false;
+
+    const handleAuthTimeout = () => {
+      if (isHandled) return;
+      isHandled = true;
+      console.error('Auth restore timed out - clearing auth to prevent loop');
+      localStorage.removeItem('metofun-auth');
+      localStorage.removeItem('metofun-auth-pw');
+      setCurrentShop(null);
+      setCurrentView('login');
+    };
+
+    timeoutId = setTimeout(handleAuthTimeout, 30000); // 30 second timeout for auth
+
     const checkAuth = async () => {
       // Show UI immediately first
       setReady(true);
@@ -104,9 +120,9 @@ export default function Home() {
             }
           }
         }
-      } catch (err) {
-        console.error('Auth restore error:', err);
       } finally {
+        // Auth completed - clear the timeout
+        clearTimeout(timeoutId);
         setReady(true);
         setLoading(false);
       }
@@ -115,7 +131,10 @@ export default function Home() {
     const timer = setTimeout(() => {
       checkAuth();
     }, 500);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(timeoutId);
+    };
   }, [setAdmin, setCurrentView, setCurrentShop, setShops]);
 
   useEffect(() => {
