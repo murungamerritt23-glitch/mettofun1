@@ -96,17 +96,50 @@ export default function GameMode() {
 
   // Load shop items
   useEffect(() => {
+    let isCancelled = false;
+    
     const loadItems = async () => {
       if (currentShop) {
-        // Always reload from local to get latest edits
-        const shopItems = await localItems.getByShop(currentShop.id);
-        let finalItems = shopItems.length > 0 ? shopItems : [];
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Items loading timeout')), 15000)
+        );
         
-        // Ensure exactly 17 items with all active
-        if (finalItems.length !== 17) {
-          finalItems = Array.from({ length: 17 }, (_, i) => {
-            const existing = finalItems[i];
-            return existing || {
+        try {
+          // Race between loading items and timeout
+          const shopItems = await Promise.race([
+            localItems.getByShop(currentShop.id),
+            timeoutPromise
+          ]) as Item[];
+          
+          if (isCancelled) return;
+          
+          let finalItems = shopItems.length > 0 ? shopItems : [];
+          
+          // Ensure exactly 17 items with all active
+          if (finalItems.length !== 17) {
+            finalItems = Array.from({ length: 17 }, (_, i) => {
+              const existing = finalItems[i];
+              return existing || {
+                id: `${currentShop.id}-item-${i + 1}`,
+                name: `Prize ${i + 1}`,
+                value: (i + 1) * 1000,
+                stockStatus: 'unlimited' as const,
+                isActive: true,
+                shopId: currentShop.id,
+                order: i
+              };
+            });
+            finalItems = finalItems.map(item => ({ ...item, isActive: true }));
+            await localItems.saveMultiple(finalItems);
+          }
+          
+          setItems(finalItems);
+        } catch (error) {
+          console.error('Failed to load items:', error);
+          // Set default items on error
+          if (currentShop && !isCancelled) {
+            const defaultItems = Array.from({ length: 17 }, (_, i) => ({
               id: `${currentShop.id}-item-${i + 1}`,
               name: `Prize ${i + 1}`,
               value: (i + 1) * 1000,
@@ -114,18 +147,17 @@ export default function GameMode() {
               isActive: true,
               shopId: currentShop.id,
               order: i
-            };
-          });
-          finalItems = finalItems.map(item => ({ ...item, isActive: true }));
-          await localItems.saveMultiple(finalItems);
+            }));
+            setItems(defaultItems);
+          }
         }
-        
-        setItems(finalItems);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
+    
     loadItems();
-  }, [currentShop, setItems, items]); // Added items to dependency array
+    return () => { isCancelled = true; };
+  }, [currentShop, setItems]);
 
   // Check today's attempts for demo mode
   useEffect(() => {
