@@ -30,6 +30,14 @@ export default function Home() {
         if (authData) {
           const adminData: Admin = JSON.parse(authData);
           if (adminData && adminData.isActive) {
+            // Validate admin level
+            if (!['super_admin', 'agent_admin', 'shop_admin'].includes(adminData.level)) {
+              localStorage.removeItem('metofun-auth');
+              localStorage.removeItem('metofun-auth-pw');
+              setReady(true);
+              setLoading(false);
+              return;
+            }
             // Verify admin exists in local database to prevent localStorage tampering
             const localAdmin = await localAdmins.getAll();
             const verifiedAdmin = localAdmin.find(a => a.id === adminData.id || a.email === adminData.email);

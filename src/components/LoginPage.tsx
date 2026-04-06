@@ -55,6 +55,11 @@ export default function LoginPage() {
     if (cachedAuth && cachedPwHash) {
       const cachedAdmin: Admin = JSON.parse(cachedAuth);
       if (cachedAdmin.email?.toLowerCase() === email.toLowerCase()) {
+        // Validate admin level before allowing login
+        if (!['super_admin', 'agent_admin', 'shop_admin'].includes(cachedAdmin.level)) {
+          setError('Access denied. Invalid admin role.');
+          return;
+        }
         const inputHash = await hashPassword(password);
         if (inputHash === cachedPwHash) {
           setAdmin(cachedAdmin);
