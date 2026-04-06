@@ -700,6 +700,8 @@ export default function AdminDashboard() {
         ]);
       } catch (error) {
         console.error('Failed to load items:', error);
+        // Set flag to prevent auto-login loop on restart
+        localStorage.setItem('metofun-load-timeout', Date.now().toString());
         // Return default items on error
         shopItems = Array.from({ length: 17 }, (_, i) => ({
           id: `${currentShop.id}-item-${i + 1}`,

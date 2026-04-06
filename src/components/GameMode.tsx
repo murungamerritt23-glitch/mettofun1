@@ -137,6 +137,8 @@ export default function GameMode() {
           setItems(finalItems);
         } catch (error) {
           console.error('Failed to load items:', error);
+          // Set flag to prevent auto-login loop on restart
+          localStorage.setItem('metofun-load-timeout', Date.now().toString());
           // Set default items on error
           if (currentShop && !isCancelled) {
             const defaultItems = Array.from({ length: 17 }, (_, i) => ({

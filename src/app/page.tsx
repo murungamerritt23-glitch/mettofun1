@@ -30,9 +30,31 @@ export default function Home() {
       console.error('Auth restore timed out - clearing auth to prevent loop');
       localStorage.removeItem('metofun-auth');
       localStorage.removeItem('metofun-auth-pw');
+      localStorage.removeItem('metofun-load-timeout');
       setCurrentShop(null);
       setCurrentView('login');
     };
+
+    // Check for previous load timeout - prevent loop by clearing auth
+    const loadTimeout = localStorage.getItem('metofun-load-timeout');
+    if (loadTimeout) {
+      const timeoutAge = Date.now() - parseInt(loadTimeout, 10);
+      // If timeout was within last 5 minutes, clear auth to prevent loop
+      if (timeoutAge < 5 * 60 * 1000) {
+        console.log('Previous load timeout detected, clearing auth');
+        localStorage.removeItem('metofun-auth');
+        localStorage.removeItem('metofun-auth-pw');
+        localStorage.removeItem('metofun-load-timeout');
+        setCurrentShop(null);
+        setCurrentView('login');
+        setReady(true);
+        setLoading(false);
+        return;
+      } else {
+        // Timeout is old, clear the flag
+        localStorage.removeItem('metofun-load-timeout');
+      }
+    }
 
     timeoutId = setTimeout(handleAuthTimeout, 30000); // 30 second timeout for auth
 
