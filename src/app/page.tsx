@@ -100,12 +100,20 @@ export default function Home() {
             
             // Skip blocking RTDB sync - do in background only
             if (verifiedAdmin.level === 'shop_admin') {
-              // Load shop first, then set view
+              // Load shop first, then set view - with timeout
               let allShops;
+              const shopLoadTimeout = new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error('Shop load timeout')), 15000)
+              );
+              
               try {
-                allShops = await localShops.getAll();
+                allShops = await Promise.race([
+                  localShops.getAll(),
+                  shopLoadTimeout
+                ]);
               } catch (dbError) {
                 console.error('Failed to load shops:', dbError);
+                localStorage.setItem('metofun-load-timeout', Date.now().toString());
                 localStorage.removeItem('metofun-auth');
                 localStorage.removeItem('metofun-auth-pw');
                 setCurrentShop(null);
@@ -126,12 +134,20 @@ export default function Home() {
               }
               // If no shop found, stay on login (don't crash or close)
             } else {
-              // super_admin or agent_admin - load shops in background
+              // super_admin or agent_admin - load shops in background - with timeout
               let shops;
+              const shopLoadTimeout = new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error('Shop load timeout')), 15000)
+              );
+              
               try {
-                shops = await localShops.getAll();
+                shops = await Promise.race([
+                  localShops.getAll(),
+                  shopLoadTimeout
+                ]);
               } catch (dbError) {
                 console.error('Failed to load shops:', dbError);
+                localStorage.setItem('metofun-load-timeout', Date.now().toString());
                 localStorage.removeItem('metofun-auth');
                 localStorage.removeItem('metofun-auth-pw');
                 setCurrentShop(null);
