@@ -159,6 +159,13 @@ export default function AdminDashboard() {
     }
   }, [activeTab, currentShop]);
 
+  // Load items when switching to items tab
+  useEffect(() => {
+    if (activeTab === 'items' && currentShop) {
+      loadItems();
+    }
+  }, [activeTab, currentShop]);
+
   // Initialize qualifying purchase input when currentShop changes (shop switched)
   useEffect(() => {
     if (currentShop) {
