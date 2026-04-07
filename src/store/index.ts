@@ -393,22 +393,38 @@ export const useSyncStore = create<SyncState>()(
   )
 );
 
-// Initialize local data from IndexedDB
+// Initialize local data from IndexedDB - with timeout protection
 export const initializeFromLocal = async () => {
-  const shops = await localShops.getAll();
-  useShopStore.getState().setShops(shops);
+  const initTimeout = new Promise<never>((_, reject) => 
+    setTimeout(() => reject(new Error('Init timeout')), 15000)
+  );
+  
+  try {
+    const shops = await Promise.race([localShops.getAll(), initTimeout]) as Shop[];
+    useShopStore.getState().setShops(shops);
+  } catch (e) {
+    console.error('Failed to load shops during init:', e);
+  }
   
   // If there's a current shop, load its items
   const currentShop = useShopStore.getState().currentShop;
   if (currentShop) {
-    const items = await localItems.getByShop(currentShop.id);
-    useItemStore.getState().setItems(items);
+    try {
+      const items = await Promise.race([localItems.getByShop(currentShop.id), initTimeout]) as Item[];
+      useItemStore.getState().setItems(items);
+    } catch (e) {
+      console.error('Failed to load items during init:', e);
+    }
   }
   
   // Load Item of the Day
-  const itemOfDay = await localSettings.get('itemOfTheDay');
-  if (itemOfDay) {
-    useGameStore.getState().setItemOfTheDay(itemOfDay);
+  try {
+    const itemOfDay = await Promise.race([localSettings.get('itemOfTheDay'), initTimeout]);
+    if (itemOfDay) {
+      useGameStore.getState().setItemOfTheDay(itemOfDay);
+    }
+  } catch (e) {
+    console.error('Failed to load item of day:', e);
   }
   
   // Get device ID

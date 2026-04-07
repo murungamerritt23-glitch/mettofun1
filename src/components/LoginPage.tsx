@@ -7,7 +7,7 @@ import { useAuthStore, useUIStore, useShopStore } from '@/store';
 import { firebaseAuth, rtdbAdmins } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
-import type { Admin } from '@/types';
+import type { Admin, Shop } from '@/types';
 
 // Simple password hash for offline verification
 const hashPassword = async (password: string): Promise<string> => {
@@ -168,10 +168,17 @@ export default function LoginPage() {
     const uid = result.user!.uid;
     const userEmail = email.toLowerCase();
 
-    // Check local first
+    // Check local first - with timeout
     let localAdminsList: Admin[] = [];
+    const adminLoadTimeout = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Admin load timeout')), 15000)
+    );
+    
     try {
-      localAdminsList = await localAdmins.getAll();
+      localAdminsList = await Promise.race([
+        localAdmins.getAll(),
+        adminLoadTimeout
+      ]);
     } catch (err) {
       setError('Database error. Please try again.');
       setIsLoading(false);
@@ -295,7 +302,23 @@ export default function LoginPage() {
       let shop: Awaited<ReturnType<typeof localShops.getByDeviceId>> = undefined;
       
       // Priority 1: Match by adminEmail (most reliable - each email links to exactly one shop)
-      const localShopsList = await localShops.getAll();
+      const shopLoadTimeout = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Shop load timeout')), 15000)
+      );
+      
+      let localShopsList: Shop[];
+      try {
+        localShopsList = await Promise.race([
+          localShops.getAll(),
+          shopLoadTimeout
+        ]);
+      } catch (e) {
+        console.error('Shop load timeout:', e);
+        setError('Failed to load shops. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+      
       shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
       
       // Priority 2: Match by assignedShops (set by super_admin when creating the admin)

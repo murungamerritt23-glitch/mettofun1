@@ -336,7 +336,18 @@ export default function AdminDashboard() {
 
         // Load from local first (always works), then try RTDB in background
         const loadShopsFromLocal = async () => {
-          const localShopList = await localShops.getAll();
+          const shopLoadTimeout = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Shop load timeout')), 15000)
+          );
+          
+          let localShopList: Shop[];
+          try {
+            localShopList = await Promise.race([localShops.getAll(), shopLoadTimeout]) as Shop[];
+          } catch (e) {
+            console.error('Failed to load shops:', e);
+            localShopList = [];
+          }
+          
           if (admin?.level === 'super_admin') {
             setShops(localShopList);
             autoSelectShop(localShopList);
@@ -921,12 +932,23 @@ export default function AdminDashboard() {
     await localItems.save(item);
     setEditingItem(null);
     setUserActive(false);
-    // Reload immediately from local (fast)
+    // Reload immediately from local (fast) - with timeout
     if (currentShop) {
-      const updatedItems = await localItems.getByShop(currentShop.id);
-      // Update shared item store so GameMode sees changes immediately
-      setItems(updatedItems);
-      setItemsList(updatedItems);
+      const itemLoadTimeout = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Item load timeout')), 10000)
+      );
+      
+      try {
+        const updatedItems = await Promise.race([
+          localItems.getByShop(currentShop.id),
+          itemLoadTimeout
+        ]) as Item[];
+        // Update shared item store so GameMode sees changes immediately
+        setItems(updatedItems);
+        setItemsList(updatedItems);
+      } catch (e) {
+        console.error('Failed to reload items:', e);
+      }
     }
     // Then sync to RTDB in background (non-blocking)
     saveItemWithSync(item, !editingItem).catch(() => {});
