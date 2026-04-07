@@ -433,7 +433,7 @@ export default function AdminDashboard() {
     }
   }, [admin]);
 
-  // Load Item of the Day on mount
+  // Load Item of the Day on mount and periodically sync
   useEffect(() => {
     const loadItemOfDay = async () => {
       // Try local first for immediate display
@@ -455,7 +455,11 @@ export default function AdminDashboard() {
         // RTDB fetch failed, use local
       }
     };
+    
+    // Periodic sync every 30 seconds for live likes
+    const syncInterval = setInterval(loadItemOfDay, 30000);
     loadItemOfDay();
+    return () => clearInterval(syncInterval);
   }, []);
 
   // Admin handlers

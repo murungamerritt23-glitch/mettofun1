@@ -90,6 +90,30 @@ export default function GameMode() {
           }).catch(() => {});
         }).catch(() => {});
       }
+      
+      // Periodically sync item of day from RTDB for live likes (every 30 seconds)
+      const syncItemOfDay = async () => {
+        try {
+          const { rtdbSettings } = await import('@/lib/firebase');
+          const rtdbItem = await rtdbSettings.get('itemOfTheDay');
+          if (rtdbItem) {
+            // Preserve local likes if RTDB has fewer (in case offline likes happened)
+            const localItem = await localSettings.get('itemOfTheDay');
+            if (localItem && rtdbItem.likes < localItem.likes) {
+              rtdbItem.likes = localItem.likes;
+              await rtdbSettings.set('itemOfTheDay', rtdbItem);
+            }
+            localSettings.set('itemOfTheDay', rtdbItem);
+            useGameStore.getState().setItemOfTheDay(rtdbItem);
+          }
+        } catch (e) {}
+      };
+      
+      // Initial sync
+      syncItemOfDay();
+      // Sync every 30 seconds for live likes
+      const syncInterval = setInterval(syncItemOfDay, 30000);
+      return () => clearInterval(syncInterval);
     };
     loadItemOfDay();
   }, []);

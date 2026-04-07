@@ -274,6 +274,10 @@ export const useGameStore = create<GameState>()(
         set({ itemOfTheDay: updated });
         // Save to local storage
         localSettings.set('itemOfTheDay', updated);
+        // Sync to RTDB for live updates across devices
+        import('@/lib/firebase').then(({ rtdbSettings }) => {
+          rtdbSettings.set('itemOfTheDay', updated).catch(() => {});
+        }).catch(() => {});
       },
       setHasLikedItemOfDay: (hasLikedItemOfDay) => set({ hasLikedItemOfDay }),
       resetGame: () => set({
