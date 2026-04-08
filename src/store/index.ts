@@ -267,33 +267,18 @@ export const useGameStore = create<GameState>()(
       setItemOfTheDay: (itemOfTheDay) => set({ itemOfTheDay }),
       incrementItemOfDayLikes: () => {
         const current = useGameStore.getState().itemOfTheDay;
-        const { isTestMode, customerSession } = useGameStore.getState();
-        if (isTestMode || !current) return;
+        if (!current) return;
         
-        // Get today's date for daily reset
-        const today = new Date().toISOString().split('T')[0];
+        const newLikes = (current.likes || 0) + 1;
+        const updated = { ...current, likes: newLikes };
         
-        // Check if this customer already liked today
-        const likedKey = `metofun-liked-${today}`;
-        const likedCustomers = JSON.parse(localStorage.getItem(likedKey) || '[]');
-        const phone = customerSession?.phoneNumber;
+        set({ itemOfTheDay: updated });
+        localSettings.set('itemOfTheDay', updated);
         
-        // Only increment if this customer hasn't liked today
-        if (phone && !likedCustomers.includes(phone)) {
-          likedCustomers.push(phone);
-          localStorage.set(likedKey, JSON.stringify(likedCustomers));
-          
-          const newLikes = (current.likes || 0) + 1;
-          const updated = { ...current, likes: newLikes };
-          
-          set({ itemOfTheDay: updated });
-          localSettings.set('itemOfTheDay', updated);
-          
-          // Sync to RTDB for aggregation across all shops
-          import('@/lib/firebase').then(({ rtdbSettings }) => {
-            rtdbSettings.set('itemOfTheDay', updated).catch(() => {});
-          }).catch(() => {});
-        }
+        // Sync to RTDB for aggregation across all shops
+        import('@/lib/firebase').then(({ rtdbSettings }) => {
+          rtdbSettings.set('itemOfTheDay', updated).catch(() => {});
+        }).catch(() => {});
       },
       setHasLikedItemOfDay: (hasLikedItemOfDay) => set({ hasLikedItemOfDay }),
       resetGame: () => set({
