@@ -267,24 +267,25 @@ export const useGameStore = create<GameState>()(
       setItemOfTheDay: (itemOfTheDay) => set({ itemOfTheDay }),
       incrementItemOfDayLikes: () => {
         const current = useGameStore.getState().itemOfTheDay;
-        const { isTestMode } = useGameStore.getState();
+        const { isTestMode, customerSession } = useGameStore.getState();
         if (isTestMode || !current) return;
         
-        // Check if this device already liked this item
-        const likedItemKey = 'metofun-last-liked-item';
-        const lastLiked = localStorage.get(likedItemKey);
-        const currentItemKey = `${current.id}-${new Date(current.createdAt || Date.now()).toDateString()}`;
+        // Check if this customer (phone number) already liked this item
+        const likedKey = 'metofun-liked-items';
+        const likedItems = JSON.parse(localStorage.getItem(likedKey) || '{}');
+        const currentItemKey = `${current.id}`;
+        const phoneKey = customerSession?.phoneNumber || 'unknown';
         
-        // Only increment if haven't liked this item yet
-        if (lastLiked !== currentItemKey) {
+        // Only increment if this phone number hasn't liked this item yet
+        if (!likedItems[currentItemKey]) {
+          likedItems[currentItemKey] = true;
+          localStorage.set(likedKey, JSON.stringify(likedItems));
+          
           const newLikes = (current.likes || 0) + 1;
           const updated = { ...current, likes: newLikes };
           
           set({ itemOfTheDay: updated });
           localSettings.set('itemOfTheDay', updated);
-          
-          // Mark this device as having liked this item
-          localStorage.set(likedItemKey, currentItemKey);
           
           // Sync to RTDB for aggregation across all shops
           import('@/lib/firebase').then(({ rtdbSettings }) => {

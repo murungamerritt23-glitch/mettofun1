@@ -839,13 +839,15 @@ export default function GameMode() {
                 </div>
                 <button
                   onClick={() => {
-                    if (!hasLikedItemOfDay) {
-                      // Only skip incrementing likes in super admin test mode
-                      if (!isSuperAdminTestMode) {
-                        incrementItemOfDayLikes();
-                      }
-                      setHasLikedItemOfDay(true);
+                    // Check if this customer already liked this item
+                    const likedKey = 'metofun-liked-items';
+                    const likedItems = JSON.parse(localStorage.getItem(likedKey) || '{}');
+                    const alreadyLiked = likedItems[itemOfTheDay.id];
+                    
+                    if (!alreadyLiked && !isSuperAdminTestMode) {
+                      incrementItemOfDayLikes();
                     }
+                    setHasLikedItemOfDay(true);
                   }}
                   disabled={hasLikedItemOfDay}
                   className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
