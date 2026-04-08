@@ -118,7 +118,7 @@ export default function GameMode() {
     loadItemOfDay();
   }, []);
 
-  // Load shop items
+  // Load shop items - always fresh from DB to get latest updates (images, etc)
   useEffect(() => {
     let isCancelled = false;
     
@@ -130,7 +130,7 @@ export default function GameMode() {
         );
         
         try {
-          // Race between loading items and timeout
+          // Always load fresh from DB - this ensures updated images are seen
           const shopItems = await Promise.race([
             localItems.getByShop(currentShop.id),
             timeoutPromise
@@ -138,11 +138,11 @@ export default function GameMode() {
           
           if (isCancelled) return;
           
-          let finalItems = shopItems.length > 0 ? shopItems : [];
+          // Use whatever is in DB - no overwriting, just load and display
+          let finalItems = shopItems;
           
-          // Ensure exactly 17 items - only CREATE missing ones, don't overwrite existing
+          // Only create missing items if less than 17 exist (preserve DB data)
           if (finalItems.length < 17) {
-            // Create only the missing items, preserving existing items with their images
             const missingCount = 17 - finalItems.length;
             const newItems = Array.from({ length: missingCount }, (_, i) => ({
               id: `${currentShop.id}-item-${finalItems.length + i + 1}`,
@@ -154,17 +154,11 @@ export default function GameMode() {
               order: finalItems.length + i
             }));
             finalItems = [...finalItems, ...newItems];
-            // Save ONLY the new items, preserve existing items in DB
+            // Only save the NEW items, never overwrite existing
             if (newItems.length > 0) {
               await localItems.saveMultiple(newItems);
             }
-          } else if (finalItems.length > 17) {
-            // Trim to 17, keep first ones (they have the images)
-            finalItems = finalItems.slice(0, 17);
           }
-          
-          // Ensure all items are active
-          finalItems = finalItems.map(item => ({ ...item, isActive: true }));
           
           setItems(finalItems);
         } catch (error) {
