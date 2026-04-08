@@ -303,9 +303,9 @@ export default function GameMode() {
     // Update state with parsed amount
     setPurchaseAmount(String(amount));
     
-    // Generate winning number from the displayed range (1 to 18-threshold)
-    // Only ONE number wins from the displayed range
-    const winningNum = generateSecureRandomNumber(18 - config.threshold);
+    // Generate winning number (1 to threshold)
+    // e.g., threshold 1: win with 1, threshold 2: win with 1 or 2, etc.
+    const winningNum = generateSecureRandomNumber(config.threshold);
     const threshold = config.threshold;
     
     // Store both the winning number and threshold
