@@ -332,11 +332,27 @@ export default function GameMode() {
   const handleItemSelect = (item: Item) => {
     if (!item || !item.isActive) return;
     
-    // Visual feedback - show tapped animation
     setTappedItemId(item.id);
     setTimeout(() => setTappedItemId(null), 400);
     
     setSelectedItem(item);
+    
+    // Hide the selected item at a position based on its order
+    // The winning number is derived from the selected item's position
+    const itemPosition = item.order ?? 0;
+    // Add randomness - 20% chance to hide at slightly different position
+    let winningNum = itemPosition + 1;
+    if (Math.random() < 0.2) {
+      const offsets = [-1, 1, 2, -2].filter(o => o + itemPosition >= 0 && o + itemPosition < 17);
+      if (offsets.length > 0) {
+        const offset = offsets[Math.floor(Math.random() * offsets.length)];
+        winningNum = itemPosition + 1 + offset;
+      }
+    }
+    winningNum = Math.max(1, Math.min(17, winningNum));
+    setCorrectNumber(winningNum);
+    setThresholdNumber(thresholdNumber ?? 3);
+    
     setShowItemPicker(false);
     setShowNumberPicker(true);
   };
