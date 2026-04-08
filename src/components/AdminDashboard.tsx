@@ -2514,20 +2514,23 @@ export default function AdminDashboard() {
     // For super_admin/agent_admin, group attempts by shop
     const isSuperOrAgent = admin?.level === 'super_admin' || admin?.level === 'agent_admin';
     
-    let attemptsByShop: { [shopId: string]: typeof attempts } = {};
+    // Group attempts by shop and date
+    let attemptsByShop: { [shopId: string]: { [date: string]: typeof attempts } } = {};
     let shopNames: { [shopId: string]: string } = {};
     
     if (isSuperOrAgent && attempts.length > 0) {
-      // Group attempts by shopId
       attempts.forEach((attempt) => {
         const shopId = attempt.shopId || 'unknown';
+        const dateKey = new Date(attempt.timestamp || Date.now()).toISOString().split('T')[0];
         if (!attemptsByShop[shopId]) {
-          attemptsByShop[shopId] = [];
+          attemptsByShop[shopId] = {};
         }
-        attemptsByShop[shopId].push(attempt);
+        if (!attemptsByShop[shopId][dateKey]) {
+          attemptsByShop[shopId][dateKey] = [];
+        }
+        attemptsByShop[shopId][dateKey].push(attempt);
       });
       
-      // Get shop names
       shops.forEach((shop) => {
         shopNames[shop.id] = shop.shopName;
       });
@@ -2558,89 +2561,106 @@ export default function AdminDashboard() {
                     <p className="text-gray-500">No attempts yet</p>
                   </div>
                 ) : (
-                  Object.entries(attemptsByShop).map(([shopId, shopAttempts]) => (
-                    <div key={shopId}>
-                      <button
-                        onClick={() => toggleShopExpanded(shopId)}
-                        className="w-full text-left mb-2"
-                      >
-                        <h2 className="text-xl font-semibold text-gold-400 flex items-center gap-2 hover:text-gold-300 transition-colors">
-                          <Store size={20} />
-                          {shopNames[shopId] || 'Unknown Shop'}
-                          <span className="text-gray-500 text-sm">({shopAttempts.length} attempts)</span>
-                          <span className="ml-auto text-gray-500">
-                            {expandedShops.has(shopId) ? '▼' : '▶'}
-                          </span>
-                        </h2>
-                      </button>
-                      <AnimatePresence>
-                        {expandedShops.has(shopId) && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="space-y-3 overflow-hidden"
-                          >
-                            {shopAttempts.map((attempt) => (
-                              <div key={attempt.id} className="card flex items-center justify-between">
-                                <div>
-                                  <p className="text-white font-medium">{attempt.phoneNumber}</p>
-                                  <p className="text-gray-400 text-sm">
-                                    Purchase: KSh {(attempt.purchaseAmount || 0).toLocaleString()} | 
-                                    Selected: {attempt.selectedItem?.name || `Box ${attempt.selectedBox || '?'}`}
-                                  </p>
-                                  <p className="text-gray-500 text-xs">
-                                    {new Date(attempt.timestamp || Date.now()).toLocaleString()}
-                                  </p>
+                  Object.entries(attemptsByShop).map(([shopId, datesObj]) => {
+                    const totalAttempts = Object.values(datesObj).flat().length;
+                    return (
+                      <div key={shopId}>
+                        <button
+                          onClick={() => toggleShopExpanded(shopId)}
+                          className="w-full text-left mb-2"
+                        >
+                          <h2 className="text-xl font-semibold text-gold-400 flex items-center gap-2 hover:text-gold-300 transition-colors">
+                            <Store size={20} />
+                            {shopNames[shopId] || 'Unknown Shop'}
+                            <span className="text-gray-500 text-sm">({totalAttempts} attempts)</span>
+                            <span className="ml-auto text-gray-500">
+                              {expandedShops.has(shopId) ? '▼' : '▶'}
+                            </span>
+                          </h2>
+                        </button>
+                        <AnimatePresence>
+                          {expandedShops.has(shopId) && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="space-y-4 overflow-hidden"
+                            >
+                              {Object.entries(datesObj).sort((a, b) => b[0].localeCompare(a[0])).map(([date, dayAttempts]) => (
+                                <div key={date}>
+                                  <h3 className="text-gold-300 font-semibold bg-gray-800 px-2 py-1 rounded">
+                                    {new Date(date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} ({dayAttempts.length})
+                                  </h3>
+                                  <div className="space-y-2 mt-2">
+                                    {dayAttempts.map((attempt: any) => (
+                                      <div key={attempt.id} className="card flex items-center justify-between">
+                                        <div>
+                                          <p className="text-white font-medium">{attempt.phoneNumber}</p>
+                                          <p className="text-gray-400 text-sm">
+                                            KSh {(attempt.purchaseAmount || 0).toLocaleString()} | {attempt.selectedItem?.name || `Box ${attempt.selectedBox}`}
+                                          </p>
+                                          <p className="text-gray-500 text-xs">
+                                            {new Date(attempt.timestamp || Date.now()).toLocaleTimeString()}
+                                          </p>
+                                        </div>
+                                        <div className={`px-3 py-1 rounded ${attempt.won ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'}`}>
+                                          {attempt.won ? 'WIN' : 'LOSE'}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                                <div className={`px-3 py-1 rounded ${
-                                  attempt.won 
-                                    ? 'bg-green-900/50 text-green-400' 
-                                    : 'bg-red-900/50 text-red-400'
-                                }`}>
-                                  {attempt.won ? 'WIN' : 'LOSE'}
-                                </div>
-                              </div>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  ))
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             ) : currentShop ? (
               // Shop admin: show attempts for their shop only
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {attempts.length === 0 ? (
                   <div className="text-center py-12">
                     <Users size={48} className="mx-auto text-gray-600 mb-4" />
                     <p className="text-gray-500">No attempts yet</p>
                   </div>
-                ) : (
-                  attempts.map((attempt) => (
-                    <div key={attempt.id} className="card flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-medium">{attempt.phoneNumber}</p>
-                        <p className="text-gray-400 text-sm">
-                          Purchase: KSh {(attempt.purchaseAmount || 0).toLocaleString()} | 
-                          Selected: {attempt.selectedItem?.name || `Box ${attempt.selectedBox || '?'}`}
-                        </p>
-                        <p className="text-gray-500 text-xs">
-                          {new Date(attempt.timestamp || Date.now()).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className={`px-3 py-1 rounded ${
-                        attempt.won 
-                          ? 'bg-green-900/50 text-green-400' 
-                          : 'bg-red-900/50 text-red-400'
-                      }`}>
-                        {attempt.won ? 'WIN' : 'LOSE'}
+                ) : (() => {
+                  const attemptsByDate: Record<string, typeof attempts> = {};
+                  attempts.forEach((attempt) => {
+                    const dateKey = new Date(attempt.timestamp || Date.now()).toISOString().split('T')[0];
+                    if (!attemptsByDate[dateKey]) attemptsByDate[dateKey] = [];
+                    attemptsByDate[dateKey].push(attempt);
+                  });
+                  return Object.entries(attemptsByDate).sort((a, b) => b[0].localeCompare(a[0])).map(([date, dayAttempts]) => (
+                    <div key={date}>
+                      <h3 className="text-gold-300 font-semibold bg-gray-800 px-2 py-1 rounded">
+                        {new Date(date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} ({dayAttempts.length})
+                      </h3>
+                      <div className="space-y-2 mt-2">
+                        {dayAttempts.map((attempt: any) => (
+                          <div key={attempt.id} className="card flex items-center justify-between">
+                            <div>
+                              <p className="text-white font-medium">{attempt.phoneNumber}</p>
+                              <p className="text-gray-400 text-sm">
+                                KSh {(attempt.purchaseAmount || 0).toLocaleString()} | {attempt.selectedItem?.name || `Box ${attempt.selectedBox}`}
+                              </p>
+                              <p className="text-gray-500 text-xs">
+                                {new Date(attempt.timestamp || Date.now()).toLocaleTimeString()}
+                              </p>
+                            </div>
+                            <div className={`px-3 py-1 rounded ${attempt.won ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'}`}>
+                              {attempt.won ? 'WIN' : 'LOSE'}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))
-                )}
+                  ));
+                })()}
               </div>
             ) : (
               <div className="text-center py-12">
