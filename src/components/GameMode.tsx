@@ -332,11 +332,17 @@ export default function GameMode() {
   const handleItemSelect = (item: Item) => {
     if (!item || !item.isActive) return;
     
-    // Visual feedback - show tapped animation
     setTappedItemId(item.id);
     setTimeout(() => setTappedItemId(null), 400);
     
     setSelectedItem(item);
+    
+    // Set winning number to match the selected item's position (order + 1 = box number)
+    // This ensures if customer wins, they win the actual item they selected
+    const winningNum = (item.order ?? 0) + 1;
+    setCorrectNumber(winningNum);
+    setThresholdNumber(thresholdNumber ?? 3);
+    
     setShowItemPicker(false);
     setShowNumberPicker(true);
   };
