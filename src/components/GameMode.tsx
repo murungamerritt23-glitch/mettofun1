@@ -119,13 +119,14 @@ export default function GameMode() {
   }, []);
 
   // Load shop items - always fresh from DB to get latest updates (images, etc)
+  // Also refresh when component becomes visible (via currentView changes to customer)
   useEffect(() => {
     let isCancelled = false;
     
     const loadItems = async () => {
       if (currentShop) {
         // Create a timeout promise
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise<never>((_, reject) => 
           setTimeout(() => reject(new Error('Items loading timeout')), 15000)
         );
         
@@ -186,6 +187,22 @@ export default function GameMode() {
     loadItems();
     return () => { isCancelled = true; };
   }, [currentShop, setItems]);
+
+  // Poll for item updates every 5 seconds to catch changes from AdminDashboard
+  useEffect(() => {
+    if (!currentShop || gameStatus !== 'idle') return;
+    
+    const pollInterval = setInterval(async () => {
+      try {
+        const freshItems = await localItems.getByShop(currentShop.id);
+        setItems(freshItems);
+      } catch (e) {
+        // Silent fail on polling errors
+      }
+    }, 5000);
+    
+    return () => clearInterval(pollInterval);
+  }, [currentShop, gameStatus, setItems]);
 
   // Check today's attempts for demo mode
   useEffect(() => {
