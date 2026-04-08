@@ -188,9 +188,10 @@ export default function GameMode() {
     return () => { isCancelled = true; };
   }, [currentShop, setItems]);
 
-  // Poll for item updates every 5 seconds to catch changes from AdminDashboard
+  // Poll for item updates every 3 seconds when item picker screen is shown
+  // This catches changes from AdminDashboard immediately
   useEffect(() => {
-    if (!currentShop || gameStatus !== 'idle') return;
+    if (!currentShop || !showItemPicker) return;
     
     const pollInterval = setInterval(async () => {
       try {
@@ -199,10 +200,10 @@ export default function GameMode() {
       } catch (e) {
         // Silent fail on polling errors
       }
-    }, 5000);
+    }, 3000);
     
     return () => clearInterval(pollInterval);
-  }, [currentShop, gameStatus, setItems]);
+  }, [currentShop, showItemPicker, setItems]);
 
   // Check today's attempts for demo mode
   useEffect(() => {
