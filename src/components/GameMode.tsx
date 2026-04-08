@@ -336,13 +336,6 @@ export default function GameMode() {
     setTimeout(() => setTappedItemId(null), 400);
     
     setSelectedItem(item);
-    
-    // Set winning number to match the selected item's position (order + 1 = box number)
-    // This ensures if customer wins, they win the actual item they selected
-    const winningNum = (item.order ?? 0) + 1;
-    setCorrectNumber(winningNum);
-    setThresholdNumber(thresholdNumber ?? 3);
-    
     setShowItemPicker(false);
     setShowNumberPicker(true);
   };
@@ -357,9 +350,9 @@ export default function GameMode() {
     setGameWon(won);
     
     if (won) {
-      const item = getWinningItem(correctNumber, items.filter(i => i.isActive));
-      setWinningItem(item);
-      setSelectedItem(item || null);
+      // Show the exact item customer selected - not a different one
+      setWinningItem(selectedItem);
+      setSelectedItem(selectedItem);
     }
     
     // Save attempt in background - don't await to avoid blocking
