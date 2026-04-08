@@ -303,14 +303,8 @@ export default function GameMode() {
     // Update state with parsed amount
     setPurchaseAmount(String(amount));
     
-    // Generate winning number from the displayed range (1 to 18-threshold)
-    // Only ONE number wins from the displayed range
-    const winningNum = generateSecureRandomNumber(18 - config.threshold);
+    // Store the threshold for display purposes
     const threshold = config.threshold;
-    
-    // Store both the winning number and threshold
-    // Win if selected number === winning number (exact match)
-    setCorrectNumber(winningNum);
     setThresholdNumber(threshold);
     
     setGameStatus('playing');
@@ -336,6 +330,12 @@ export default function GameMode() {
     setTimeout(() => setTappedItemId(null), 400);
     
     setSelectedItem(item);
+    
+    // Set winning number to match the selected item's box position
+    // This ensures customer can only win the exact item they selected
+    const winningNum = (item.order ?? 0) + 1;
+    setCorrectNumber(winningNum);
+    
     setShowItemPicker(false);
     setShowNumberPicker(true);
   };
