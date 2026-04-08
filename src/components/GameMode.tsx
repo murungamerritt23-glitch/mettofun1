@@ -839,10 +839,11 @@ export default function GameMode() {
                 </div>
                 <button
                   onClick={() => {
-                    // Check if this customer already liked this item
-                    const likedKey = 'metofun-liked-items';
-                    const likedItems = JSON.parse(localStorage.getItem(likedKey) || '{}');
-                    const alreadyLiked = likedItems[itemOfTheDay.id];
+                    // Check if this customer already liked today
+                    const today = new Date().toISOString().split('T')[0];
+                    const likedKey = `metofun-liked-${today}`;
+                    const likedCustomers = JSON.parse(localStorage.getItem(likedKey) || '[]');
+                    const alreadyLiked = likedCustomers.includes(phoneNumber);
                     
                     if (!alreadyLiked && !isSuperAdminTestMode) {
                       incrementItemOfDayLikes();

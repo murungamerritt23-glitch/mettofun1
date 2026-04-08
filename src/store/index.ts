@@ -270,16 +270,18 @@ export const useGameStore = create<GameState>()(
         const { isTestMode, customerSession } = useGameStore.getState();
         if (isTestMode || !current) return;
         
-        // Check if this customer (phone number) already liked this item
-        const likedKey = 'metofun-liked-items';
-        const likedItems = JSON.parse(localStorage.getItem(likedKey) || '{}');
-        const currentItemKey = `${current.id}`;
-        const phoneKey = customerSession?.phoneNumber || 'unknown';
+        // Get today's date for daily reset
+        const today = new Date().toISOString().split('T')[0];
         
-        // Only increment if this phone number hasn't liked this item yet
-        if (!likedItems[currentItemKey]) {
-          likedItems[currentItemKey] = true;
-          localStorage.set(likedKey, JSON.stringify(likedItems));
+        // Check if this customer already liked today
+        const likedKey = `metofun-liked-${today}`;
+        const likedCustomers = JSON.parse(localStorage.getItem(likedKey) || '[]');
+        const phone = customerSession?.phoneNumber;
+        
+        // Only increment if this customer hasn't liked today
+        if (phone && !likedCustomers.includes(phone)) {
+          likedCustomers.push(phone);
+          localStorage.set(likedKey, JSON.stringify(likedCustomers));
           
           const newLikes = (current.likes || 0) + 1;
           const updated = { ...current, likes: newLikes };
