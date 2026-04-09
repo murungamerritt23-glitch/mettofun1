@@ -333,8 +333,8 @@ export default function GameMode() {
     
     // Set winning number to match the selected item's box position
     // This ensures customer can only win the exact item they selected
-    const winningNum = (item.order ?? 0) + 1;
-    setCorrectNumber(winningNum);
+    const threshold = thresholdNumber || 1;
+const winningNum = generateSecureRandomNumber(18 - threshold);
     
     setShowItemPicker(false);
     setShowNumberPicker(true);
