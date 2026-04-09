@@ -333,7 +333,23 @@ export default function GameMode() {
     
     // Set winning number to match the selected item's box position
     // This ensures customer can only win the exact item they selected
-    const threshold = thresholdNumber || 1;
+   const handleItemSelect = (item: Item) => {
+  if (!item || !item.isActive) return;
+  
+  setTappedItemId(item.id);
+  setTimeout(() => setTappedItemId(null), 400);
+  
+  setSelectedItem(item);
+  
+  // Generate RANDOM winning number from available range (1 to 18-threshold)
+  // This makes the game fair and unpredictable
+  const threshold = thresholdNumber || 1;
+  const winningNum = generateSecureRandomNumber(18 - threshold);
+  setCorrectNumber(winningNum);
+  
+  setShowItemPicker(false);
+  setShowNumberPicker(true);
+}; const threshold = thresholdNumber || 1;
 const winningNum = generateSecureRandomNumber(18 - threshold);
     
     setShowItemPicker(false);
