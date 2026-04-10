@@ -273,7 +273,7 @@ export default function NominationScreen() {
           {t.selectPrompt}
         </p>
         
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 max-h-[50vh] overflow-y-auto">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 max-h-[50vh] overflow-y-auto">
           {activeItems.length === 0 ? (
             <div className="col-span-full text-center py-8 text-gray-400">
               {searchQuery 
@@ -291,13 +291,13 @@ export default function NominationScreen() {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleNominate(item)}
                 disabled={isSaving}
-                className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center relative ${
+                className={`game-box overflow-hidden p-0 flex flex-col justify-start relative ${
                   isSaving ? 'opacity-50 cursor-not-allowed' : ''
                 } ${tappedItemId === item.id ? 'nomination-success' : ''}`}
               >
                 {/* Rank badge for top items */}
                 {index < 3 && (
-                  <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                  <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold z-10 ${
                     index === 0 ? 'bg-yellow-500 text-black' :
                     index === 1 ? 'bg-gray-400 text-black' :
                     'bg-amber-700 text-white'
@@ -306,26 +306,33 @@ export default function NominationScreen() {
                   </div>
                 )}
                 
-                {item.imageUrl ? (
-                  <img 
-                    src={item.imageUrl} 
-                    alt={item.name}
-                    className="w-8 h-8 object-cover rounded mb-1"
-                  />
-                ) : (
-                  <Gift className="w-6 h-6 sm:w-8 sm:h-8 mb-1 text-gold-400" />
-                )}
+                {/* Image fills the top portion of the card */}
+                <div className="w-full flex-1 min-h-0 relative">
+                  {item.imageUrl ? (
+                    <img 
+                      src={item.imageUrl} 
+                      alt={item.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Gift className={`w-8 h-8 ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`} />
+                    </div>
+                  )}
+                </div>
                 
-                <span className="text-xs font-medium truncate w-full text-center">
-                  {item.name}
-                </span>
-                
-                <span className="text-[10px] text-gold-400">
-                  KSh {item.value.toLocaleString()}
-                </span>
+                {/* Name and price pinned to the bottom */}
+                <div className="w-full px-1 py-1 bg-black/60 text-center shrink-0">
+                  <span className="text-xs font-semibold truncate leading-tight text-white block">
+                    {item.name}
+                  </span>
+                  <span className={`text-xs leading-tight font-bold ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`}>
+                    KSh {item.value.toLocaleString()}
+                  </span>
+                </div>
                 
                 {/* Nomination count */}
-                <div className="flex items-center gap-1 mt-1">
+                <div className="absolute top-1 left-1 flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded-full">
                   <Heart className="w-3 h-3 text-pink-500" />
                   <span className="text-[10px] text-pink-400">
                     {item.nominationCount}
