@@ -433,29 +433,62 @@ export default function AdminDashboard() {
     }
   }, [admin]);
 
-  // Load Item of the Day on mount
+  // Load Item of the Day on mount with real-time listener
   useEffect(() => {
+    let isCancelled = false;
+    let unsubscribe: (() => void) | null = null;
+
     const loadItemOfDay = async () => {
       // Try local first for immediate display
       const savedItem = await localSettings.get('itemOfTheDay');
-      if (savedItem) {
+      if (savedItem && !isCancelled) {
         setItemOfTheDay(savedItem);
       }
-      // Always try to fetch latest from RTDB
+
+      // Set up real-time listener for live likes across all devices
       try {
-        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-        const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
-        if (rtdbItem) {
-          await localSettings.set('itemOfTheDay', rtdbItem);
-          setItemOfTheDay(rtdbItem);
-        } else if (!savedItem) {
-          setItemOfTheDay(null);
-        }
+        const { rtdb } = await import('@/lib/firebase');
+        const { ref, onValue } = await import('firebase/database');
+        const itemOfDayRef = ref(rtdb, 'settings/itemOfTheDay');
+        
+        unsubscribe = onValue(itemOfDayRef, (snapshot) => {
+          if (isCancelled) return;
+          
+          const rtdbItem = snapshot.exists() ? snapshot.val() : null;
+          if (rtdbItem) {
+            localSettings.set('itemOfTheDay', rtdbItem);
+            setItemOfTheDay(rtdbItem);
+          } else if (!savedItem && !isCancelled) {
+            setItemOfTheDay(null);
+          }
+        }, (error) => {
+          console.log('RTDB listener error:', error);
+        });
       } catch (e) {
-        // RTDB fetch failed, use local
+        // Fallback: try polling
+        try {
+          const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+          const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
+          if (rtdbItem && !isCancelled) {
+            await localSettings.set('itemOfTheDay', rtdbItem);
+            setItemOfTheDay(rtdbItem);
+          } else if (!savedItem && !isCancelled) {
+            setItemOfTheDay(null);
+          }
+        } catch (e2) {
+          // RTDB fetch failed, use local
+        }
       }
     };
+
     loadItemOfDay();
+    
+    return () => {
+      isCancelled = true;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   // Admin handlers

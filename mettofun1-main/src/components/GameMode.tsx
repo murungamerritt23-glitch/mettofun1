@@ -21,6 +21,8 @@ import {
 import type { Item, GameAttempt } from '@/types';
 import { verifyShopLocation } from '@/lib/location';
 import NominationScreen from './NominationScreen';
+import { rtdb } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 
 export default function GameMode() {
   const [isLoading, setIsLoading] = useState(true);
@@ -71,50 +73,56 @@ export default function GameMode() {
   // For shop_admin and agent_admin, always use real mode (test mode doesn't affect them)
   const isSuperAdminTestMode = isTestMode && admin?.level === 'super_admin';
 
-  // Load Item of the Day on mount
+  // Load Item of the Day on mount with real-time listener
   useEffect(() => {
+    let isCancelled = false;
+    let unsubscribe: (() => void) | null = null;
+
     const loadItemOfDay = async () => {
       // Try local first
       const savedItem = await localSettings.get('itemOfTheDay');
-      if (savedItem) {
+      if (savedItem && !isCancelled) {
         useGameStore.getState().setItemOfTheDay(savedItem);
-      } else {
-        // Non-blocking RTDB fetch for new devices
-        import('@/lib/firebase').then(({ rtdbSettings }) => {
-          rtdbSettings.get('itemOfTheDay').then((rtdbItem: any) => {
-            if (rtdbItem) {
-              localSettings.set('itemOfTheDay', rtdbItem);
-              useGameStore.getState().setItemOfTheDay(rtdbItem);
-            }
-          }).catch(() => {});
-        }).catch(() => {});
       }
-      
-      // Periodically sync item of day from RTDB for live likes (every 30 seconds)
-      const syncItemOfDay = async () => {
-        try {
-          const { rtdbSettings } = await import('@/lib/firebase');
-          const rtdbItem = await rtdbSettings.get('itemOfTheDay');
+
+      // Set up real-time listener for live likes across all devices
+      try {
+        const { rtdb } = await import('@/lib/firebase');
+        const itemOfDayRef = ref(rtdb, 'settings/itemOfTheDay');
+        
+        unsubscribe = onValue(itemOfDayRef, (snapshot) => {
+          if (isCancelled) return;
+          
+          const rtdbItem = snapshot.exists() ? snapshot.val() : null;
           if (rtdbItem) {
             // Preserve local likes if RTDB has fewer (in case offline likes happened)
-            const localItem = await localSettings.get('itemOfTheDay');
-            if (localItem && rtdbItem.likes < localItem.likes) {
+            const localItem = savedItem;
+            if (localItem && rtdbItem.likes < (localItem.likes || 0)) {
               rtdbItem.likes = localItem.likes;
-              await rtdbSettings.set('itemOfTheDay', rtdbItem);
+              // Write back to sync the likes
+              import('@/lib/firebase').then(({ rtdbSettings }) => {
+                rtdbSettings.set('itemOfTheDay', rtdbItem).catch(() => {});
+              });
             }
             localSettings.set('itemOfTheDay', rtdbItem);
             useGameStore.getState().setItemOfTheDay(rtdbItem);
           }
-        } catch (e) {}
-      };
-      
-      // Initial sync
-      syncItemOfDay();
-      // Sync every 30 seconds for live likes
-      const syncInterval = setInterval(syncItemOfDay, 30000);
-      return () => clearInterval(syncInterval);
+        }, (error) => {
+          console.log('RTDB listener error:', error);
+        });
+      } catch (e) {
+        console.log('RTDB setup error:', e);
+      }
     };
+
     loadItemOfDay();
+    
+    return () => {
+      isCancelled = true;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   // Load shop items - always fresh from DB to get latest updates (images, etc)

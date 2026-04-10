@@ -222,7 +222,7 @@ export const firebaseDb = {
   }
 };
 
-export { app, auth, db };
+export { app, auth, db, rtdb };
 
 // Shop collection helper functions for Firestore
 const SHOPS_COLLECTION = 'shops';
