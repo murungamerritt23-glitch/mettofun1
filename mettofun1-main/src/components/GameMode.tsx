@@ -393,7 +393,7 @@ export default function GameMode() {
         selectedBox || 0,
         correctNumber,
         won,
-        winningItem || undefined,
+        selectedItem || undefined,
         isSuperAdminTestMode
       );
       
