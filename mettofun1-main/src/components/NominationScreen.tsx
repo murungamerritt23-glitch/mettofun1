@@ -306,13 +306,13 @@ export default function NominationScreen() {
                   </div>
                 )}
                 
-                {/* Image fills the top portion of the card */}
-                <div className="w-full flex-1 min-h-0 relative">
+                {/* Image fills the entire card */}
+                <div className="w-full h-full relative">
                   {item.imageUrl ? (
                     <img 
                       src={item.imageUrl} 
                       alt={item.name}
-                      className="absolute inset-0 w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-contain"
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">

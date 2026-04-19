@@ -831,7 +831,7 @@ export default function GameMode() {
                     <img 
                       src={itemOfTheDay.imageUrl} 
                       alt={itemOfTheDay.name} 
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   ) : (
                     <Gift className="text-amber-400 w-8 h-8" />
@@ -889,13 +889,13 @@ export default function GameMode() {
                     : ''
                 } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
               >
-                {/* Image fills the top portion of the card */}
-                <div className="w-full flex-1 min-h-0 relative">
+                {/* Image fills the entire card */}
+                <div className="w-full h-full relative">
                   {item.imageUrl ? (
                     <img 
                       src={item.imageUrl} 
                       alt={item.name}
-                      className="absolute inset-0 w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-contain"
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -1081,7 +1081,7 @@ export default function GameMode() {
                     <img 
                       src={item.imageUrl} 
                       alt={item.name}
-                      className="w-8 h-8 object-cover rounded"
+                      className="w-10 h-10 object-contain rounded"
                     />
                   ) : (
                     <Gift className={`w-6 h-6 ${tappedBoxNum === boxNum ? 'text-white' : ''}`} />
