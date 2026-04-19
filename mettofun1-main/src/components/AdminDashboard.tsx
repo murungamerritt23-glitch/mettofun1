@@ -3254,7 +3254,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 bg-amber-900/30 rounded-lg flex items-center justify-center">
                           {itemOfTheDay.imageUrl ? (
-                            <img src={itemOfTheDay.imageUrl} alt={itemOfTheDay.name} className="w-full h-full object-contain rounded-lg" />
+                            <img src={itemOfTheDay.imageUrl} alt={itemOfTheDay.name} className="w-full h-full object-cover rounded-lg" />
                           ) : (
                             <Gift className="text-amber-400 w-8 h-8" />
                           )}
