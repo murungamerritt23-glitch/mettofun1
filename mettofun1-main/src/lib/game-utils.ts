@@ -164,7 +164,9 @@ export const createGameAttempt = (
   correctNumber: number,
   won: boolean,
   selectedItem?: Item,
-  isTest?: boolean
+  isTest?: boolean,
+  entrySource?: 'NPN' | 'PURCHASE',
+  entryType?: 'NPN' | 'REGULAR'
 ): GameAttempt => {
   const timestamp = new Date();
   // Generate a random seed for this attempt (used in hash)
@@ -196,6 +198,8 @@ export const createGameAttempt = (
     timestamp,
     synced: false,
     isTest: isTest || false,
+    entrySource: entrySource || 'PURCHASE',
+    entryType: entryType || 'REGULAR',
     integrityHash,
     integrityVerified: true, // Mark as verified since we just created it
     hashSeed: seed

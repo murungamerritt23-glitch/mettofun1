@@ -385,17 +385,19 @@ export default function GameMode() {
         return;
       }
       
-      const attempt = createGameAttempt(
-        currentShop?.id || 'demo',
-        customerSession?.phoneNumber || phoneNumber,
-        parseFloat(purchaseAmount),
-        currentShop?.qualifyingPurchase || 0,
-        selectedBox || 0,
-        correctNumber,
-        won,
-        selectedItem || undefined,
-        isSuperAdminTestMode
-      );
+       const attempt = createGameAttempt(
+         currentShop?.id || 'demo',
+         customerSession?.phoneNumber || phoneNumber,
+         parseFloat(purchaseAmount),
+         currentShop?.qualifyingPurchase || 0,
+         selectedBox || 0,
+         correctNumber,
+         won,
+         winningItem || undefined,
+         isSuperAdminTestMode,
+         undefined, // entrySource - will be set based on context
+         undefined  // entryType - will be set based on context
+       );
       
       // Fire and forget - don't await
       saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));

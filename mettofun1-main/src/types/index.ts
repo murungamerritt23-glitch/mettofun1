@@ -200,6 +200,8 @@ export interface GameAttempt {
   timestamp: Date;
   synced: boolean;
   isTest?: boolean; // Test mode flag - marks test attempts to exclude from real analytics
+  entrySource?: 'NPN' | 'PURCHASE'; // Source of the entry: NPN (free) or PURCHASE (paid)
+  entryType?: 'NPN' | 'REGULAR';    // Type of entry: NPN (free) or REGULAR (normal)
   // Anti-tamper fields
   integrityHash?: string;      // SHA256 hash of game data for integrity verification
   integrityVerified?: boolean; // Whether the integrity has been verified
