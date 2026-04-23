@@ -225,13 +225,28 @@ export default function AdminDashboard() {
       setTimeout(() => {
         setNPNSuccess(null);
       }, 3000);
-    } catch (error) {
-      console.error('Error granting NPN entry:', error);
-      setNPNError('Failed to grant NPN entry. Please try again.');
-    } finally {
-      setIsNPNGranting(false);
-    }
-  };
+      } catch (error) {
+        console.error('Error granting NPN entry:', error);
+        setNPNError('Failed to grant NPN entry. Please try again.');
+      } finally {
+        setIsNPNGranting(false);
+      }
+    };
+
+    const handlePostGrantRedirect = (phone: string) => {
+      // Navigate to customer play mode for the granted phone number
+      const grantedSession = {
+        phoneNumber: phone,
+        authorized: true,
+        attemptsToday: 0,
+        lastAttemptDate: new Date().toISOString().split('T')[0],
+        purchaseAmount: 0
+      };
+      localSettings.set('currentCustomerSession', grantedSession);
+      setActiveTab('dashboard');
+      setShowNPNForm(false);
+      console.log('[NPN] Redirecting to customer play for:', phone);
+    };
 
   const { admin, logout } = useAuthStore();
   const { currentShop, setCurrentShop } = useShopStore();
