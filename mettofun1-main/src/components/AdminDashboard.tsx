@@ -233,7 +233,7 @@ export default function AdminDashboard() {
       }
     };
 
-    const handlePostGrantRedirect = (phone: string) => {
+     const handlePostGrantRedirect = (phone: string) => {
       // Navigate to customer play mode for the granted phone number
       const grantedSession = {
         phoneNumber: phone,
@@ -242,8 +242,12 @@ export default function AdminDashboard() {
         lastAttemptDate: new Date().toISOString().split('T')[0],
         purchaseAmount: 0
       };
+      // Save session to store (so GameMode/NominationScreen see it)
+      setCustomerSession(grantedSession);
+      // Also keep in local settings for persistence
       localSettings.set('currentCustomerSession', grantedSession);
-      setActiveTab('dashboard');
+      // Switch to customer view so the user can play the granted attempt
+      setCurrentView('customer');
       setShowNPNForm(false);
       console.log('[NPN] Redirecting to customer play for:', phone);
     };
