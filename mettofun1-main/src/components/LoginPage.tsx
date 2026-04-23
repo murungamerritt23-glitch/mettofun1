@@ -388,7 +388,8 @@ export default function LoginPage() {
         return;
       }
     } else {
-      setCurrentView('admin');
+      // Shop admins and agents land in customer view so they can play/nominate immediately
+      setCurrentView('customer');
     }
 
     setIsLoading(false);
