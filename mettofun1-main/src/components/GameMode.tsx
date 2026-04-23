@@ -348,72 +348,68 @@ export default function GameMode() {
   setShowNumberPicker(true);
 }; 
 
-  const handleNumberSelect = (number: number) => {
-    if (selectedNumber !== null || !correctNumber) return;
-    
-    setSelectedNumber(number);
-    
-    // Check if won - player wins only if selected number === correctNumber (exact match)
-    const won = number === correctNumber;
-    setGameWon(won);
-    
-    if (won) {
-      // Show the exact item customer selected - not a different one
-      setWinningItem(selectedItem);
-      setSelectedItem(selectedItem);
-    }
-    
-    // Save attempt in background - don't await to avoid blocking
-    try {
-      // Validate attempt before saving
-      const validation = validateGameAttempt(
-        currentShop?.id || 'demo',
-        customerSession?.phoneNumber || phoneNumber,
-        parseFloat(purchaseAmount),
-        currentShop?.qualifyingPurchase || 0,
-        selectedBox || 0,
-        correctNumber,
-        won,
-        thresholdNumber ?? undefined
-      );
-      
-      if (!validation.valid) {
-        console.error('Invalid game attempt:', validation.error);
-        // Still show result to user but don't save invalid attempt
-        setShowResult(true);
-        setGameStatus(won ? 'won' : 'lost');
-        return;
-      }
-      
-       const attempt = createGameAttempt(
-         currentShop?.id || 'demo',
-         customerSession?.phoneNumber || phoneNumber,
-         parseFloat(purchaseAmount),
-         currentShop?.qualifyingPurchase || 0,
-         selectedBox || 0,
-         correctNumber,
-         won,
-         winningItem || undefined,
-         isSuperAdminTestMode,
-         undefined, // entrySource - will be set based on context
-         undefined  // entryType - will be set based on context
-       );
-      
-      // Fire and forget - don't await
-       saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
-       
-       // Store the attempt ID for nomination tracking
-       setCurrentGameAttemptId(attempt.id);
-       
-       // Navigate to customer view so they can play/nominate
-       setCurrentView('customer');
-    } catch (error) {
-      console.error('Error saving game attempt:', error);
-    }
-    
-    setShowResult(true);
-    setGameStatus(won ? 'won' : 'lost');
-  };
+   const handleNumberSelect = (number: number) => {
+     if (selectedNumber !== null || !correctNumber) return;
+     
+     setSelectedNumber(number);
+     
+     // Check if won - player wins only if selected number === correctNumber (exact match)
+     const won = number === correctNumber;
+     setGameWon(won);
+     
+     if (won) {
+       // Show the exact item customer selected - not a different one
+       setWinningItem(selectedItem);
+       setSelectedItem(selectedItem);
+     }
+     
+     // Validate before saving — do not save invalid attempts
+     const validation = validateGameAttempt(
+       currentShop?.id || 'demo',
+       customerSession?.phoneNumber || phoneNumber,
+       parseFloat(purchaseAmount),
+       currentShop?.qualifyingPurchase || 0,
+       selectedBox || 0,
+       correctNumber,
+       won,
+       thresholdNumber ?? undefined
+     );
+     
+     if (!validation.valid) {
+       console.error('Invalid game attempt:', validation.error);
+       // Still show result to user but do not save
+       setShowResult(true);
+       setGameStatus(won ? 'won' : 'lost');
+       return;
+     }
+     
+     // Create and save attempt only after user has played
+     const attempt = createGameAttempt(
+       currentShop?.id || 'demo',
+       customerSession?.phoneNumber || phoneNumber,
+       parseFloat(purchaseAmount),
+       currentShop?.qualifyingPurchase || 0,
+       selectedBox || 0,
+       correctNumber,
+       won,
+       winningItem || undefined,
+       isSuperAdminTestMode,
+       undefined, // entrySource — will be set based on context
+       undefined  // entryType — will be set based on context
+     );
+     
+     // Fire and forget — save after play, not before
+     saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
+     
+     // Store the attempt ID for nomination tracking
+     setCurrentGameAttemptId(attempt.id);
+     
+     // Navigate to customer view so they can play/nominate
+     setCurrentView('customer');
+     
+     setShowResult(true);
+     setGameStatus(won ? 'won' : 'lost');
+   };
 
   const handlePlayAgain = async () => {
     // Fresh game session - no time restrictions
