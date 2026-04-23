@@ -302,23 +302,17 @@ export default function LoginPage() {
       let shop: Awaited<ReturnType<typeof localShops.getByDeviceId>> = undefined;
       
       // Priority 1: Match by adminEmail (most reliable - each email links to exactly one shop)
-      const shopLoadTimeout = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Shop load timeout')), 15000)
-      );
-      
       let localShopsList: Shop[];
       try {
-        localShopsList = await Promise.race([
-          localShops.getAll(),
-          shopLoadTimeout
-        ]);
+        // Increase timeout and avoid blocking on race to allow slower local reads to complete
+        localShopsList = await localShops.getAll();
       } catch (e) {
-        console.error('Shop load timeout:', e);
+        console.error('Local shops read failed:', e);
         setError('Failed to load shops. Please try again.');
         setIsLoading(false);
         return;
       }
-      
+
       shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
       
       // Priority 2: Match by assignedShops (set by super_admin when creating the admin)
@@ -335,26 +329,29 @@ export default function LoginPage() {
         }
       }
 
-      // Priority 4: Fetch from RTDB if still not found
+      // Priority 4: Fetch from RTDB if still not found (non-blocking fallback)
       if (!shop) {
-        try {
-          const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
-          const fbShops = await rtdbShopApi.getAll();
-          if (fbShops && fbShops.length > 0) {
-            // Save to local for offline access
-            for (const s of fbShops) {
-              await localShops.save(s);
+        (async () => {
+          try {
+            const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
+            const fbShops = await rtdbShopApi.getAll();
+            if (fbShops && fbShops.length > 0) {
+              // Save to local for offline access and future fast lookups
+              for (const s of fbShops) {
+                await localShops.save(s);
+              }
+              // Find shop by admin email first
+              shop = fbShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
+              // Then by assigned shops
+              if (!shop && assignedShopIds.length > 0) {
+                shop = fbShops.find(s => assignedShopIds.includes(s.id));
+              }
             }
-            // Find shop by admin email first
-            shop = fbShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
-            // Then by assigned shops
-            if (!shop && assignedShopIds.length > 0) {
-              shop = fbShops.find(s => assignedShopIds.includes(s.id));
-            }
+          } catch (err) {
+            console.warn('RTDB shop fetch failed (non-blocking):', err);
+            // Do not block login; if still no shop, show assign error below
           }
-        } catch (err) {
-          // RTDB fetch failed
-        }
+        })();
       }
 
       // Handle device lock for shop_admin
