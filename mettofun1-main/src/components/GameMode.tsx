@@ -400,10 +400,13 @@ export default function GameMode() {
        );
       
       // Fire and forget - don't await
-      saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
-      
-      // Store the attempt ID for nomination tracking
-      setCurrentGameAttemptId(attempt.id);
+       saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
+       
+       // Store the attempt ID for nomination tracking
+       setCurrentGameAttemptId(attempt.id);
+       
+       // Navigate to customer view so they can play/nominate
+       setCurrentView('customer');
     } catch (error) {
       console.error('Error saving game attempt:', error);
     }
