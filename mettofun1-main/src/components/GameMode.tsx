@@ -1105,15 +1105,20 @@ export default function GameMode() {
         </div>
       </div>
 
-      {/* Box count indicator */}
-      <div className="max-w-2xl mx-auto mt-6 text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gold-900/30 rounded-full">
-          <Star className="w-4 h-4 text-gold-400" />
-          <span className="text-gold-400 text-sm">
-            {config.ratio} - {config.boxCount} {language === 'sw' ? 'sanduku' : 'boxes'}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+       {/* Box count indicator */}
+       <div className="max-w-2xl mx-auto mt-6 text-center">
+         <div className="inline-flex items-center gap-2 px-4 py-2 bg-gold-900/30 rounded-full">
+           <Star className="w-4 h-4 text-gold-400" />
+           <span className="text-gold-400 text-sm">
+             {config.ratio} - {config.boxCount} {language === 'sw' ? 'sanduku' : 'boxes'}
+           </span>
+         </div>
+       </div>
+       
+       {/* NPN Compliance Text */}
+       <div className="mt-8 text-center text-xs text-gray-500">
+         Participation available on request, subject to conditions.
+       </div>
+     </div>
+   );
 }
