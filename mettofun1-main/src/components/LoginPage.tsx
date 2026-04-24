@@ -301,10 +301,10 @@ export default function LoginPage() {
       const assignedShopIds = adminToUse!.assignedShops || [];
       let shop: Awaited<ReturnType<typeof localShops.getByDeviceId>> = undefined;
       
-      // Priority 1: Match by adminEmail (most reliable - each email links to exactly one shop)
+       // Priority 1: Match by adminEmail (most reliable - each email links to exactly one shop)
       let localShopsList: Shop[];
       try {
-        // Increase timeout and avoid blocking on race to allow slower local reads to complete
+        // Read local shops without any race or timeout to avoid hangs/crashes
         localShopsList = await localShops.getAll();
       } catch (e) {
         console.error('Local shops read failed:', e);
@@ -329,7 +329,8 @@ export default function LoginPage() {
         }
       }
 
-      // Priority 4: Fetch from RTDB if still not found (non-blocking fallback)
+      // Priority 4: Fetch from RTDB if still not found (non-blocking background fallback)
+      // Defer to background so it never blocks or races the local read
       if (!shop) {
         (async () => {
           try {
