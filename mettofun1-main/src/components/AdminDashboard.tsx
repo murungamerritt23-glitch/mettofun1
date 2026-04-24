@@ -162,6 +162,8 @@ export default function AdminDashboard() {
         setIsNPNGranting(false);
         return;
       }
+
+      // Check if user has exceeded daily attempt limit
       
       // Check if user has exceeded daily attempt limit
       const userAttempts = await localAttempts.getByPhone(npnPhone);

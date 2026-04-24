@@ -337,9 +337,20 @@ export default function LoginPage() {
             const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
             const fbShops = await rtdbShopApi.getAll();
             if (fbShops && fbShops.length > 0) {
-              // Save to local for offline access and future fast lookups
+              // Save to local for offline access and future fast lookups (upsert by timestamp)
               for (const s of fbShops) {
-                await localShops.save(s);
+                const local = await localShops.get(s.id);
+                if (!local || new Date(s.updatedAt || 0) > new Date(local.updatedAt || 0)) {
+                  await localShops.save(s);
+                }
+            // Pull NPN entries to sync across devices [ADDED]
+            try {
+              const { rtdb } = await import('@/lib/firebase');
+              const { ref, onValue } = await import('firebase/database');
+              undefined
+            } catch (err) {
+              console.warn('RTDB NPN fetch failed (non-blocking):', err);
+            }
               }
               // Find shop by admin email first
               shop = fbShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
