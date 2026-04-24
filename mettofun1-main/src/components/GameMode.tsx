@@ -330,23 +330,18 @@ export default function GameMode() {
     setShowNumberPicker(true);
   };
 
- const handleItemSelect = (item: Item) => {
-  if (!item || !item.isActive) return;
-  
-  setTappedItemId(item.id);
-  setTimeout(() => setTappedItemId(null), 400);
-  
-  setSelectedItem(item);
-  
-  // Generate RANDOM winning number from available range (1 to 18-threshold)
-  // This makes the game fair and unpredictable
-  const threshold = thresholdNumber || 1;
-  const winningNum = generateSecureRandomNumber(18 - threshold);
-  setCorrectNumber(winningNum);
-  
-  setShowItemPicker(false);
-  setShowNumberPicker(true);
-}; 
+  const handleItemSelect = (item: Item) => {
+   if (!item || !item.isActive) return;
+   
+   setTappedItemId(item.id);
+   setTimeout(() => setTappedItemId(null), 400);
+   
+   setSelectedItem(item);
+   
+   // Defer winning number generation until user selects a box/number
+   setShowItemPicker(false);
+   setShowNumberPicker(true);
+ };
 
    const handleNumberSelect = (number: number) => {
      if (selectedNumber !== null || !correctNumber) return;
@@ -363,53 +358,58 @@ export default function GameMode() {
        setSelectedItem(selectedItem);
      }
      
-     // Validate before saving — do not save invalid attempts
-     const validation = validateGameAttempt(
-       currentShop?.id || 'demo',
-       customerSession?.phoneNumber || phoneNumber,
-       parseFloat(purchaseAmount),
-       currentShop?.qualifyingPurchase || 0,
-       selectedBox || 0,
-       correctNumber,
-       won,
-       thresholdNumber ?? undefined
-     );
-     
-     if (!validation.valid) {
-       console.error('Invalid game attempt:', validation.error);
-       // Still show result to user but do not save
-       setShowResult(true);
-       setGameStatus(won ? 'won' : 'lost');
-       return;
-     }
-     
-     // Create and save attempt only after user has played
-     const attempt = createGameAttempt(
-       currentShop?.id || 'demo',
-       customerSession?.phoneNumber || phoneNumber,
-       parseFloat(purchaseAmount),
-       currentShop?.qualifyingPurchase || 0,
-       selectedBox || 0,
-       correctNumber,
-       won,
-       winningItem || undefined,
-       isSuperAdminTestMode,
-       undefined, // entrySource — will be set based on context
-       undefined  // entryType — will be set based on context
-     );
-     
-     // Fire and forget — save after play, not before
-     saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
-     
-     // Store the attempt ID for nomination tracking
-     setCurrentGameAttemptId(attempt.id);
-     
-     // Navigate to customer view so they can play/nominate
-     setCurrentView('customer');
-     
-     setShowResult(true);
-     setGameStatus(won ? 'won' : 'lost');
-   };
+      // Validate before saving — do not save invalid attempts
+      const validation = validateGameAttempt(
+        currentShop?.id || 'demo',
+        customerSession?.phoneNumber || phoneNumber,
+        parseFloat(purchaseAmount),
+        currentShop?.qualifyingPurchase || 0,
+        selectedBox || 0,
+        correctNumber,
+        won,
+        thresholdNumber ?? undefined
+      );
+      
+      if (!validation.valid) {
+        console.error('Invalid game attempt:', validation.error);
+        // Still show result to user but do not save invalid attempt
+        setShowResult(true);
+        setGameStatus(won ? 'won' : 'lost');
+        return;
+      }
+      
+      // Create and save attempt only after user plays
+      const attempt = createGameAttempt(
+        currentShop?.id || 'demo',
+        customerSession?.phoneNumber || phoneNumber,
+        parseFloat(purchaseAmount),
+        currentShop?.qualifyingPurchase || 0,
+        selectedBox || 0,
+        correctNumber,
+        won,
+        winningItem || undefined,
+        isSuperAdminTestMode,
+        undefined, // entrySource — will be set based on context
+        undefined  // entryType — will be set based on context
+      );
+      
+      // Fire and forget — save after play, not before
+      saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
+      
+      // Store the attempt ID for nomination tracking
+      setCurrentGameAttemptId(attempt.id);
+      
+      // Navigate to customer view so they can play/nominate
+      setCurrentView('customer');
+      
+      setShowResult(true);
+      setGameStatus(won ? 'won' : 'lost');
+    };
+
+    // Generate winning number now (after a box/item is selected and before save)
+    const threshold = thresholdNumber || 1;
+    const winningNum = generateSecureRandomNumber(18 - threshold);
+    setCorrectNumber(winningNum);
 
   const handlePlayAgain = async () => {
     // Fresh game session - no time restrictions
