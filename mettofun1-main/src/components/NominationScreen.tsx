@@ -309,11 +309,11 @@ export default function NominationScreen() {
                 {/* Image fills the entire card */}
                 <div className="w-full h-full relative">
                   {item.imageUrl ? (
-                    <img 
-                      src={item.imageUrl} 
-                      alt={item.name}
-                      className="absolute inset-0 w-full h-full object-contain"
-                    />
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <Gift className={`w-8 h-8 ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`} />
