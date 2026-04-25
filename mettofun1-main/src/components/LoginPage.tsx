@@ -244,6 +244,7 @@ export default function LoginPage() {
          setIsLoading(false);
          return;
        }
+
      } else {
        // Try to fetch from Firebase RTDB
        try {
@@ -449,9 +450,10 @@ export default function LoginPage() {
             console.warn('RTDB shop fetch failed:', rtdbErr);
             // Do not block login; if still no shop, show assign error below
           }
-        }
-        
-        // Handle device lock for shop_admin
+      }
+
+      // Handle device lock and shop setup for shop_admin
+      if (adminToUse!.level === 'shop_admin') {
        if (shop) {
          try {
            if (shop.deviceLocked && shop.deviceId !== deviceId) {
@@ -492,14 +494,18 @@ export default function LoginPage() {
          setError('No shop assigned to this admin. Contact super admin.');
          setIsLoading(false);
          return;
-       }
-      } else {
-        // Shop admins and agents land in customer view so they can play/nominate immediately
-        setCurrentView('customer');
       }
     }
 
-    // Priority 1-4: Shop lookup with error handling
+    // Role-based navigation
+    if (adminToUse!.level === 'shop_admin') {
+      // Shop admins stay in customer view (handled above)
+    } else {
+      // Super admins and agent admins land in admin view
+      setCurrentView('admin');
+    }
+
+    // Priority 1-4: Shop lookup with error handling (for future use)
     try {
       shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
       
@@ -593,7 +599,7 @@ export default function LoginPage() {
         setIsLoading(false);
         return;
       }
-    } else {
+      } else {
       // Shop admins and agents land in customer view so they can play/nominate immediately
       setCurrentView('customer');
     }
