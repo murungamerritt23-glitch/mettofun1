@@ -73,22 +73,25 @@ export default function LoginPage() {
                  if (!shop && cachedAdmin.assignedShops?.length) {
                    shop = shops.find(s => cachedAdmin.assignedShops!.includes(s.id));
                  }
-                 if (shop) {
-                   setCurrentShop(shop);
-                   setCurrentView('customer');
-                 } else {
-                   // No shop found - clear invalid session and continue to online login
-                   localStorage.removeItem('metofun-auth');
-                   localStorage.removeItem('metofun-auth-pw');
-                 }
+                  if (shop) {
+                    setCurrentShop(shop);
+                    setCurrentView('customer');
+                  } else {
+                    // No shop found - clear invalid session and show error
+                    localStorage.removeItem('metofun-auth');
+                    localStorage.removeItem('metofun-auth-pw');
+                    setError('No shop assigned to this admin. Please contact your administrator.');
+                    setIsLoading(false);
+                    return;
+                  }
                } catch (error) {
                  console.error('Failed to load shops during offline login:', error);
                  localStorage.removeItem('metofun-auth');
                  localStorage.removeItem('metofun-auth-pw');
                  setError('Failed to load shop data. Please try online login.');
                  return;
-               }
-             } else {
+        }
+      } else {
                setCurrentView('admin');
              }
              return;
@@ -167,7 +170,7 @@ export default function LoginPage() {
              isActive: true,
              region: 'Default Region',
              assignedShops: [],
-             deviceId: await getDeviceId(), // Await the device ID
+              deviceId: getDeviceId(), // getDeviceId is synchronous
              deviceLocked: false
            };
            
@@ -378,15 +381,7 @@ export default function LoginPage() {
 
      // Role-based navigation
      if (adminToUse!.level === 'shop_admin') {
-       let deviceId: string;
-       try {
-         deviceId = await getDeviceId();
-       } catch (deviceError) {
-         console.error('Failed to get device ID:', deviceError);
-         setError('Failed to initialize device. Please try again.');
-         setIsLoading(false);
-         return;
-       }
+        const deviceId = getDeviceId(); // getDeviceId is synchronous
        
        const assignedShopIds = adminToUse!.assignedShops || [];
        let shop: Shop | undefined = undefined;
@@ -488,119 +483,22 @@ export default function LoginPage() {
        if (shop) {
          setCurrentShop(shop);
          setCurrentView('customer');
-       } else {
-         setError('No shop assigned to this admin. Contact super admin.');
-         setIsLoading(false);
-         return;
+        } else {
+          setError('No shop assigned to this admin. Contact super admin.');
+          setIsLoading(false);
+          return;
+        }
       }
     }
 
-    // Role-based navigation
-    if (adminToUse!.level === 'shop_admin') {
-      // Shop admins stay in customer view (handled above)
-    } else {
-      // Super admins and agent admins land in admin view
+    // For super_admin/agent_admin, set admin view
+    if (adminToUse!.level !== 'shop_admin') {
       setCurrentView('admin');
     }
 
-    // Priority 1-4: Shop lookup with error handling (for future use)
-    try {
-      shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
-      
-      // Priority 2: Match by assignedShops (set by super_admin when creating the admin)
-      if (!shop && assignedShopIds.length > 0) {
-        shop = localShopsList.find(s => assignedShopIds.includes(s.id));
-      }
+    // View setting is handled above - all admin types have views set
 
-      // Priority 3: Match by deviceId (least reliable - can cause collisions across shops)
-      if (!shop) {
-        const shopsByDevice = localShopsList.filter(s => s.deviceId === deviceId);
-        // Only use deviceId match if exactly one shop matches (no ambiguity)
-        if (shopsByDevice.length === 1) {
-          shop = shopsByDevice[0];
-        }
-      }
-
-      // Priority 4: Fetch from RTDB if still not found (non-blocking background fallback)
-      // Defer to background so it never blocks or races the local read
-      if (!shop) {
-        (async () => {
-          try {
-            const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
-            const fbShops = await rtdbShopApi.getAll();
-            if (fbShops && fbShops.length > 0) {
-              // Save to local for offline access and future fast lookups (upsert by timestamp)
-              for (const s of fbShops) {
-                const local = await localShops.get(s.id);
-                if (!local || new Date(s.updatedAt || 0) > new Date(local.updatedAt || 0)) {
-                  await localShops.save(s);
-                }
-            // Pull NPN entries to sync across devices [ADDED]
-            try {
-              const { rtdb } = await import('@/lib/firebase');
-              const { ref, onValue } = await import('firebase/database');
-              undefined
-            } catch (err) {
-              console.warn('RTDB NPN fetch failed (non-blocking):', err);
-            }
-              }
-              // Find shop by admin email first
-              shop = fbShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
-              // Then by assigned shops
-              if (!shop && assignedShopIds.length > 0) {
-                shop = fbShops.find(s => assignedShopIds.includes(s.id));
-              }
-            }
-          } catch (err) {
-            console.warn('RTDB shop fetch failed (non-blocking):', err);
-            // Do not block login; if still no shop, show assign error below
-           }
-         })();
-       }
-     } catch (err) {
-       console.error('Failed to lookup shop:', err);
-       setError('Failed to load shop data. Please try again.');
-       setIsLoading(false);
-       return;
-     }
-     
-     // Handle device lock for shop_admin
-      if (shop && shop.deviceLocked && shop.deviceId !== deviceId) {
-        // Shop is device-locked to a different device - update to this device
-        const updatedShop = { ...shop, deviceId: deviceId };
-        await localShops.save(updatedShop);
-        try {
-          const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
-          await rtdbShopApi.save(updatedShop);
-        } catch (err) {
-          // RTDB save failed
-        }
-        shop = updatedShop;
-      } else if (shop && !shop.deviceLocked) {
-        // Not locked, lock to this device
-        const updatedShop = { ...shop, deviceId: deviceId, deviceLocked: true };
-        await localShops.save(updatedShop);
-        try {
-          const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
-          await rtdbShopApi.save(updatedShop);
-        } catch (err) {
-          // RTDB save failed
-        }
-        shop = updatedShop;
-      }
-      
-      if (shop) {
-        setCurrentShop(shop);
-        setCurrentView('customer');
-      } else {
-        setError('No shop assigned to this admin. Contact super admin.');
-        setIsLoading(false);
-        return;
-      }
-      } else {
-      // Shop admins and agents land in customer view so they can play/nominate immediately
-      setCurrentView('customer');
-    }
+    // Shop assignment and view setting is handled above - login complete
 
     setIsLoading(false);
   };
