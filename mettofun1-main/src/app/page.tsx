@@ -149,8 +149,19 @@ export default function Home() {
               if (shop) {
                 setCurrentShop(shop);
                 setCurrentView('customer');
+              } else {
+                // No shop found for shop_admin - clear auth and go back to login
+                console.warn('No shop found for shop_admin:', verifiedAdmin.email);
+                localStorage.removeItem('metofun-auth');
+                localStorage.removeItem('metofun-auth-pw');
+                setCurrentShop(null);
+                setCurrentView('login');
+                isAuthCompleted = true;
+                clearTimeout(timeoutId);
+                setReady(true);
+                setLoading(false);
+                return;
               }
-              // If no shop found, stay on login (don't crash or close)
             } else {
               // super_admin or agent_admin - load shops in background - with timeout
               let shops;
@@ -163,14 +174,19 @@ export default function Home() {
                   localShops.getAll(),
                   shopLoadTimeout
                 ]);
-              } catch (dbError) {
-                console.error('Failed to load shops:', dbError);
-                localStorage.setItem('metofun-load-timeout', Date.now().toString());
-                localStorage.removeItem('metofun-auth');
-                localStorage.removeItem('metofun-auth-pw');
-                setCurrentShop(null);
-                return;
-              }
+               } catch (dbError) {
+                 console.error('Failed to load shops for admin:', dbError);
+                 localStorage.setItem('metofun-load-timeout', Date.now().toString());
+                 localStorage.removeItem('metofun-auth');
+                 localStorage.removeItem('metofun-auth-pw');
+                 setCurrentShop(null);
+                 setCurrentView('login');
+                 isAuthCompleted = true;
+                 clearTimeout(timeoutId);
+                 setReady(true);
+                 setLoading(false);
+                 return;
+               }
               setShops(shops);
               setCurrentView('admin');
             }
@@ -194,16 +210,7 @@ export default function Home() {
     };
   }, [setAdmin, setCurrentView, setCurrentShop, setShops]);
 
-  // Only auto-switch view if we're still on login and have an admin
-  useEffect(() => {
-    if (admin && currentView === 'login' && ready && !loading) {
-      if (admin.level === 'shop_admin') {
-        setCurrentView('customer');
-      } else {
-        setCurrentView('admin');
-      }
-    }
-  }, [admin, currentView, ready, loading, setCurrentView]);
+  // View switching is handled by auth restore logic - don't auto-switch here
 
   if (!ready || loading) {
     return (
