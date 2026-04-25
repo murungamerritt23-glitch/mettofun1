@@ -493,11 +493,14 @@ export default function LoginPage() {
          setIsLoading(false);
          return;
        }
-     } else {
-       // Shop admins and agents land in customer view so they can play/nominate immediately
-       setCurrentView('customer');
-     }
+      } else {
+        // Shop admins and agents land in customer view so they can play/nominate immediately
+        setCurrentView('customer');
+      }
+    }
 
+    // Priority 1-4: Shop lookup with error handling
+    try {
       shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
       
       // Priority 2: Match by assignedShops (set by super_admin when creating the admin)
@@ -547,11 +550,17 @@ export default function LoginPage() {
           } catch (err) {
             console.warn('RTDB shop fetch failed (non-blocking):', err);
             // Do not block login; if still no shop, show assign error below
-          }
-        })();
-      }
-
-      // Handle device lock for shop_admin
+           }
+         })();
+       }
+     } catch (err) {
+       console.error('Failed to lookup shop:', err);
+       setError('Failed to load shop data. Please try again.');
+       setIsLoading(false);
+       return;
+     }
+     
+     // Handle device lock for shop_admin
       if (shop && shop.deviceLocked && shop.deviceId !== deviceId) {
         // Shop is device-locked to a different device - update to this device
         const updatedShop = { ...shop, deviceId: deviceId };
