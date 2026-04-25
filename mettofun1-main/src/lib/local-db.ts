@@ -54,11 +54,17 @@ interface MetoFunDB extends DBSchema {
 }
 
 let db: IDBPDatabase<MetoFunDB> | null = null;
+let dbInitPromise: Promise<IDBPDatabase<MetoFunDB>> | null = null;
 
 export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
+  // Return existing db if available
   if (db) return db;
+  
+  // Return existing promise if already initializing
+  if (dbInitPromise) return dbInitPromise;
 
-  db = await openDB<MetoFunDB>('metofun-db', 3, {
+  // Create initialization promise
+  dbInitPromise = openDB<MetoFunDB>('metofun-db', 3, {
     upgrade(database, oldVersion) {
       // Shops store - only create if it doesn't exist
       if (!database.objectStoreNames.contains('shops')) {
@@ -124,9 +130,17 @@ export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
         customerNomStore.createIndex('by-attempt', 'gameAttemptId');
       }
     }
+  }).then((result) => {
+    db = result;
+    dbInitPromise = null; // Clear promise on success
+    return result;
+  }).catch((error) => {
+    dbInitPromise = null; // Clear promise on failure
+    console.error('Failed to initialize IndexedDB:', error);
+    throw new Error('Database initialization failed. Please clear browser data or try a different browser.');
   });
 
-  return db;
+  return dbInitPromise;
 };
 
 // Shop operations

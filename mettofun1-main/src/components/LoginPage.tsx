@@ -52,203 +52,285 @@ export default function LoginPage() {
       return;
     }
 
-    // Check for existing session in localStorage (offline login)
-    const cachedAuth = localStorage.getItem('metofun-auth');
-    const cachedPwHash = localStorage.getItem('metofun-auth-pw');
-    if (cachedAuth && cachedPwHash) {
-      const cachedAdmin: Admin = JSON.parse(cachedAuth);
-      if (cachedAdmin.email?.toLowerCase() === email.toLowerCase()) {
-        // Validate admin level before allowing login
-        if (!['super_admin', 'agent_admin', 'shop_admin'].includes(cachedAdmin.level)) {
-          setError('Access denied. Invalid admin role.');
-          return;
-        }
-        const inputHash = await hashPassword(password);
-        if (inputHash === cachedPwHash) {
-          setAdmin(cachedAdmin);
-          if (cachedAdmin.level === 'shop_admin') {
-            // Set view only after shop is found
-            localShops.getAll().then((shops: any[]) => {
-              let shop = shops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
-              if (!shop && cachedAdmin.assignedShops?.length) {
-                shop = shops.find(s => cachedAdmin.assignedShops!.includes(s.id));
-              }
-              if (shop) {
-                setCurrentShop(shop);
-                setCurrentView('customer');
-              }
-            }).catch(() => {});
-          } else {
-            setCurrentView('admin');
-          }
-          return;
-        }
-      }
-    }
+     // Check for existing session in localStorage (offline login)
+     try {
+       const cachedAuth = localStorage.getItem('metofun-auth');
+       const cachedPwHash = localStorage.getItem('metofun-auth-pw');
+       if (cachedAuth && cachedPwHash) {
+         const cachedAdmin: Admin = JSON.parse(cachedAuth);
+         if (cachedAdmin.email?.toLowerCase() === email.toLowerCase()) {
+           // Validate admin level before allowing login
+           if (!['super_admin', 'agent_admin', 'shop_admin'].includes(cachedAdmin.level)) {
+             setError('Access denied. Invalid admin role.');
+             return;
+           }
+           const inputHash = await hashPassword(password);
+           if (inputHash === cachedPwHash) {
+             setAdmin(cachedAdmin);
+             if (cachedAdmin.level === 'shop_admin') {
+               // Set view only after shop is found
+               try {
+                 const shops = await localShops.getAll();
+                 let shop = shops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
+                 if (!shop && cachedAdmin.assignedShops?.length) {
+                   shop = shops.find(s => cachedAdmin.assignedShops!.includes(s.id));
+                 }
+                 if (shop) {
+                   setCurrentShop(shop);
+                   setCurrentView('customer');
+                 } else {
+                   // No shop found - clear invalid session and continue to online login
+                   localStorage.removeItem('metofun-auth');
+                   localStorage.removeItem('metofun-auth-pw');
+                 }
+               } catch (error) {
+                 console.error('Failed to load shops during offline login:', error);
+                 localStorage.removeItem('metofun-auth');
+                 localStorage.removeItem('metofun-auth-pw');
+                 setError('Failed to load shop data. Please try online login.');
+                 return;
+               }
+             } else {
+               setCurrentView('admin');
+             }
+             return;
+           }
+         }
+       }
+     } catch (error) {
+       console.error('Error parsing cached auth data:', error);
+       localStorage.removeItem('metofun-auth');
+       localStorage.removeItem('metofun-auth-pw');
+       // Continue to online login
+     }
 
     setIsLoading(true);
 
-    // Always try Firebase Auth sign in first
-    const result = await firebaseAuth.signIn(email, password);
-    
-    if (result.error) {
-      // Sign in failed - check if this is first time (no admin exists anywhere)
-      let isFirstTime = false;
-      try {
-        const localAdminsList = await localAdmins.getAll();
-        if (localAdminsList.length === 0) {
-          try {
-            const rtdbAdminsList = await rtdbAdmins.getAll();
-            if (rtdbAdminsList.length === 0) {
-              isFirstTime = true;
-            }
-          } catch (e) {
-            // Firebase offline
-          }
-        }
-      } catch (e) {
-        // DB error
-      }
-      
-      if (isFirstTime) {
-        // No admin exists - create Super Admin
-        try {
-          const signUpResult = await firebaseAuth.signUp(email, password);
-          if (signUpResult.error) {
-            setError(signUpResult.error);
-            setIsLoading(false);
-            return;
-          }
-          
-          const uid = signUpResult.user!.uid;
-          const adminData: Admin = {
-            id: uid,
-            email: email.toLowerCase(),
-            phone: '',
-            name: email.split('@')[0],
-            level: 'super_admin',
-            createdAt: new Date(),
-            lastLogin: new Date(),
-            isActive: true,
-            region: 'Default Region',
-            assignedShops: [],
-            deviceId: getDeviceId(),
-            deviceLocked: false
-          };
-          
-          await rtdbAdmins.save(adminData);
-          await localAdmins.save(adminData);
-          setAdmin(adminData);
-          localStorage.setItem('metofun-auth', JSON.stringify(adminData));
-          const pwHash = await hashPassword(password);
-          localStorage.setItem('metofun-auth-pw', pwHash);
-          setCurrentView('admin');
-          setIsLoading(false);
-          return;
-        } catch (err: any) {
-          setError(err.message || 'First time setup failed. Please try again.');
-          setIsLoading(false);
-          return;
-        }
-      }
-      
-      // Not first time - show login error
-      setError('Invalid email or password');
-      setIsLoading(false);
-      return;
-    }
-
-    if (!result.user) {
-      setError('Login failed. Please try again.');
-      setIsLoading(false);
-      return;
-    }
+     // Always try Firebase Auth sign in first
+     let result;
+     try {
+       result = await firebaseAuth.signIn(email, password);
+     } catch (authError) {
+       console.error('Firebase Auth sign in failed:', authError);
+       setError('Authentication service unavailable. Please check your connection and try again.');
+       setIsLoading(false);
+       return;
+     }
+     
+     if (result.error) {
+       // Sign in failed - check if this is first time (no admin exists anywhere)
+       let isFirstTime = false;
+       try {
+         const localAdminsList = await localAdmins.getAll();
+         if (localAdminsList.length === 0) {
+           try {
+             const rtdbAdminsList = await rtdbAdmins.getAll();
+             if (rtdbAdminsList.length === 0) {
+               isFirstTime = true;
+             }
+           } catch (e) {
+             // Firebase offline - treat as first time if no local admins either
+             isFirstTime = localAdminsList.length === 0;
+           }
+         }
+       } catch (e) {
+         // DB error - check RTDB directly
+         try {
+           const rtdbAdminsList = await rtdbAdmins.getAll();
+           if (rtdbAdminsList.length === 0) {
+             isFirstTime = true;
+           }
+         } catch (rtdbError) {
+           console.error('Failed to check admin existence:', rtdbError);
+           // Assume not first time to prevent accidental account creation
+           isFirstTime = false;
+         }
+       }
+       
+       if (isFirstTime) {
+         // No admin exists - create Super Admin
+         try {
+           const signUpResult = await firebaseAuth.signUp(email, password);
+           if (signUpResult.error) {
+             setError(signUpResult.error);
+             setIsLoading(false);
+             return;
+           }
+           
+           const uid = signUpResult.user!.uid;
+           const adminData: Admin = {
+             id: uid,
+             email: email.toLowerCase(),
+             phone: '',
+             name: email.split('@')[0],
+             level: 'super_admin',
+             createdAt: new Date(),
+             lastLogin: new Date(),
+             isActive: true,
+             region: 'Default Region',
+             assignedShops: [],
+             deviceId: await getDeviceId(), // Await the device ID
+             deviceLocked: false
+           };
+           
+           try {
+             await rtdbAdmins.save(adminData);
+             await localAdmins.save(adminData);
+             setAdmin(adminData);
+             localStorage.setItem('metofun-auth', JSON.stringify(adminData));
+             const pwHash = await hashPassword(password);
+             localStorage.setItem('metofun-auth-pw', pwHash);
+             setCurrentView('admin');
+             setIsLoading(false);
+             return;
+           } catch (dbError) {
+             console.error('Failed to save admin data:', dbError);
+             setError('Failed to save account data. Please try again.');
+             setIsLoading(false);
+             return;
+           }
+         } catch (err: any) {
+           setError(err.message || 'First time setup failed. Please try again.');
+           setIsLoading(false);
+           return;
+         }
+       }
+       
+       // Not first time - show login error
+       setError('Invalid email or password');
+       setIsLoading(false);
+       return;
+     }
+     
+     if (!result.user) {
+       setError('Login failed. Please try again.');
+       setIsLoading(false);
+       return;
+     }
 
     // Sign in succeeded - continue with login
     const uid = result.user!.uid;
     const userEmail = email.toLowerCase();
 
-    // Check local first - with timeout
-    let localAdminsList: Admin[] = [];
-    const adminLoadTimeout = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Admin load timeout')), 15000)
-    );
-    
-    try {
-      localAdminsList = await Promise.race([
-        localAdmins.getAll(),
-        adminLoadTimeout
-      ]);
-    } catch (err) {
-      setError('Database error. Please try again.');
-      setIsLoading(false);
-      return;
-    }
-    
-    let adminFromLocal: Admin | undefined = localAdminsList.find(a => a.email?.toLowerCase() === userEmail);
-    if (!adminFromLocal) {
-      adminFromLocal = localAdminsList.find(a => a.id === uid);
-    }
-
-    let adminToUse: Admin;
-    
-    if (adminFromLocal) {
-      adminToUse = {
-        ...adminFromLocal,
-        id: uid,
-        lastLogin: new Date()
-      };
-      await localAdmins.save(adminToUse);
-    } else {
-      // Try to fetch from Firebase RTDB
-      try {
-        const rtdbAdminsList = await rtdbAdmins.getAll();
-        const adminFromRTDB = rtdbAdminsList.find(a => a.email?.toLowerCase() === userEmail);
-        
-        if (adminFromRTDB) {
-          adminToUse = {
-            ...adminFromRTDB,
-            id: uid,
-            lastLogin: new Date()
-          };
-          await localAdmins.save(adminToUse);
-        } else {
-          // Not in RTDB either - but Firebase Auth succeeded
-          // This means the account exists in Auth but not in our admin system
-          // Create a temporary admin record from Auth info
-          const firebaseUser = result.user!;
-          adminToUse = {
-            id: uid,
-            email: userEmail,
-            phone: firebaseUser.phoneNumber || '',
-            name: firebaseUser.displayName || userEmail.split('@')[0],
-            level: 'shop_admin', // Default to shop_admin for new logins
-            createdAt: new Date(),
-            lastLogin: new Date(),
-            isActive: true,
-            assignedShops: [],
-            deviceLocked: false
-          };
-          await localAdmins.save(adminToUse);
-        }
-      } catch (rtdbErr) {
-        // RTDB fetch failed - but Auth succeeded, create admin from Auth info
-        const firebaseUser = result.user!;
-        adminToUse = {
-          id: uid,
-          email: userEmail,
-          phone: firebaseUser.phoneNumber || '',
-          name: firebaseUser.displayName || userEmail.split('@')[0],
-          level: 'shop_admin',
-          createdAt: new Date(),
-          lastLogin: new Date(),
-          isActive: true,
-          assignedShops: [],
-          deviceLocked: false
-        };
-        await localAdmins.save(adminToUse);
-      }
-    }
+     // Check local first - with timeout protection
+     let localAdminsList: Admin[] = [];
+     try {
+       localAdminsList = await localAdmins.getAll();
+     } catch (err) {
+       console.error('Failed to load local admins:', err);
+       setError('Database error. Please try again.');
+       setIsLoading(false);
+       return;
+     }
+     
+     let adminFromLocal: Admin | undefined = localAdminsList.find(a => a.email?.toLowerCase() === userEmail);
+     if (!adminFromLocal) {
+       adminFromLocal = localAdminsList.find(a => a.id === uid);
+     }
+     
+     let adminToUse: Admin;
+     
+     if (adminFromLocal) {
+       adminToUse = {
+         ...adminFromLocal,
+         id: uid,
+         lastLogin: new Date()
+       };
+       try {
+         await localAdmins.save(adminToUse);
+       } catch (saveError) {
+         console.error('Failed to update local admin:', saveError);
+         setError('Failed to save account data. Please try again.');
+         setIsLoading(false);
+         return;
+       }
+     } else {
+       // Try to fetch from Firebase RTDB
+       try {
+         const rtdbAdminsList = await rtdbAdmins.getAll();
+         const adminFromRTDB = rtdbAdminsList.find(a => a.email?.toLowerCase() === userEmail);
+         
+         if (adminFromRTDB) {
+           adminToUse = {
+             ...adminFromRTDB,
+             id: uid,
+             lastLogin: new Date()
+           };
+           try {
+             await localAdmins.save(adminToUse);
+           } catch (saveError) {
+             console.error('Failed to save admin from RTDB:', saveError);
+             setError('Failed to save account data. Please try again.');
+             setIsLoading(false);
+             return;
+           }
+         } else {
+           // Not in RTDB either - but Firebase Auth succeeded
+           // This means the account exists in Auth but not in our admin system
+           // Create a temporary admin record from Auth info
+           try {
+             const firebaseUser = result.user!;
+             adminToUse = {
+               id: uid,
+               email: userEmail,
+               phone: firebaseUser.phoneNumber || '',
+               name: firebaseUser.displayName || userEmail.split('@')[0],
+               level: 'shop_admin', // Default to shop_admin for new logins
+               createdAt: new Date(),
+               lastLogin: new Date(),
+               isActive: true,
+               assignedShops: [],
+               deviceLocked: false
+             };
+             
+             try {
+               await localAdmins.save(adminToUse);
+             } catch (saveError) {
+               console.error('Failed to save new admin:', saveError);
+               setError('Failed to save account data. Please try again.');
+               setIsLoading(false);
+               return;
+             }
+           } catch (firebaseError) {
+             console.error('Failed to get Firebase user data:', firebaseError);
+             setError('Failed to retrieve account information. Please try again.');
+             setIsLoading(false);
+             return;
+           }
+         }
+       } catch (rtdbErr) {
+         // RTDB fetch failed - create admin from Auth info as fallback
+         try {
+           const firebaseUser = result.user!;
+           adminToUse = {
+             id: uid,
+             email: userEmail,
+             phone: firebaseUser.phoneNumber || '',
+             name: firebaseUser.displayName || userEmail.split('@')[0],
+             level: 'shop_admin',
+             createdAt: new Date(),
+             lastLogin: new Date(),
+             isActive: true,
+             assignedShops: [],
+             deviceLocked: false
+           };
+           
+           try {
+             await localAdmins.save(adminToUse);
+           } catch (saveError) {
+             console.error('Failed to save admin from Firebase fallback:', saveError);
+             setError('Failed to save account data. Please try again.');
+             setIsLoading(false);
+             return;
+           }
+         } catch (firebaseError) {
+           console.error('Failed to get Firebase user data in fallback:', firebaseError);
+           setError('Failed to retrieve account information. Please try again.');
+           setIsLoading(false);
+           return;
+         }
+       }
+     }
 
     if (adminToUse!.isActive === false) {
       await firebaseAuth.signOut();
@@ -295,23 +377,126 @@ export default function LoginPage() {
       console.error('[Auth] CRITICAL: Admin could not be saved to RTDB - all writes will fail');
     }
 
-    // Role-based navigation
-    if (adminToUse!.level === 'shop_admin') {
-      const deviceId = getDeviceId();
-      const assignedShopIds = adminToUse!.assignedShops || [];
-      let shop: Awaited<ReturnType<typeof localShops.getByDeviceId>> = undefined;
-      
-       // Priority 1: Match by adminEmail (most reliable - each email links to exactly one shop)
-      let localShopsList: Shop[];
-      try {
-        // Read local shops without any race or timeout to avoid hangs/crashes
-        localShopsList = await localShops.getAll();
-      } catch (e) {
-        console.error('Local shops read failed:', e);
-        setError('Failed to load shops. Please try again.');
-        setIsLoading(false);
-        return;
-      }
+     // Role-based navigation
+     if (adminToUse!.level === 'shop_admin') {
+       let deviceId: string;
+       try {
+         deviceId = await getDeviceId();
+       } catch (deviceError) {
+         console.error('Failed to get device ID:', deviceError);
+         setError('Failed to initialize device. Please try again.');
+         setIsLoading(false);
+         return;
+       }
+       
+       const assignedShopIds = adminToUse!.assignedShops || [];
+       let shop: Shop | undefined = undefined;
+       
+        // Priority 1: Match by adminEmail (most reliable - each email links to exactly one shop)
+       let localShopsList: Shop[] = [];
+       try {
+         // Read local shops without any race or timeout to avoid hangs/crashes
+         localShopsList = await localShops.getAll();
+       } catch (e) {
+         console.error('Local shops read failed:', e);
+         setError('Failed to load shops. Please try again.');
+         setIsLoading(false);
+         return;
+       }
+ 
+       shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
+       
+       // Priority 2: Match by assignedShops (set by super_admin when creating the admin)
+       if (!shop && assignedShopIds.length > 0) {
+         shop = localShopsList.find(s => assignedShopIds.includes(s.id));
+       }
+ 
+       // Priority 3: Match by deviceId (least reliable - can cause collisions across shops)
+       if (!shop) {
+         const shopsByDevice = localShopsList.filter(s => s.deviceId === deviceId);
+         // Only use deviceId match if exactly one shop matches (no ambiguity)
+         if (shopsByDevice.length === 1) {
+           shop = shopsByDevice[0];
+         }
+       }
+ 
+       // Priority 4: Fetch from RTDB if still not found (background fallback)
+       if (!shop) {
+         try {
+           const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
+           const fbShops = await rtdbShopApi.getAll();
+           if (fbShops && fbShops.length > 0) {
+             // Save to local for offline access and future fast lookups (upsert by timestamp)
+             for (const s of fbShops) {
+               try {
+                 const local = await localShops.get(s.id);
+                 if (!local || new Date(s.updatedAt || 0) > new Date(local.updatedAt || 0)) {
+                   await localShops.save(s);
+                 }
+               } catch (saveError) {
+                 console.warn('Failed to save shop to local DB:', saveError);
+                 // Continue with other shops
+               }
+             }
+             // Find shop by admin email first
+             shop = fbShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
+             // Then by assigned shops
+             if (!shop && assignedShopIds.length > 0) {
+               shop = fbShops.find(s => assignedShopIds.includes(s.id));
+             }
+           }
+         } catch (rtdbErr) {
+           console.warn('RTDB shop fetch failed:', rtdbErr);
+           // Do not block login; if still no shop, show assign error below
+         }
+       }
+ 
+       // Handle device lock for shop_admin
+       if (shop) {
+         try {
+           if (shop.deviceLocked && shop.deviceId !== deviceId) {
+             // Shop is device-locked to a different device - update to this device
+             const updatedShop = { ...shop, deviceId: deviceId };
+             await localShops.save(updatedShop);
+             try {
+               const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
+               await rtdbShopApi.save(updatedShop);
+             } catch (saveError) {
+               console.warn('Failed to save updated shop to RTDB:', saveError);
+               // Continue with local save only
+             }
+             shop = updatedShop;
+           } else if (!shop.deviceLocked) {
+             // Not locked, lock to this device
+             const updatedShop = { ...shop, deviceId: deviceId, deviceLocked: true };
+             await localShops.save(updatedShop);
+             try {
+               const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
+               await rtdbShopApi.save(updatedShop);
+             } catch (saveError) {
+               console.warn('Failed to save locked shop to RTDB:', saveError);
+               // Continue with local save only
+             }
+             shop = updatedShop;
+           }
+         } catch (lockError) {
+           console.error('Failed to handle device lock:', lockError);
+           // Continue with existing shop data
+         }
+       }
+       
+       if (shop) {
+         setCurrentShop(shop);
+         setCurrentView('customer');
+       } else {
+         setError('No shop assigned to this admin. Contact super admin.');
+         setIsLoading(false);
+         return;
+       }
+     } else {
+       // Shop admins and agents land in customer view so they can play/nominate immediately
+       setCurrentView('customer');
+     }
 
       shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
       
