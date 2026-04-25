@@ -29,16 +29,14 @@ export default function LoginPage() {
   const { setCurrentView } = useUIStore();
   const { setCurrentShop } = useShopStore();
 
-  // Safety timeout - reset loading after 60 seconds to prevent infinite hang
+  // Safety timeout - reset loading after 30 seconds to prevent infinite hang
   useEffect(() => {
     if (isLoading) {
       const timer = setTimeout(() => {
         setIsLoading(false);
-        setError('Request timed out. Please try again.');
-        // Clear auth to prevent auto-login loop on restart
-        localStorage.removeItem('metofun-auth');
-        localStorage.removeItem('metofun-auth-pw');
-      }, 60000);
+        setError('Login request timed out. Please try again.');
+        // Don't clear auth here - let the app handle auth restoration
+      }, 30000);
       return () => clearTimeout(timer);
     }
   }, [isLoading]);

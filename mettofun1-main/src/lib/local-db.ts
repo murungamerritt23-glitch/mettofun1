@@ -59,9 +59,14 @@ let dbInitPromise: Promise<IDBPDatabase<MetoFunDB>> | null = null;
 export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
   // Return existing db if available
   if (db) return db;
-  
+
   // Return existing promise if already initializing
   if (dbInitPromise) return dbInitPromise;
+
+  // Check if IndexedDB is available
+  if (typeof window === 'undefined' || !window.indexedDB) {
+    throw new Error('IndexedDB is not available. Please use a modern browser.');
+  }
 
   // Create initialization promise
   dbInitPromise = openDB<MetoFunDB>('metofun-db', 3, {
@@ -137,7 +142,15 @@ export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
   }).catch((error) => {
     dbInitPromise = null; // Clear promise on failure
     console.error('Failed to initialize IndexedDB:', error);
-    throw new Error('Database initialization failed. Please clear browser data or try a different browser.');
+
+    // Provide more specific error messages
+    if (error.name === 'QuotaExceededError') {
+      throw new Error('Browser storage is full. Please clear some data and try again.');
+    } else if (error.name === 'VersionError') {
+      throw new Error('Database version conflict. Please clear browser data and try again.');
+    } else {
+      throw new Error(`Database initialization failed: ${error.message}. Please clear browser data or try a different browser.`);
+    }
   });
 
   return dbInitPromise;
