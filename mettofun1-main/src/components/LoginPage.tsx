@@ -443,15 +443,15 @@ export default function LoginPage() {
              // Then by assigned shops
              if (!shop && assignedShopIds.length > 0) {
                shop = fbShops.find(s => assignedShopIds.includes(s.id));
-             }
-           }
-         } catch (rtdbErr) {
-           console.warn('RTDB shop fetch failed:', rtdbErr);
-           // Do not block login; if still no shop, show assign error below
-         }
-       }
- 
-       // Handle device lock for shop_admin
+              }
+            }
+          } catch (rtdbErr) {
+            console.warn('RTDB shop fetch failed:', rtdbErr);
+            // Do not block login; if still no shop, show assign error below
+          }
+        }
+        
+        // Handle device lock for shop_admin
        if (shop) {
          try {
            if (shop.deviceLocked && shop.deviceId !== deviceId) {
