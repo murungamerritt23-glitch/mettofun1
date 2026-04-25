@@ -147,15 +147,16 @@ export default function Home() {
                 if (shopsByDevice.length === 1) shop = shopsByDevice[0];
               }
               if (shop) {
+                console.log('[Auth] Shop found for shop_admin, setting customer view:', shop.id);
                 setCurrentShop(shop);
                 setCurrentView('customer');
               } else {
-                // No shop found for shop_admin - clear auth and go back to login
-                console.warn('No shop found for shop_admin:', verifiedAdmin.email);
-                localStorage.removeItem('metofun-auth');
-                localStorage.removeItem('metofun-auth-pw');
+                // No shop found for shop_admin - keep user logged in but redirect appropriately
+                console.warn('[Auth] No shop found for shop_admin:', verifiedAdmin.email);
                 setCurrentShop(null);
+                // For shop_admin with no shop, redirect to login with a message
                 setCurrentView('login');
+                // Don't clear auth completely - let them try login again
                 isAuthCompleted = true;
                 clearTimeout(timeoutId);
                 setReady(true);
@@ -220,20 +221,30 @@ export default function Home() {
     );
   }
 
-  // Ensure we always have a valid view to prevent blank screens
+  // CRITICAL: Ensure we ALWAYS have a valid view to prevent blank screens
+  console.log('[App] Rendering with currentView:', currentView, 'ready:', ready, 'loading:', loading);
+
   if (currentView === 'admin') {
+    console.log('[App] Showing AdminDashboard');
     return <AdminDashboard />;
   }
 
   if (currentView === 'customer') {
+    console.log('[App] Showing GameMode');
     return <GameMode />;
   }
 
-  // Default to login if view is invalid
-  if (currentView !== 'login') {
-    console.warn('Invalid currentView, resetting to login:', currentView);
-    setCurrentView('login');
+  // If view is invalid or undefined, force it to login
+  if (!currentView || currentView !== 'login') {
+    console.warn('[App] Invalid or missing currentView, forcing login:', currentView);
+    // Use setTimeout to avoid state update during render
+    setTimeout(() => {
+      console.log('[App] Setting view to login');
+      setCurrentView('login');
+    }, 0);
+    return <LoginPage />;
   }
 
+  console.log('[App] Showing LoginPage');
   return <LoginPage />;
 }

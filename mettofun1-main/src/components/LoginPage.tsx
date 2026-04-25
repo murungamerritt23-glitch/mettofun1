@@ -480,14 +480,16 @@ export default function LoginPage() {
          }
        }
        
-       if (shop) {
-         setCurrentShop(shop);
-         setCurrentView('customer');
-        } else {
-          setError('No shop assigned to this admin. Contact super admin.');
-          setIsLoading(false);
-          return;
-        }
+              if (shop) {
+                console.log('[LoginPage] Shop found, setting customer view:', shop.id);
+                setCurrentShop(shop);
+                setCurrentView('customer');
+              } else {
+                console.log('[LoginPage] No shop found for shop_admin, showing error');
+                setError('No shop assigned to this admin. Contact super admin.');
+                setIsLoading(false);
+                return;
+              }
       }
     }
 
