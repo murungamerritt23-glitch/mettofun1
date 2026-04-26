@@ -478,18 +478,18 @@ export default function LoginPage() {
            console.error('Failed to handle device lock:', lockError);
            // Continue with existing shop data
          }
-       }
-       
-              if (shop) {
-                console.log('[LoginPage] Shop found, setting customer view:', shop.id);
-                setCurrentShop(shop);
-                setCurrentView('customer');
-              } else {
-                console.log('[LoginPage] No shop found for shop_admin, showing error');
-                setError('No shop assigned to this admin. Contact super admin.');
-                setIsLoading(false);
-                return;
-              }
+        }
+
+        if (shop) {
+          console.log('[LoginPage] Shop found, setting customer view:', shop.id);
+          setCurrentShop(shop);
+          setCurrentView('customer');
+        } else {
+          console.log('[LoginPage] No shop found for shop_admin, showing error');
+          setError('No shop assigned to this admin. Contact super admin.');
+          setIsLoading(false);
+          return;
+        }
       }
     }
 
