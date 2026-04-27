@@ -298,22 +298,37 @@ export default function GameMode() {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Use test phone prefix only if super admin has test mode enabled
-    const formattedPhone = isSuperAdminTestMode 
-      ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}` 
+    const formattedPhone = isSuperAdminTestMode
+      ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}`
       : formatPhoneNumber(phoneNumber);
-    
-    const config = calculateBoxConfiguration(amount, qualifyingPurchase);
+
+    // Check for available NPN access for this phone number
+    let hasNPNAccess = false;
+    try {
+      const npnAccessList = await localSettings.get('npn_access') || [];
+      const userNPNAccess = npnAccessList.find((access: any) =>
+        access.phoneNumber === formattedPhone && !access.used
+      );
+      hasNPNAccess = !!userNPNAccess;
+    } catch (error) {
+      console.warn('Failed to check NPN access:', error);
+    }
+
+    // If user has NPN access, allow play without purchase validation
+    const effectiveAmount = hasNPNAccess ? 0 : amount;
+    const config = calculateBoxConfiguration(effectiveAmount, hasNPNAccess ? 0 : qualifyingPurchase);
     
     setCustomerSession({
       phoneNumber: formattedPhone,
       attemptsToday: 0,
       lastAttemptDate: getCurrentDateString(),
       authorized: true,
-      purchaseAmount: amount
+      purchaseAmount: effectiveAmount,
+      isNPN: hasNPNAccess
     });
-    
+
     // Update state with parsed amount
-    setPurchaseAmount(String(amount));
+    setPurchaseAmount(String(effectiveAmount));
     
     // Store the threshold for display purposes
     const threshold = config.threshold;
@@ -348,7 +363,7 @@ export default function GameMode() {
    setShowNumberPicker(true);
  };
 
-   const handleNumberSelect = (number: number) => {
+   const handleNumberSelect = async (number: number) => {
      if (selectedNumber !== null || !correctNumber) return;
      
      setSelectedNumber(number);
@@ -394,13 +409,31 @@ export default function GameMode() {
         won,
         winningItem || undefined,
         isSuperAdminTestMode,
-        undefined, // entrySource — will be set based on context
-        undefined  // entryType — will be set based on context
+        customerSession?.isNPN ? 'NPN' : 'PURCHASE', // entrySource
+        customerSession?.isNPN ? 'NPN' : 'REGULAR'   // entryType
       );
       
       // Fire and forget — save after play, not before
       saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
-      
+
+      // If this was an NPN attempt, mark the NPN access as used
+      if (customerSession?.isNPN) {
+        try {
+          const npnAccessList = await localSettings.get('npn_access') || [];
+          const userPhone = customerSession.phoneNumber;
+          const updatedAccess = npnAccessList.map((access: any) => {
+            if (access.phoneNumber === userPhone && !access.used) {
+              return { ...access, used: true, usedAt: Date.now() };
+            }
+            return access;
+          });
+          await localSettings.set('npn_access', updatedAccess);
+          console.log('[NPN] Marked NPN access as used for:', userPhone);
+        } catch (error) {
+          console.warn('[NPN] Failed to mark NPN access as used:', error);
+        }
+      }
+
       // Store the attempt ID for nomination tracking
       setCurrentGameAttemptId(attempt.id);
       

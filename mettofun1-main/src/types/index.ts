@@ -214,6 +214,7 @@ export interface CustomerSession {
   lastAttemptDate: string;
   authorized: boolean;
   purchaseAmount?: number;
+  isNPN?: boolean; // Whether this session uses NPN entry
 }
 
 // Pending customer purchase - recorded by shop staff

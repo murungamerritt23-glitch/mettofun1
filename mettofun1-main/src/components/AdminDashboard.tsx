@@ -196,24 +196,19 @@ export default function AdminDashboard() {
       await localSettings.set('npn_entries', updatedNPNEntries);
       setNPNEntries(updatedNPNEntries);
       
-      // Create game attempt for NPN entry
-      const config = calculateBoxConfiguration(0, 0); // NPN has no purchase requirement
-      const attempt = createGameAttempt(
-        currentShop.id,
-        npnPhone,
-        0, // No purchase amount for NPN
-        0, // No qualifying amount for NPN
-        0, // Default box (will be overridden by game logic)
-        generateSecureRandomNumber(18 - (config.threshold || 1)), // Winning number
-        false, // Not won initially
-        undefined, // No selected item yet
-        false, // Not test mode
-        'NPN', // entrySource
-        'NPN'    // entryType
-      );
-      
-      // Save attempt
-      await localAttempts.save(attempt);
+      // Don't pre-create attempt - let customer play full game flow first
+      // Just record that they have NPN access
+      const npnAccess = {
+        phoneNumber: npnPhone,
+        shopId: currentShop.id,
+        grantedAt: Date.now(),
+        used: false
+      };
+
+      // Save NPN access (separate from attempts)
+      const existingNPN = await localSettings.get('npn_access') || [];
+      const updatedNPN = [...existingNPN.filter((n: any) => n.phoneNumber !== npnPhone), npnAccess];
+      await localSettings.set('npn_access', updatedNPN);
       
       // Trigger sync
       triggerSync();
@@ -1461,7 +1456,13 @@ export default function AdminDashboard() {
                     
                     {npnSuccess && (
                       <div className="p-3 bg-green-900/30 border border-green-700 rounded-lg text-green-400 text-sm mb-4">
-                        {npnSuccess}
+                        <div className="mb-2">{npnSuccess}</div>
+                        <button
+                          onClick={() => handlePostGrantRedirect(npnPhone)}
+                          className="btn-gold text-xs px-3 py-1"
+                        >
+                          Start Customer Game
+                        </button>
                       </div>
                     )}
                   </div>
