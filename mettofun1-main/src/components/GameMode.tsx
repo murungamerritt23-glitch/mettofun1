@@ -511,6 +511,31 @@ export default function GameMode() {
     );
   }
 
+  // CRITICAL: If no shop data after loading, show error
+  if (!currentShop) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 text-xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-white mb-2">Shop Not Available</h2>
+          <p className="text-gray-400 mb-6">Unable to load shop data. Please try logging in again.</p>
+          <button
+            onClick={() => {
+              // Clear everything and go back to login
+              localStorage.removeItem('metofun-auth');
+              localStorage.removeItem('metofun-auth-pw');
+              setCurrentShop(null);
+              setCurrentView('login');
+            }}
+            className="px-6 py-3 bg-gold-500 text-black rounded-lg font-medium hover:bg-gold-400 transition-colors"
+          >
+            Return to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const config = customerSession?.purchaseAmount 
     ? calculateBoxConfiguration(customerSession.purchaseAmount, currentShop?.qualifyingPurchase || 0)
     : { boxCount: 17, ratio: '<150%' };
