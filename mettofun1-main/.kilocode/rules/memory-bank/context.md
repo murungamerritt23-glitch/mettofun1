@@ -8,6 +8,11 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Change analytics "Most Selected Items" to "Top 10 Nominated Items"
+  - The analytics dashboard previously showed the 5 most selected game items (what customers picked when winning). Changed to display the top 10 customer nomination items sorted by nominationCount descending.
+  - Updated AdminDashboard.tsx analytics view to use `topNominations` state with proper sorting (already loaded by `loadTopNominations`). Now admins see which nomination items customers want to see more of.
+  - Also fixed a bug: the original `loadTopNominations` used `.slice(0, 10)` without sorting, so it showed arbitrary items instead of actual top 10. Added `.sort((a, b) => b.nominationCount - a.nominationCount)` to ensure correct ranking.
+
 - [x] Ensure likes and nomination counts persist across logout and sync reliably
   - Issue: Item of the Day likes and nomination item counts could be lost when offline or if admin logged out before sync completed. RTDB writes didn't check `result.success`, causing silent failures and no retry.
   - Root cause: `saveNominationWithSync`, `saveNominationItemWithSync`, and `incrementItemOfDayLikes` did not verify RTDB operation results. Failed writes were ignored, not queued for retry.
@@ -415,3 +420,4 @@ export async function GET() {
 | Today | Fix customer mode loading spinner stuck - ensure setIsLoading(false) always called in GameMode |
 | Today | Fix offline attempts not syncing - make sync* functions throw on failure and ensure admin exists before processing queue |
 | Today | Ensure likes and nomination counts persist across logout and sync reliably - queue setting updates and fix nomination sync result checks |
+| Today | Change analytics "Most Selected Items" to "Top 10 Nominated Items" - fix top10 sorting and update dashboard label

@@ -175,23 +175,24 @@ export default function AdminDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentShop?.id]);
 
-  // Load top nominations for the current shop
-  const loadTopNominations = async () => {
-    if (!currentShop) return;
-    setNominationsLoading(true);
-    try {
-      const nominations = await localNominationItems.getByShop(currentShop.id);
-      // Get top 10 with nominations > 0, sorted by count descending
-      const top10 = nominations
-        .filter(item => item.nominationCount > 0)
-        .slice(0, 10);
-      setTopNominations(top10);
-    } catch (error) {
-      console.error('Error loading nominations:', error);
-    } finally {
-      setNominationsLoading(false);
-    }
-  };
+   // Load top nominations for the current shop
+   const loadTopNominations = async () => {
+     if (!currentShop) return;
+     setNominationsLoading(true);
+     try {
+       const nominations = await localNominationItems.getByShop(currentShop.id);
+       // Get top 10 with nominations > 0, sorted by count descending
+       const top10 = nominations
+         .filter(item => item.nominationCount > 0)
+         .sort((a, b) => b.nominationCount - a.nominationCount)
+         .slice(0, 10);
+       setTopNominations(top10);
+     } catch (error) {
+       console.error('Error loading nominations:', error);
+     } finally {
+       setNominationsLoading(false);
+     }
+   };
 
   // Load all nomination items for editing
   const loadNominationItems = async () => {
@@ -2715,17 +2716,31 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="card">
-                  <h3 className="font-semibold mb-4">Most Selected Items</h3>
-                  <div className="space-y-2">
-                    {analytics.mostSelectedItems.slice(0, 5).map((item, i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <span className="text-gray-300">Item {item.itemId}</span>
-                        <span className="text-gold-400">{item.count} times</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                 <div className="card">
+                   <h3 className="font-semibold mb-4">Top 10 Nominated Items</h3>
+                   {nominationsLoading ? (
+                     <div className="text-center py-8">
+                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500 mx-auto"></div>
+                       <p className="text-gray-400 mt-2">Loading nominations...</p>
+                     </div>
+                   ) : topNominations.length === 0 ? (
+                     <div className="text-center py-8">
+                       <p className="text-gray-500">No customer nominations yet.</p>
+                     </div>
+                   ) : (
+                     <div className="space-y-2">
+                       {topNominations.map((item, index) => (
+                         <div key={item.id} className="flex items-center justify-between">
+                           <div className="flex items-center gap-2">
+                             <span className="text-gold-500 font-bold w-6">#{index + 1}</span>
+                             <span className="text-gray-300">{item.name}</span>
+                           </div>
+                           <span className="text-gold-400">{item.nominationCount} nominations</span>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                 </div>
               </div>
             ) : (
               <div className="text-center py-12">
