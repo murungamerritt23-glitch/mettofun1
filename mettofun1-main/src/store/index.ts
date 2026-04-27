@@ -265,20 +265,27 @@ export const useGameStore = create<GameState>()(
       setCurrentGameAttemptId: (currentGameAttemptId) => set({ currentGameAttemptId }),
       setHasNominatedThisAttempt: (hasNominatedThisAttempt) => set({ hasNominatedThisAttempt }),
       setItemOfTheDay: (itemOfTheDay) => set({ itemOfTheDay }),
-      incrementItemOfDayLikes: () => {
+      incrementItemOfDayLikes: async () => {
         const current = useGameStore.getState().itemOfTheDay;
         if (!current) return;
-        
+
         const newLikes = (current.likes || 0) + 1;
         const updated = { ...current, likes: newLikes };
-        
+
         set({ itemOfTheDay: updated });
-        localSettings.set('itemOfTheDay', updated);
-        
-        // Sync to RTDB for aggregation across all shops
-        import('@/lib/firebase').then(({ rtdbSettings }) => {
-          rtdbSettings.set('itemOfTheDay', updated).catch(() => {});
-        }).catch(() => {});
+        await localSettings.set('itemOfTheDay', updated);
+
+        // Queue for sync to RTDB so likes persist across devices
+        try {
+          const { queueForSync } = await import('@/lib/sync-service');
+          await queueForSync({
+            type: 'setting',
+            operation: 'update',
+            data: { key: 'itemOfTheDay', value: updated }
+          });
+        } catch (error) {
+          console.error('[Sync] Failed to queue item of the day update:', error);
+        }
       },
       setHasLikedItemOfDay: (hasLikedItemOfDay) => set({ hasLikedItemOfDay }),
       resetGame: () => set({

@@ -8,6 +8,17 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Ensure likes and nomination counts persist across logout and sync reliably
+  - Issue: Item of the Day likes and nomination item counts could be lost when offline or if admin logged out before sync completed. RTDB writes didn't check `result.success`, causing silent failures and no retry.
+  - Root cause: `saveNominationWithSync`, `saveNominationItemWithSync`, and `incrementItemOfDayLikes` did not verify RTDB operation results. Failed writes were ignored, not queued for retry.
+  - Solution:
+    1. Added `'setting'` to `SyncItemType` and implemented `syncSetting` handler in sync-service.
+    2. Modified `incrementItemOfDayLikes` (store/index.ts) to always queue RTDB updates via `queueForSync` instead of direct RTDB call.
+    3. Fixed `saveNominationWithSync` to check `result.success` from `rtdbCustomerNominations.create` and queue on failure.
+    4. Fixed `saveNominationItemWithSync` to check create/update results and queue on failure.
+    5. All queued items now retry with exponential backoff, ensuring eventual consistency across devices.
+  - Likes and nomination counts now survive logout and sync correctly even after network interruptions.
+
 - [x] Fix offline attempts not syncing to Firebase when back online
   - Issue: Attempts made while offline were never synced to RTDB, especially noticeable across different devices. Online sync worked but offline→online sync failed silently.
   - Root cause: In `sync-service.ts`, the sync functions (`syncAttempt`, `syncItemData`, `syncShop`, `syncNominationItem`, `syncCustomerNomination`) ignored the `{ success }` result from RTDB operations and never threw on failure. In `processSyncQueue`, failed items were incorrectly marked as synced and removed from the queue without actually being saved to RTDB.
@@ -403,3 +414,4 @@ export async function GET() {
 | Today | Fix shop credentials logging into wrong shop - prioritize adminEmail over deviceId, fix offline login shop resolution, add assignedShops fallback to session restore |
 | Today | Fix customer mode loading spinner stuck - ensure setIsLoading(false) always called in GameMode |
 | Today | Fix offline attempts not syncing - make sync* functions throw on failure and ensure admin exists before processing queue |
+| Today | Ensure likes and nomination counts persist across logout and sync reliably - queue setting updates and fix nomination sync result checks |

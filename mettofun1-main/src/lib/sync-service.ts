@@ -34,7 +34,7 @@ const ensureAdminInRTDB = async (): Promise<boolean> => {
 };
 
 // Sync service types
-export type SyncItemType = 'attempt' | 'item' | 'shop' | 'nominationItem' | 'customerNomination';
+export type SyncItemType = 'attempt' | 'item' | 'shop' | 'nominationItem' | 'customerNomination' | 'setting';
 export type SyncOperation = 'create' | 'update' | 'delete';
 
 export interface SyncTask {
@@ -424,6 +424,9 @@ const syncItem = async (type: SyncItemType, operation: SyncOperation, data: any)
     case 'customerNomination':
       await syncCustomerNomination(operation, data);
       break;
+    case 'setting':
+      await syncSetting(operation, data);
+      break;
   }
 };
 
@@ -531,6 +534,25 @@ const syncCustomerNomination = async (operation: SyncOperation, data: CustomerNo
   }
   if (!result.success) {
     throw new Error(result.error || 'Failed to sync customer nomination');
+  }
+};
+
+// Sync setting (key-value)
+const syncSetting = async (operation: SyncOperation, data: { key: string; value: any }): Promise<void> => {
+  const { rtdbSettings } = await import('./firebase');
+
+  let result: { success: boolean; error?: string };
+  if (operation === 'create' || operation === 'update') {
+    result = await rtdbSettings.set(data.key, data.value);
+  } else if (operation === 'delete') {
+    // Deleting a setting by setting it to null
+    result = await rtdbSettings.set(data.key, null);
+  } else {
+    // Should not happen
+    throw new Error(`Invalid operation for setting: ${operation}`);
+  }
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to sync setting');
   }
 };
 
@@ -643,8 +665,13 @@ export const saveNominationWithSync = async (nomination: CustomerNomination): Pr
     try {
       await ensureAdminInRTDB();
       const { rtdbCustomerNominations } = await import('./firebase');
-      await rtdbCustomerNominations.create(nomination);
-      console.log('[Sync] Nomination synced to Realtime Database');
+      const result = await rtdbCustomerNominations.create(nomination);
+      if (result.success) {
+        console.log('[Sync] Nomination synced to Realtime Database');
+      } else {
+        console.error('[Sync] Nomination sync failed, queuing for retry:', result.error);
+        await queueForSync({ type: 'customerNomination', operation: 'create', data: nomination });
+      }
     } catch (error) {
       console.error('[Sync] Error syncing nomination to Realtime Database, queuing:', error);
       await queueForSync({ type: 'customerNomination', operation: 'create', data: nomination });
@@ -664,26 +691,36 @@ export const saveNominationItemWithSync = async (item: NominationItem, isNew: bo
     try {
       await ensureAdminInRTDB();
       const { rtdbNominationItems } = await import('./firebase');
+      let result: { success: boolean; error?: string };
       if (isNew) {
-        await rtdbNominationItems.create(item);
+        result = await rtdbNominationItems.create(item);
       } else {
-        await rtdbNominationItems.update(item.id, item);
+        result = await rtdbNominationItems.update(item.id, item);
       }
-      console.log('[Sync] Nomination item synced to Realtime Database');
+      if (result.success) {
+        console.log('[Sync] Nomination item synced to Realtime Database');
+      } else {
+        console.error('[Sync] Nomination item sync failed, queuing for retry:', result.error);
+        await queueForSync({
+          type: 'nominationItem',
+          operation: isNew ? 'create' : 'update',
+          data: item
+        });
+      }
     } catch (error) {
       console.error('[Sync] Error syncing nomination item to Realtime Database, queuing:', error);
-      await queueForSync({ 
-        type: 'nominationItem', 
-        operation: isNew ? 'create' : 'update', 
-        data: item 
+      await queueForSync({
+        type: 'nominationItem',
+        operation: isNew ? 'create' : 'update',
+        data: item
       });
     }
   } else {
     console.log('[Sync] Offline - queued nomination item for sync');
-    await queueForSync({ 
-      type: 'nominationItem', 
-      operation: isNew ? 'create' : 'update', 
-      data: item 
+    await queueForSync({
+      type: 'nominationItem',
+      operation: isNew ? 'create' : 'update',
+      data: item
     });
   }
 };

@@ -271,7 +271,7 @@ export interface AppSettings {
 }
 
 // Sync Types
-export type SyncItemType = 'attempt' | 'item' | 'shop' | 'nominationItem' | 'customerNomination';
+export type SyncItemType = 'attempt' | 'item' | 'shop' | 'nominationItem' | 'customerNomination' | 'setting';
 export type SyncOperation = 'create' | 'update' | 'delete';
 
 export interface SyncQueue {
