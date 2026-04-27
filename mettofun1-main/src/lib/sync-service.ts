@@ -305,7 +305,7 @@ export const processSyncQueue = async (): Promise<void> => {
     console.log('[Sync] Offline - not attempting sync, waiting for connection');
     return;
   }
-  
+
   if (syncInProgress) {
     console.log('[Sync] Already syncing, skipping');
     return;
@@ -316,7 +316,15 @@ export const processSyncQueue = async (): Promise<void> => {
   try {
     // Use setTimeout to defer and not block the main thread
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
+    // Ensure admin exists in RTDB before any writes (security rule requirement)
+    const adminReady = await ensureAdminInRTDB();
+    if (!adminReady) {
+      console.warn('[Sync] Admin not ready in RTDB, aborting sync cycle');
+      syncInProgress = false;
+      return;
+    }
+
     // Get pending items from IndexedDB
     const { localDB } = await import('./local-db');
     let pendingItems = await localDB.getPendingSyncItems();
@@ -423,17 +431,21 @@ const syncItem = async (type: SyncItemType, operation: SyncOperation, data: any)
 const syncAttempt = async (operation: SyncOperation, data: GameAttempt): Promise<void> => {
   const { rtdbAttempts } = await import('./firebase');
   const shopId = data.shopId || 'unknown';
-  
+
+  let result: { success: boolean; error?: string };
   switch (operation) {
     case 'create':
-      await rtdbAttempts.create(shopId, data);
+      result = await rtdbAttempts.create(shopId, data);
       break;
     case 'update':
-      await rtdbAttempts.update(shopId, data.id, data);
+      result = await rtdbAttempts.update(shopId, data.id, data);
       break;
     case 'delete':
-      await rtdbAttempts.delete(shopId, data.id);
+      result = await rtdbAttempts.delete(shopId, data.id);
       break;
+  }
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to sync attempt');
   }
 };
 
@@ -441,68 +453,84 @@ const syncAttempt = async (operation: SyncOperation, data: GameAttempt): Promise
 const syncItemData = async (operation: SyncOperation, data: Item): Promise<void> => {
   const { rtdbItems } = await import('./firebase');
   const shopId = data.shopId || 'unknown';
-  
+
+  let result: { success: boolean; error?: string };
   switch (operation) {
     case 'create':
-      await rtdbItems.create(shopId, data);
+      result = await rtdbItems.create(shopId, data);
       break;
     case 'update':
-      await rtdbItems.update(shopId, data.id, data);
+      result = await rtdbItems.update(shopId, data.id, data);
       break;
     case 'delete':
-      await rtdbItems.delete(shopId, data.id);
+      result = await rtdbItems.delete(shopId, data.id);
       break;
+  }
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to sync item');
   }
 };
 
 // Sync shop
 const syncShop = async (operation: SyncOperation, data: Shop): Promise<void> => {
   const { rtdbShops } = await import('./firebase');
-  
+
+  let result: { success: boolean; error?: string };
   switch (operation) {
     case 'create':
-      await rtdbShops.save(data);
+      result = await rtdbShops.save(data);
       break;
     case 'update':
-      await rtdbShops.update(data.id, data);
+      result = await rtdbShops.update(data.id, data);
       break;
     case 'delete':
-      await rtdbShops.delete(data.id);
+      result = await rtdbShops.delete(data.id);
       break;
+  }
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to sync shop');
   }
 };
 
 // Sync nomination item
 const syncNominationItem = async (operation: SyncOperation, data: NominationItem): Promise<void> => {
   const { rtdbNominationItems } = await import('./firebase');
-  
+
+  let result: { success: boolean; error?: string };
   switch (operation) {
     case 'create':
-      await rtdbNominationItems.create(data);
+      result = await rtdbNominationItems.create(data);
       break;
     case 'update':
-      await rtdbNominationItems.update(data.id, data);
+      result = await rtdbNominationItems.update(data.id, data);
       break;
     case 'delete':
-      await rtdbNominationItems.delete(data.id);
+      result = await rtdbNominationItems.delete(data.id);
       break;
+  }
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to sync nomination item');
   }
 };
 
 // Sync customer nomination
 const syncCustomerNomination = async (operation: SyncOperation, data: CustomerNomination): Promise<void> => {
   const { rtdbCustomerNominations } = await import('./firebase');
-  
+
+  let result: { success: boolean; error?: string };
   switch (operation) {
     case 'create':
-      await rtdbCustomerNominations.create(data);
+      result = await rtdbCustomerNominations.create(data);
       break;
     case 'update':
-      await rtdbCustomerNominations.update(data.id, data);
+      result = await rtdbCustomerNominations.update(data.id, data);
       break;
     case 'delete':
-      await rtdbCustomerNominations.delete(data.id, data.shopId);
+      result = await rtdbCustomerNominations.delete(data.id, data.shopId);
       break;
+  }
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to sync customer nomination');
   }
 };
 

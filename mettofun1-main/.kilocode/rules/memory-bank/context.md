@@ -8,6 +8,12 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix offline attempts not syncing to Firebase when back online
+  - Issue: Attempts made while offline were never synced to RTDB, especially noticeable across different devices. Online sync worked but offline→online sync failed silently.
+  - Root cause: In `sync-service.ts`, the sync functions (`syncAttempt`, `syncItemData`, `syncShop`, `syncNominationItem`, `syncCustomerNomination`) ignored the `{ success }` result from RTDB operations and never threw on failure. In `processSyncQueue`, failed items were incorrectly marked as synced and removed from the queue without actually being saved to RTDB.
+  - Solution: Modified all sync* functions to check `result.success` and throw an error if false, causing the queue processing to catch, increment retry count, and keep items pending. Also added `ensureAdminInRTDB()` check at start of `processSyncQueue` to verify admin permissions before any writes.
+  - Now offline attempts will retry until they successfully reach RTDB, ensuring cross-device sync works.
+
 - [x] Fix customer mode loading spinner stuck
   - Issue: Customer mode shows loading indefinitely on first load, but exiting and re-entering shows customer mode immediately (data was loaded in background)
   - Root cause: In `GameMode.tsx`, `setIsLoading(false)` was inside `if (currentShop)` block. When component mounted before `currentShop` was available, the early return prevented `setIsLoading(false)` from ever being called.
@@ -396,3 +402,4 @@ export async function GET() {
 | Today | Fix super admin delete staff not persisting - add rtdbAdmins.delete() to prevent resurrection after sync |
 | Today | Fix shop credentials logging into wrong shop - prioritize adminEmail over deviceId, fix offline login shop resolution, add assignedShops fallback to session restore |
 | Today | Fix customer mode loading spinner stuck - ensure setIsLoading(false) always called in GameMode |
+| Today | Fix offline attempts not syncing - make sync* functions throw on failure and ensure admin exists before processing queue |
