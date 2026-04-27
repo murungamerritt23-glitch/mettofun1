@@ -301,18 +301,24 @@ export default function LoginPage() {
       const assignedShopIds = adminToUse!.assignedShops || [];
       let shop: Awaited<ReturnType<typeof localShops.getByDeviceId>> = undefined;
       
-       // Priority 1: Match by adminEmail (most reliable - each email links to exactly one shop)
+      // Priority 1: Match by adminEmail (most reliable - each email links to exactly one shop)
+      const shopLoadTimeout = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Shop load timeout')), 15000)
+      );
+      
       let localShopsList: Shop[];
       try {
-        // Read local shops without any race or timeout to avoid hangs/crashes
-        localShopsList = await localShops.getAll();
+        localShopsList = await Promise.race([
+          localShops.getAll(),
+          shopLoadTimeout
+        ]);
       } catch (e) {
-        console.error('Local shops read failed:', e);
+        console.error('Shop load timeout:', e);
         setError('Failed to load shops. Please try again.');
         setIsLoading(false);
         return;
       }
-
+      
       shop = localShopsList.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
       
       // Priority 2: Match by assignedShops (set by super_admin when creating the admin)
@@ -329,41 +335,26 @@ export default function LoginPage() {
         }
       }
 
-      // Priority 4: Fetch from RTDB if still not found (non-blocking background fallback)
-      // Defer to background so it never blocks or races the local read
+      // Priority 4: Fetch from RTDB if still not found
       if (!shop) {
-        (async () => {
-          try {
-            const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
-            const fbShops = await rtdbShopApi.getAll();
-            if (fbShops && fbShops.length > 0) {
-              // Save to local for offline access and future fast lookups (upsert by timestamp)
-              for (const s of fbShops) {
-                const local = await localShops.get(s.id);
-                if (!local || new Date(s.updatedAt || 0) > new Date(local.updatedAt || 0)) {
-                  await localShops.save(s);
-                }
-            // Pull NPN entries to sync across devices [ADDED]
-            try {
-              const { rtdb } = await import('@/lib/firebase');
-              const { ref, onValue } = await import('firebase/database');
-              undefined
-            } catch (err) {
-              console.warn('RTDB NPN fetch failed (non-blocking):', err);
+        try {
+          const { rtdbShops: rtdbShopApi } = await import('@/lib/firebase');
+          const fbShops = await rtdbShopApi.getAll();
+          if (fbShops && fbShops.length > 0) {
+            // Save to local for offline access
+            for (const s of fbShops) {
+              await localShops.save(s);
             }
-              }
-              // Find shop by admin email first
-              shop = fbShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
-              // Then by assigned shops
-              if (!shop && assignedShopIds.length > 0) {
-                shop = fbShops.find(s => assignedShopIds.includes(s.id));
-              }
+            // Find shop by admin email first
+            shop = fbShops.find(s => s.adminEmail?.toLowerCase() === email.toLowerCase());
+            // Then by assigned shops
+            if (!shop && assignedShopIds.length > 0) {
+              shop = fbShops.find(s => assignedShopIds.includes(s.id));
             }
-          } catch (err) {
-            console.warn('RTDB shop fetch failed (non-blocking):', err);
-            // Do not block login; if still no shop, show assign error below
           }
-        })();
+        } catch (err) {
+          // RTDB fetch failed
+        }
       }
 
       // Handle device lock for shop_admin
@@ -400,8 +391,7 @@ export default function LoginPage() {
         return;
       }
     } else {
-      // Shop admins and agents land in customer view so they can play/nominate immediately
-      setCurrentView('customer');
+      setCurrentView('admin');
     }
 
     setIsLoading(false);

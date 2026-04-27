@@ -21,8 +21,6 @@ import {
 import type { Item, GameAttempt } from '@/types';
 import { verifyShopLocation } from '@/lib/location';
 import NominationScreen from './NominationScreen';
-import { rtdb } from '@/lib/firebase';
-import { ref, onValue } from 'firebase/database';
 
 export default function GameMode() {
   const [isLoading, setIsLoading] = useState(true);
@@ -73,56 +71,50 @@ export default function GameMode() {
   // For shop_admin and agent_admin, always use real mode (test mode doesn't affect them)
   const isSuperAdminTestMode = isTestMode && admin?.level === 'super_admin';
 
-  // Load Item of the Day on mount with real-time listener
+  // Load Item of the Day on mount
   useEffect(() => {
-    let isCancelled = false;
-    let unsubscribe: (() => void) | null = null;
-
     const loadItemOfDay = async () => {
       // Try local first
       const savedItem = await localSettings.get('itemOfTheDay');
-      if (savedItem && !isCancelled) {
+      if (savedItem) {
         useGameStore.getState().setItemOfTheDay(savedItem);
+      } else {
+        // Non-blocking RTDB fetch for new devices
+        import('@/lib/firebase').then(({ rtdbSettings }) => {
+          rtdbSettings.get('itemOfTheDay').then((rtdbItem: any) => {
+            if (rtdbItem) {
+              localSettings.set('itemOfTheDay', rtdbItem);
+              useGameStore.getState().setItemOfTheDay(rtdbItem);
+            }
+          }).catch(() => {});
+        }).catch(() => {});
       }
-
-      // Set up real-time listener for live likes across all devices
-      try {
-        const { rtdb } = await import('@/lib/firebase');
-        const itemOfDayRef = ref(rtdb, 'settings/itemOfTheDay');
-        
-        unsubscribe = onValue(itemOfDayRef, (snapshot) => {
-          if (isCancelled) return;
-          
-          const rtdbItem = snapshot.exists() ? snapshot.val() : null;
+      
+      // Periodically sync item of day from RTDB for live likes (every 30 seconds)
+      const syncItemOfDay = async () => {
+        try {
+          const { rtdbSettings } = await import('@/lib/firebase');
+          const rtdbItem = await rtdbSettings.get('itemOfTheDay');
           if (rtdbItem) {
             // Preserve local likes if RTDB has fewer (in case offline likes happened)
-            const localItem = savedItem;
-            if (localItem && rtdbItem.likes < (localItem.likes || 0)) {
+            const localItem = await localSettings.get('itemOfTheDay');
+            if (localItem && rtdbItem.likes < localItem.likes) {
               rtdbItem.likes = localItem.likes;
-              // Write back to sync the likes
-              import('@/lib/firebase').then(({ rtdbSettings }) => {
-                rtdbSettings.set('itemOfTheDay', rtdbItem).catch(() => {});
-              });
+              await rtdbSettings.set('itemOfTheDay', rtdbItem);
             }
             localSettings.set('itemOfTheDay', rtdbItem);
             useGameStore.getState().setItemOfTheDay(rtdbItem);
           }
-        }, (error) => {
-          console.log('RTDB listener error:', error);
-        });
-      } catch (e) {
-        console.log('RTDB setup error:', e);
-      }
+        } catch (e) {}
+      };
+      
+      // Initial sync
+      syncItemOfDay();
+      // Sync every 30 seconds for live likes
+      const syncInterval = setInterval(syncItemOfDay, 30000);
+      return () => clearInterval(syncInterval);
     };
-
     loadItemOfDay();
-    
-    return () => {
-      isCancelled = true;
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
   }, []);
 
   // Load shop items - always fresh from DB to get latest updates (images, etc)
@@ -243,35 +235,18 @@ export default function GameMode() {
       alert(language === 'sw' ? 'Tafadhali ingiza nambari ya simu sahihi' : 'Please enter a valid phone number');
       return;
     }
-
-    // Use test phone prefix only if super admin has test mode enabled
-    const formattedPhone = isSuperAdminTestMode
-      ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}`
-      : formatPhoneNumber(phoneNumber);
-
-    // Check for NPN access before purchase validation
-    let hasNPNAccess = false;
-    try {
-      const npnAccessList = await localSettings.get('npn_access') || [];
-      const userNPNAccess = npnAccessList.find((access: any) =>
-        access.phoneNumber === formattedPhone && !access.used
-      );
-      hasNPNAccess = !!userNPNAccess;
-    } catch (error) {
-      console.warn('[GameMode] Failed to check NPN access:', error);
-    }
-
-    // Handle empty or invalid purchase amount - show error if invalid (skip for NPN)
+    
+    // Handle empty or invalid purchase amount - show error if invalid
     let amount = parseFloat(purchaseAmount);
-    if (!hasNPNAccess && (isNaN(amount) || amount < 0)) {
+    if (isNaN(amount) || amount < 0) {
       alert(language === 'sw' ? 'Tafadhali ingiza kiwango sahihi cha manunuzi' : 'Please enter a valid purchase amount');
       return;
     }
-
+    
     const qualifyingPurchase = Number(currentShop?.qualifyingPurchase) || 0;
-
-    // If qualifying purchase is set, enforce minimum (skip for NPN)
-    if (!hasNPNAccess && qualifyingPurchase > 0 && amount < qualifyingPurchase) {
+    
+    // If qualifying purchase is set, enforce minimum
+    if (qualifyingPurchase > 0 && amount < qualifyingPurchase) {
       alert(
         language === 'sw'
           ? `Kiwango cha chini ni KSh ${qualifyingPurchase.toLocaleString()}. Tafadhali ingiza kiwango cha juu au sawa na ${qualifyingPurchase.toLocaleString()}.`
@@ -279,36 +254,6 @@ export default function GameMode() {
       );
       return;
     }
-
-    // Validate that shop is available
-    if (!currentShop) {
-      alert(language === 'sw' ? 'Hakuna duka lililochaguliwa' : 'No shop selected');
-      return;
-    }
-
-    setIsAuthorizing(true);
-    setLocationError(null);
-
-    // Check if user is at the shop location (non-blocking - allow play if it fails)
-    try {
-      const locationResult = await verifyShopLocation(currentShop?.location);
-
-      if (!locationResult.isValid) {
-        // Show warning but allow play (location is advisory only)
-        setLocationError(
-          language === 'sw'
-            ? `Maonyo: ${locationResult.error || 'Hauko karibu na duka.'}`
-            : `Warning: ${locationResult.error || 'Not near shop (playing anyway).'}`
-
-        );
-      }
-    } catch (error) {
-      // Location check failed - allow play anyway (non-blocking)
-      console.log('Location verification skipped:', error);
-    }
-
-    // Simulate authorization
-    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Validate that shop is available
     if (!currentShop) {
@@ -338,16 +283,20 @@ export default function GameMode() {
     
     // Simulate authorization
     await new Promise(resolve => setTimeout(resolve, 500));
-
-    const config = calculateBoxConfiguration(amount, hasNPNAccess ? 0 : qualifyingPurchase);
+    
+    // Use test phone prefix only if super admin has test mode enabled
+    const formattedPhone = isSuperAdminTestMode 
+      ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}` 
+      : formatPhoneNumber(phoneNumber);
+    
+    const config = calculateBoxConfiguration(amount, qualifyingPurchase);
     
     setCustomerSession({
       phoneNumber: formattedPhone,
       attemptsToday: 0,
       lastAttemptDate: getCurrentDateString(),
       authorized: true,
-      purchaseAmount: amount,
-      isNPN: hasNPNAccess
+      purchaseAmount: amount
     });
     
     // Update state with parsed amount
@@ -373,35 +322,42 @@ export default function GameMode() {
     setShowNumberPicker(true);
   };
 
-  const handleItemSelect = (item: Item) => {
-   if (!item || !item.isActive) return;
-   
-   setTappedItemId(item.id);
-   setTimeout(() => setTappedItemId(null), 400);
-   
-   setSelectedItem(item);
-   
-   // Defer winning number generation until user selects a box/number
-   setShowItemPicker(false);
-   setShowNumberPicker(true);
- };
+ const handleItemSelect = (item: Item) => {
+  if (!item || !item.isActive) return;
+  
+  setTappedItemId(item.id);
+  setTimeout(() => setTappedItemId(null), 400);
+  
+  setSelectedItem(item);
+  
+  // Generate RANDOM winning number from available range (1 to 18-threshold)
+  // This makes the game fair and unpredictable
+  const threshold = thresholdNumber || 1;
+  const winningNum = generateSecureRandomNumber(18 - threshold);
+  setCorrectNumber(winningNum);
+  
+  setShowItemPicker(false);
+  setShowNumberPicker(true);
+}; 
 
-    const handleNumberSelect = async (number: number) => {
-     if (selectedNumber !== null || !correctNumber) return;
-     
-     setSelectedNumber(number);
-     
-     // Check if won - player wins only if selected number === correctNumber (exact match)
-     const won = number === correctNumber;
-     setGameWon(won);
-     
-     if (won) {
-       // Show the exact item customer selected - not a different one
-       setWinningItem(selectedItem);
-       setSelectedItem(selectedItem);
-     }
-     
-      // Validate before saving — do not save invalid attempts
+  const handleNumberSelect = (number: number) => {
+    if (selectedNumber !== null || !correctNumber) return;
+    
+    setSelectedNumber(number);
+    
+    // Check if won - player wins only if selected number === correctNumber (exact match)
+    const won = number === correctNumber;
+    setGameWon(won);
+    
+    if (won) {
+      // Show the exact item customer selected - not a different one
+      setWinningItem(selectedItem);
+      setSelectedItem(selectedItem);
+    }
+    
+    // Save attempt in background - don't await to avoid blocking
+    try {
+      // Validate attempt before saving
       const validation = validateGameAttempt(
         currentShop?.id || 'demo',
         customerSession?.phoneNumber || phoneNumber,
@@ -415,13 +371,12 @@ export default function GameMode() {
       
       if (!validation.valid) {
         console.error('Invalid game attempt:', validation.error);
-        // Still show result to user but do not save invalid attempt
+        // Still show result to user but don't save invalid attempt
         setShowResult(true);
         setGameStatus(won ? 'won' : 'lost');
         return;
       }
       
-      // Create and save attempt only after user plays
       const attempt = createGameAttempt(
         currentShop?.id || 'demo',
         customerSession?.phoneNumber || phoneNumber,
@@ -431,46 +386,21 @@ export default function GameMode() {
         correctNumber,
         won,
         winningItem || undefined,
-        isSuperAdminTestMode,
-        customerSession?.isNPN ? 'NPN' : 'PURCHASE', // entrySource
-        customerSession?.isNPN ? 'NPN' : 'REGULAR'   // entryType
+        isSuperAdminTestMode
       );
       
-      // Fire and forget — save after play, not before
+      // Fire and forget - don't await
       saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
-
-      // If this was an NPN attempt, mark the NPN access as used
-      if (customerSession?.isNPN) {
-        try {
-          const npnAccessList = await localSettings.get('npn_access') || [];
-          const userPhone = customerSession.phoneNumber;
-          const updatedAccess = npnAccessList.map((access: any) => {
-            if (access.phoneNumber === userPhone && !access.used) {
-              return { ...access, used: true, usedAt: Date.now() };
-            }
-            return access;
-          });
-          await localSettings.set('npn_access', updatedAccess);
-          console.log('[NPN] Marked NPN access as used for:', userPhone);
-        } catch (error) {
-          console.warn('[NPN] Failed to mark NPN access as used:', error);
-        }
-      }
-
+      
       // Store the attempt ID for nomination tracking
       setCurrentGameAttemptId(attempt.id);
-      
-      // Navigate to customer view so they can play/nominate
-      setCurrentView('customer');
-      
-      setShowResult(true);
-      setGameStatus(won ? 'won' : 'lost');
-    };
-
-    // Generate winning number now (after a box/item is selected and before save)
-    const threshold = thresholdNumber || 1;
-    const winningNum = generateSecureRandomNumber(18 - threshold);
-    setCorrectNumber(winningNum);
+    } catch (error) {
+      console.error('Error saving game attempt:', error);
+    }
+    
+    setShowResult(true);
+    setGameStatus(won ? 'won' : 'lost');
+  };
 
   const handlePlayAgain = async () => {
     // Fresh game session - no time restrictions
@@ -893,7 +823,7 @@ export default function GameMode() {
                     <img 
                       src={itemOfTheDay.imageUrl} 
                       alt={itemOfTheDay.name} 
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
                     <Gift className="text-amber-400 w-8 h-8" />
@@ -951,13 +881,13 @@ export default function GameMode() {
                     : ''
                 } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
               >
-                {/* Image fills the entire card */}
-                <div className="w-full h-full relative">
+                {/* Image fills the top portion of the card */}
+                <div className="w-full flex-1 min-h-0 relative">
                   {item.imageUrl ? (
                     <img 
                       src={item.imageUrl} 
                       alt={item.name}
-                      className="absolute inset-0 w-full h-full object-contain"
+                      className="absolute inset-0 w-full h-full object-cover"
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -1143,7 +1073,7 @@ export default function GameMode() {
                     <img 
                       src={item.imageUrl} 
                       alt={item.name}
-                      className="w-10 h-10 object-contain rounded"
+                      className="w-8 h-8 object-cover rounded"
                     />
                   ) : (
                     <Gift className={`w-6 h-6 ${tappedBoxNum === boxNum ? 'text-white' : ''}`} />
@@ -1165,20 +1095,15 @@ export default function GameMode() {
         </div>
       </div>
 
-       {/* Box count indicator */}
-       <div className="max-w-2xl mx-auto mt-6 text-center">
-         <div className="inline-flex items-center gap-2 px-4 py-2 bg-gold-900/30 rounded-full">
-           <Star className="w-4 h-4 text-gold-400" />
-           <span className="text-gold-400 text-sm">
-             {config.ratio} - {config.boxCount} {language === 'sw' ? 'sanduku' : 'boxes'}
-           </span>
-         </div>
-       </div>
-       
-       {/* NPN Compliance Text */}
-       <div className="mt-8 text-center text-xs text-gray-500">
-         Participation available on request, subject to conditions.
-       </div>
-     </div>
-   );
+      {/* Box count indicator */}
+      <div className="max-w-2xl mx-auto mt-6 text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gold-900/30 rounded-full">
+          <Star className="w-4 h-4 text-gold-400" />
+          <span className="text-gold-400 text-sm">
+            {config.ratio} - {config.boxCount} {language === 'sw' ? 'sanduku' : 'boxes'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }

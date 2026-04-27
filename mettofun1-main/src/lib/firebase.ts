@@ -222,7 +222,7 @@ export const firebaseDb = {
   }
 };
 
-export { app, auth, db, rtdb };
+export { app, auth, db };
 
 // Shop collection helper functions for Firestore
 const SHOPS_COLLECTION = 'shops';
@@ -1300,53 +1300,6 @@ export const rtdbCustomerNominations = {
     try {
       const sid = shopId || 'unknown';
       await remove(ref(rtdb, `customerNominations/${sid}/${id}`));
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  }
-};
-
-
-// NPN entries - Realtime Database
-export const rtdbNpnEntries = {
-  async getAll(): Promise<any[]> {
-    try {
-      const snapshot = await get(ref(rtdb, 'npn_entries'));
-      if (!snapshot.exists()) return [];
-      const data = snapshot.val();
-      return Object.entries(data).map(([id, entry]: [string, any]) => ({ ...entry, id }));
-    } catch (error) {
-      console.error('RTDB Error fetching npn_entries:', error);
-      return [];
-    }
-  },
-
-  async getByShop(shopId: string): Promise<any[]> {
-    try {
-      const snapshot = await get(ref(rtdb, 'npn_entries'));
-      if (!snapshot.exists()) return [];
-      const data = snapshot.val();
-      const all = Object.entries(data).map(([id, entry]: [string, any]) => ({ ...entry, id }));
-      return all.filter(e => e.shopId === shopId);
-    } catch (error) {
-      console.error('RTDB Error fetching npn_entries by shop:', error);
-      return [];
-    }
-  },
-
-  async create(entry: any): Promise<{ success: boolean; error?: string }> {
-    try {
-      await push(ref(rtdb, ), serializeForRTDB(entry));
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  },
-
-  async update(id: string, entry: any): Promise<{ success: boolean; error?: string }> {
-    try {
-      await set(ref(rtdb, ), serializeForRTDB(entry));
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };

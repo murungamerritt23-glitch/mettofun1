@@ -200,8 +200,6 @@ export interface GameAttempt {
   timestamp: Date;
   synced: boolean;
   isTest?: boolean; // Test mode flag - marks test attempts to exclude from real analytics
-  entrySource?: 'NPN' | 'PURCHASE'; // Source of the entry: NPN (free) or PURCHASE (paid)
-  entryType?: 'NPN' | 'REGULAR';    // Type of entry: NPN (free) or REGULAR (normal)
   // Anti-tamper fields
   integrityHash?: string;      // SHA256 hash of game data for integrity verification
   integrityVerified?: boolean; // Whether the integrity has been verified
@@ -214,19 +212,6 @@ export interface CustomerSession {
   lastAttemptDate: string;
   authorized: boolean;
   purchaseAmount?: number;
-  isNPN?: boolean; // Whether this session uses NPN entry
-}
-
-export interface NPNEntry {
-  id: string;
-  phoneNumber: string;
-  shopId: string;
-  adminId: string;
-  deviceId: string;
-  timestamp: number;
-  reason: string;
-  used: boolean;
-  usedAt?: number;
 }
 
 // Pending customer purchase - recorded by shop staff

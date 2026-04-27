@@ -12,7 +12,7 @@ import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } fr
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
 import { rtdbShops, rtdbAdmins, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
 import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive } from '@/lib/sync-service';
-import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber, createGameAttempt } from '@/lib/game-utils';
+import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier, ItemOfTheDay, NominationItem } from '@/types';
 import { ADMIN_PERMISSIONS, SUBSCRIPTION_CHANNELS } from '@/types';
@@ -48,8 +48,6 @@ export default function AdminDashboard() {
   const [isEditingItemOfDay, setIsEditingItemOfDay] = useState(false);
   const [itemOfDayForm, setItemOfDayForm] = useState({ name: '', value: '', imageUrl: '' });
   const [itemOfDaySaved, setItemOfDaySaved] = useState(false);
-  const [npnEntries, setNPNEntries] = useState<any[]>([]);
-  const [isCancelled, setIsCancelled] = useState(false);
 
   // Customer management state (for 'customers' tab)
   const [pendingCustomers, setPendingCustomers] = useState<any[]>([]);
@@ -85,14 +83,6 @@ export default function AdminDashboard() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  // NPN Compliance state
-  const [npnPhone, setNPNPhone] = useState('');
-  const [npnReason, setNPNReason] = useState('customer_request');
-  const [isNPNGranting, setIsNPNGranting] = useState(false);
-  const [npnError, setNPNError] = useState<string | null>(null);
-  const [npnSuccess, setNPNSuccess] = useState<string | null>(null);
-  const [showNPNForm, setShowNPNForm] = useState(false);
-  
   // Collapsible shop groups in attempts view
   const [expandedShops, setExpandedShops] = useState<Set<string>>(new Set());
   
@@ -107,149 +97,6 @@ export default function AdminDashboard() {
       return newSet;
     });
   };
-
-  // NPN Compliance Functions
-  const handleGrantNPNEntry = async () => {
-    // Validate phone number
-    const phoneDigits = npnPhone.replace(/\D/g, '');
-    if (phoneDigits.length < 9 || phoneDigits.length > 15) {
-      setNPNError('Please enter a valid phone number');
-      return;
-    }
-    
-    if (!npnReason) {
-      setNPNError('Please select a reason');
-      return;
-    }
-    
-    if (!currentShop) {
-      setNPNError('No shop selected');
-      return;
-    }
-    
-    setIsNPNGranting(true);
-    setNPNError(null);
-    setNPNSuccess(null);
-    
-    try {
-      // Check daily limits
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Get existing NPN entries for today
-      const allNPNEntries = await localSettings.get('npn_entries') || [];
-      const todaysNPNEntries = allNPNEntries.filter((entry: any) => 
-        entry.timestamp && new Date(entry.timestamp).toISOString().split('T')[0] === today
-      );
-      
-      // Check shop limit (max 5 per shop per day)
-      const shopNPNCount = todaysNPNEntries.filter((entry: any) => 
-        entry.shopId === currentShop.id
-      ).length;
-      
-      if (shopNPNCount >= 5) {
-        setNPNError('Daily NPN limit reached for this shop (max 5 per day)');
-        setIsNPNGranting(false);
-        return;
-      }
-      
-      // Check phone limit (max 1 per phone per day)
-      const phoneNPNCount = todaysNPNEntries.filter((entry: any) => 
-        entry.phoneNumber === npnPhone
-      ).length;
-      
-      if (phoneNPNCount >= 1) {
-        setNPNError('This number has already received an NPN entry today');
-        setIsNPNGranting(false);
-        return;
-      }
-
-      // Check if user has exceeded daily attempt limit
-      
-      // Check if user has exceeded daily attempt limit
-      const userAttempts = await localAttempts.getByPhone(npnPhone);
-      const userTodayAttempts = userAttempts.filter((attempt: any) => 
-        attempt.timestamp && new Date(attempt.timestamp).toISOString().split('T')[0] === today
-      ).length;
-      
-      // Get qualifying purchase for limit calculation
-      const qualifyingPurchase = currentShop?.qualifyingPurchase || 0;
-      
-      // For simplicity, we'll check if they have any attempts today (could be enhanced)
-      // In a real implementation, you'd check against their daily limit based on purchase history
-      
-      // Create NPN access grant (not a full attempt)
-      const npnAccess = {
-        id: crypto.randomUUID(),
-        phoneNumber: npnPhone,
-        shopId: currentShop.id,
-        adminId: admin?.id || 'unknown',
-        deviceId: getDeviceId(), // getDeviceId is synchronous
-        timestamp: Date.now(),
-        reason: npnReason,
-        used: false
-      };
-
-      // Save NPN access locally (separate from attempts)
-      const existingNPN = await localSettings.get('npn_access') || [];
-      const updatedNPN = [...existingNPN.filter((n: any) => n.phoneNumber !== npnPhone), npnAccess];
-      await localSettings.set('npn_access', updatedNPN);
-
-      // Also save to npn_entries for backward compatibility and sync
-      const npnEntry = {
-        id: npnAccess.id,
-        phoneNumber: npnPhone,
-        shopId: currentShop.id,
-        shopName: currentShop.shopName,
-        adminId: admin?.id || 'unknown',
-        deviceId: npnAccess.deviceId,
-        timestamp: Date.now(),
-        entryType: 'NPN',
-        reason: npnReason,
-        synced: false
-      };
-
-      const updatedNPNEntries = [...allNPNEntries, npnEntry];
-      await localSettings.set('npn_entries', updatedNPNEntries);
-      setNPNEntries(updatedNPNEntries);
-
-      // Trigger sync
-      triggerSync();
-      
-      // Reset form
-      setNPNPhone('');
-      setNPNReason('customer_request');
-      setNPNSuccess('NPN entry granted successfully! Customer now has 1 free game attempt.');
-      
-      // Close form after delay
-      setTimeout(() => {
-        setNPNSuccess(null);
-      }, 3000);
-      } catch (error) {
-        console.error('Error granting NPN entry:', error);
-        setNPNError('Failed to grant NPN entry. Please try again.');
-      } finally {
-        setIsNPNGranting(false);
-      }
-    };
-
-     const handlePostGrantRedirect = (phone: string) => {
-      // Navigate to customer play mode for the granted phone number
-      const grantedSession = {
-        phoneNumber: phone,
-        authorized: true,
-        attemptsToday: 0,
-        lastAttemptDate: new Date().toISOString().split('T')[0],
-        purchaseAmount: 0
-      };
-      // Save session to store (so GameMode/NominationScreen see it)
-      setCustomerSession(grantedSession);
-      // Also keep in local settings for persistence
-      localSettings.set('currentCustomerSession', grantedSession);
-      // Switch to customer view so the user can play the granted attempt
-      setCurrentView('customer');
-      setShowNPNForm(false);
-      console.log('[NPN] Redirecting to customer play for:', phone);
-    };
 
   const { admin, logout } = useAuthStore();
   const { currentShop, setCurrentShop } = useShopStore();
@@ -586,115 +433,30 @@ export default function AdminDashboard() {
     }
   }, [admin]);
 
-  // Load Item of the Day on mount with real-time listener
+  // Load Item of the Day on mount
   useEffect(() => {
-    let isCancelled = false;
-    let unsubscribe: (() => void) | null = null;
-
     const loadItemOfDay = async () => {
       // Try local first for immediate display
       const savedItem = await localSettings.get('itemOfTheDay');
-      if (savedItem && !isCancelled) {
+      if (savedItem) {
         setItemOfTheDay(savedItem);
       }
-
-      // Set up real-time listener for live likes across all devices
+      // Always try to fetch latest from RTDB
       try {
-        const { rtdb } = await import('@/lib/firebase');
-        const { ref, onValue } = await import('firebase/database');
-        const itemOfDayRef = ref(rtdb, 'settings/itemOfTheDay');
-        
-        unsubscribe = onValue(itemOfDayRef, (snapshot) => {
-          if (isCancelled) return;
-          
-          const rtdbItem = snapshot.exists() ? snapshot.val() : null;
-          if (rtdbItem) {
-            localSettings.set('itemOfTheDay', rtdbItem);
-            setItemOfTheDay(rtdbItem);
-          } else if (!savedItem && !isCancelled) {
-            setItemOfTheDay(null);
-          }
-        }, (error) => {
-          console.log('RTDB listener error:', error);
-        });
-      } catch (e) {
-        // Fallback: try polling
-        try {
-          const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-          const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
-          if (rtdbItem && !isCancelled) {
-            await localSettings.set('itemOfTheDay', rtdbItem);
-            setItemOfTheDay(rtdbItem);
-          } else if (!savedItem && !isCancelled) {
-            setItemOfTheDay(null);
-          }
-        } catch (e2) {
-          // RTDB fetch failed, use local
+        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+        const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
+        if (rtdbItem) {
+          await localSettings.set('itemOfTheDay', rtdbItem);
+          setItemOfTheDay(rtdbItem);
+        } else if (!savedItem) {
+          setItemOfTheDay(null);
         }
-      }
-    };
-
-    loadItemOfDay();
-    
-    return () => {
-      isCancelled = true;
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, []);
-
-    // Load NPN entries for audit log
-  useEffect(() => {
-    let isCancelled = false;
-    
-    const loadNPNEntries = async () => {
-      if (!admin || admin.level !== 'super_admin') return;
-      
-      try {
-        const npnEntries = await localSettings.get('npn_entries') || [];
-        setNPNEntries(npnEntries);
-      } catch (error) {
-        console.error('Failed to load NPN entries:', error);
-      }
-    };
-    
-    loadNPNEntries();
-    
-    // Listen for real-time NPN updates
-    const subscribeNPN = async () => {
-      if (!admin || admin.level !== 'super_admin') return;
-      
-      try {
-        const { rtdb } = await import('@/lib/firebase');
-        const { ref, onValue, off } = await import('firebase/database');
-        const npnRef = ref(rtdb, 'npn_entries');
-        
-        const unsubscribe = onValue(npnRef, (snapshot) => {
-          if (isCancelled) return;
-          const data = snapshot.exists() ? snapshot.val() : null;
-          if (data && typeof data === 'object') {
-            const entriesArray = Object.entries(data).map(([id, entry]) => ({ id, ...(entry as Record<string, any>) }));
-            setNPNEntries(entriesArray);
-          } else {
-            setNPNEntries([]);
-          }
-        });
-        
-        return () => {
-          off(npnRef);
-        };
       } catch (e) {
-        console.log('RTDB NPN setup error:', e);
+        // RTDB fetch failed, use local
       }
     };
-    
-    subscribeNPN();
-    
-    return () => {
-      isCancelled = true;
-    };
-  }, [admin]);
+    loadItemOfDay();
+  }, []);
 
   // Admin handlers
   const handleSaveAdmin = async (adminData: Admin) => {
@@ -1365,105 +1127,16 @@ export default function AdminDashboard() {
               </button>
             )}
             
-              {isShopAdmin && (
-                <button
-                  onClick={handleBackup}
-                  className="card hover:border-gold-500 transition-all text-left"
-                >
-                  <Settings className="text-gold-500 mb-2" size={24} />
-                  <h3 className="font-semibold text-white">Backup Data</h3>
-                  <p className="text-gray-400 text-sm">Export all data</p>
-                </button>
-              )}
-              
-              {/* NPN Compliance Section */}
-              <div className="mt-8">
-                <h2 className="gold-gradient-text text-2xl font-bold mb-4">NPN Compliance</h2>
-                <button
-                  onClick={() => setShowNPNForm(true)}
-                  className="btn-gold w-full mb-4"
-                >
-                  <Zap className="mr-2" /> Grant Entry (NPN)
-                </button>
-                
-                {/* NPN Entry Form */}
-                {showNPNForm && (
-                  <div className="card-gold p-6">
-                    <h3 className="font-semibold mb-4">Grant NPN Entry</h3>
-                    
-                    <form onSubmit={(e) => {
-                      e.preventDefault();
-                      handleGrantNPNEntry();
-                    }} className="space-y-4">
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-1">Customer Phone Number</label>
-                          <input
-                            type="tel"
-                            value={npnPhone}
-                            onChange={(e) => setNPNPhone(e.target.value.replace(/\D/g, '').slice(0, 15))}
-                            className="input w-full"
-                            placeholder="Enter phone number (e.g., 0712345678)"
-                            maxLength={15}
-                          />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Format: 07XXXXXXXX or +254XXXXXXXX
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-1">Reason for NPN Entry</label>
-                        <select
-                          value={npnReason}
-                          onChange={(e) => setNPNReason(e.target.value)}
-                          className="input w-full"
-                        >
-                          <option value="customer_request">Customer Request</option>
-                          <option value="first_time_user">First Time User</option>
-                          <option value="system_demo">System Demo</option>
-                          <option value="complaint_resolution">Complaint Resolution</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <button
-                          type="submit"
-                          disabled={isNPNGranting}
-                          className={`btn-gold w-full ${isNPNGranting ? 'opacity-50' : ''}`}
-                        >
-                          {isNPNGranting ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 mr-2 inline-block border-2 border-white border-t-transparent"></div>
-                              Granting...
-                            </>
-                          ) : (
-                            <span>Grant Entry (NPN)</span>
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowNPNForm(false)}
-                          className="btn-outline"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                    
-                    {npnError && (
-                      <div className="p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm mb-4">
-                        {npnError}
-                      </div>
-                    )}
-                    
-                    {npnSuccess && (
-                      <div className="p-3 bg-green-900/30 border border-green-700 rounded-lg text-green-400 text-sm mb-4">
-                        {npnSuccess}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+            {isShopAdmin && (
+              <button
+                onClick={() => setActiveTab('items')}
+                className="card hover:border-gold-500 transition-all text-left"
+              >
+                <Package className="text-gold-500 mb-2" size={24} />
+                <h3 className="font-semibold text-white">Manage Items</h3>
+                <p className="text-gray-400 text-sm">Update prizes & values</p>
+              </button>
+            )}
             
             {isShopAdmin && (
               <button
