@@ -177,39 +177,41 @@ export default function AdminDashboard() {
       // For simplicity, we'll check if they have any attempts today (could be enhanced)
       // In a real implementation, you'd check against their daily limit based on purchase history
       
-      // Create NPN entry
-      const npnEntry = {
+      // Create NPN access grant (not a full attempt)
+      const npnAccess = {
         id: crypto.randomUUID(),
+        phoneNumber: npnPhone,
+        shopId: currentShop.id,
+        adminId: admin?.id || 'unknown',
+        deviceId: getDeviceId(), // getDeviceId is synchronous
+        timestamp: Date.now(),
+        reason: npnReason,
+        used: false
+      };
+
+      // Save NPN access locally (separate from attempts)
+      const existingNPN = await localSettings.get('npn_access') || [];
+      const updatedNPN = [...existingNPN.filter((n: any) => n.phoneNumber !== npnPhone), npnAccess];
+      await localSettings.set('npn_access', updatedNPN);
+
+      // Also save to npn_entries for backward compatibility and sync
+      const npnEntry = {
+        id: npnAccess.id,
         phoneNumber: npnPhone,
         shopId: currentShop.id,
         shopName: currentShop.shopName,
         adminId: admin?.id || 'unknown',
-        deviceId: await getDeviceId(),
+        deviceId: npnAccess.deviceId,
         timestamp: Date.now(),
         entryType: 'NPN',
         reason: npnReason,
         synced: false
       };
-      
-      // Save NPN entry locally
+
       const updatedNPNEntries = [...allNPNEntries, npnEntry];
       await localSettings.set('npn_entries', updatedNPNEntries);
       setNPNEntries(updatedNPNEntries);
-      
-      // Don't pre-create attempt - let customer play full game flow first
-      // Just record that they have NPN access
-      const npnAccess = {
-        phoneNumber: npnPhone,
-        shopId: currentShop.id,
-        grantedAt: Date.now(),
-        used: false
-      };
 
-      // Save NPN access (separate from attempts)
-      const existingNPN = await localSettings.get('npn_access') || [];
-      const updatedNPN = [...existingNPN.filter((n: any) => n.phoneNumber !== npnPhone), npnAccess];
-      await localSettings.set('npn_access', updatedNPN);
-      
       // Trigger sync
       triggerSync();
       
@@ -250,43 +252,6 @@ export default function AdminDashboard() {
     };
 
   const { admin, logout } = useAuthStore();
-
-  // Diagnostic function for debugging access issues
-  const runDiagnostics = async () => {
-    console.log('🔍 [DIAGNOSTICS] Running admin access diagnostics...');
-
-    console.log('📧 Admin email:', admin?.email);
-    console.log('👤 Admin level:', admin?.level);
-    console.log('✅ Admin active:', admin?.isActive);
-    console.log('🏪 Assigned shops:', admin?.assignedShops?.length || 0);
-
-    try {
-      const localShopList = await localShops.getAll();
-      console.log('🏪 Local shops count:', localShopList.length);
-      console.log('🏪 Local shops:', localShopList.map(s => ({ id: s.id, name: s.shopName, active: s.isActive })));
-
-      const localAdminList = await localAdmins.getAll();
-      console.log('👥 Local admins count:', localAdminList.length);
-      console.log('👥 Local admins:', localAdminList.map(a => ({ email: a.email, level: a.level, active: a.isActive })));
-
-      if (admin?.level === 'super_admin') {
-        console.log('✅ Super admin should see all shops');
-      } else if (admin?.level === 'shop_admin') {
-        console.log('🏪 Shop admin assigned shops:', admin.assignedShops);
-      }
-
-      console.log('🔍 [DIAGNOSTICS] Complete');
-    } catch (error) {
-      console.error('❌ [DIAGNOSTICS] Error:', error);
-    }
-  };
-
-  // Run diagnostics on mount
-  useEffect(() => {
-    if (admin) {
-      runDiagnostics();
-    }
-  }, [admin]);
   const { currentShop, setCurrentShop } = useShopStore();
   const { items, setItems } = useItemStore();
   const { setCurrentView } = useUIStore();
@@ -531,60 +496,24 @@ export default function AdminDashboard() {
 
         // Load from local first (always works), then try RTDB in background
         const loadShopsFromLocal = async () => {
-          console.log('[AdminDashboard] Loading shops for admin:', admin?.email, 'level:', admin?.level);
-
-          const shopLoadTimeout = new Promise<never>((_, reject) =>
+          const shopLoadTimeout = new Promise<never>((_, reject) => 
             setTimeout(() => reject(new Error('Shop load timeout')), 15000)
           );
-
+          
           let localShopList: Shop[];
           try {
             localShopList = await Promise.race([localShops.getAll(), shopLoadTimeout]) as Shop[];
-            console.log('[AdminDashboard] Loaded shops from local:', localShopList.length);
           } catch (e) {
-            console.error('[AdminDashboard] Failed to load shops:', e);
+            console.error('Failed to load shops:', e);
             localShopList = [];
           }
-
+          
           if (admin?.level === 'super_admin') {
-            console.log('[AdminDashboard] Setting shops for super_admin:', localShopList.length);
-
-            // If no shops exist locally, create a default shop for testing
-            if (localShopList.length === 0) {
-              console.log('[AdminDashboard] No shops found, creating default shop for super_admin');
-              const defaultShop: Shop = {
-                id: 'default-shop',
-                shopName: 'Default Shop',
-                shopCode: 'DEFAULT',
-                adminEmail: admin.email,
-                deviceId: '',
-                deviceLocked: false,
-                qualifyingPurchase: 1000,
-                promoMessage: 'Welcome to our shop!',
-                isActive: true,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                createdBy: admin.id,
-                backupEnabled: false,
-                location: { latitude: -1.2864, longitude: 36.8172, radiusMeters: 100 } // Nairobi coordinates
-              };
-
-              try {
-                await localShops.save(defaultShop);
-                localShopList = [defaultShop];
-                console.log('[AdminDashboard] Created default shop');
-              } catch (error) {
-                console.error('[AdminDashboard] Failed to create default shop:', error);
-              }
-            }
-
             setShops(localShopList);
             autoSelectShop(localShopList);
           } else {
             const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
-            console.log('[AdminDashboard] Filtered active shops:', activeLocalShops.length);
             const filteredLocalShops = filterByAssignedShops(activeLocalShops);
-            console.log('[AdminDashboard] Final filtered shops:', filteredLocalShops.length);
             setShops(filteredLocalShops);
             autoSelectShop(filteredLocalShops);
           }
@@ -1529,13 +1458,7 @@ export default function AdminDashboard() {
                     
                     {npnSuccess && (
                       <div className="p-3 bg-green-900/30 border border-green-700 rounded-lg text-green-400 text-sm mb-4">
-                        <div className="mb-2">{npnSuccess}</div>
-                        <button
-                          onClick={() => handlePostGrantRedirect(npnPhone)}
-                          className="btn-gold text-xs px-3 py-1"
-                        >
-                          Start Customer Game
-                        </button>
+                        {npnSuccess}
                       </div>
                     )}
                   </div>
@@ -1552,16 +1475,6 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 text-sm">Edit customer nomination items</p>
               </button>
             )}
-
-            {/* Diagnostic button for debugging */}
-            <button
-              onClick={runDiagnostics}
-              className="card hover:border-blue-500 transition-all text-left"
-            >
-              <Settings className="text-blue-500 mb-2" size={24} />
-              <h3 className="font-semibold text-white">Run Diagnostics</h3>
-              <p className="text-gray-400 text-sm">Check admin access and data</p>
-            </button>
               
               {(permissions.canManageAllShops || permissions.canManageAssignedShops) && (
                 <button

@@ -129,71 +129,66 @@ export default function GameMode() {
   // Also refresh when component becomes visible (via currentView changes to customer)
   useEffect(() => {
     let isCancelled = false;
-
+    
     const loadItems = async () => {
-      // If no shop available, set loading to false and show error state
-      if (!currentShop) {
-        console.warn('[GameMode] No currentShop available, cannot load items');
+      if (currentShop) {
+        // Create a timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Items loading timeout')), 15000)
+        );
+        
+        try {
+          // Always load fresh from DB - this ensures updated images are seen
+          const shopItems = await Promise.race([
+            localItems.getByShop(currentShop.id),
+            timeoutPromise
+          ]) as Item[];
+          
+          if (isCancelled) return;
+          
+          // Use whatever is in DB - no overwriting, just load and display
+          let finalItems = shopItems;
+          
+          // Only create missing items if less than 17 exist (preserve DB data)
+          if (finalItems.length < 17) {
+            const missingCount = 17 - finalItems.length;
+            const newItems = Array.from({ length: missingCount }, (_, i) => ({
+              id: `${currentShop.id}-item-${finalItems.length + i + 1}`,
+              name: `Prize ${finalItems.length + i + 1}`,
+              value: (finalItems.length + i + 1) * 1000,
+              stockStatus: 'unlimited' as const,
+              isActive: true,
+              shopId: currentShop.id,
+              order: finalItems.length + i
+            }));
+            finalItems = [...finalItems, ...newItems];
+            // Only save the NEW items, never overwrite existing
+            if (newItems.length > 0) {
+              await localItems.saveMultiple(newItems);
+            }
+          }
+          
+          setItems(finalItems);
+        } catch (error) {
+          console.error('Failed to load items:', error);
+          // Set flag to prevent auto-login loop on restart
+          localStorage.setItem('metofun-load-timeout', Date.now().toString());
+          // Set default items on error
+          if (currentShop && !isCancelled) {
+            const defaultItems = Array.from({ length: 17 }, (_, i) => ({
+              id: `${currentShop.id}-item-${i + 1}`,
+              name: `Prize ${i + 1}`,
+              value: (i + 1) * 1000,
+              stockStatus: 'unlimited' as const,
+              isActive: true,
+              shopId: currentShop.id,
+              order: i
+            }));
+            setItems(defaultItems);
+          }
+        }
         setIsLoading(false);
-        return;
       }
-
-    // Create a timeout promise
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Items loading timeout')), 15000)
-    );
-
-  try {
-    // Always load fresh from DB - this ensures updated images are seen
-    const shopItems = await Promise.race([
-      localItems.getByShop(currentShop.id),
-      timeoutPromise
-    ]) as Item[];
-
-    if (isCancelled) return;
-
-    // Use whatever is in DB - no overwriting, just load and display
-    let finalItems = shopItems;
-
-    // Only create missing items if less than 17 exist (preserve DB data)
-    if (finalItems.length < 17) {
-      const missingCount = 17 - finalItems.length;
-      const newItems = Array.from({ length: missingCount }, (_, i) => ({
-        id: `${currentShop.id}-item-${finalItems.length + i + 1}`,
-        name: `Prize ${finalItems.length + i + 1}`,
-        value: (finalItems.length + i + 1) * 1000,
-        stockStatus: 'unlimited' as const,
-        isActive: true,
-        shopId: currentShop.id,
-        order: finalItems.length + i
-      }));
-      finalItems = [...finalItems, ...newItems];
-      // Only save the NEW items, never overwrite existing
-      if (newItems.length > 0) {
-        await localItems.saveMultiple(newItems);
-      }
-    }
-
-    setItems(finalItems);
-  } catch (error) {
-    console.error('Failed to load items:', error);
-    // Set flag to prevent auto-login loop on restart
-    localStorage.setItem('metofun-load-timeout', Date.now().toString());
-    // Set default items on error
-    if (currentShop && !isCancelled) {
-      const defaultItems = Array.from({ length: 17 }, (_, i) => ({
-        id: `${currentShop.id}-item-${i + 1}`,
-        name: `Prize ${i + 1}`,
-        value: (i + 1) * 1000,
-        stockStatus: 'unlimited' as const,
-        isActive: true,
-        shopId: currentShop.id,
-        order: i
-      }));
-      setItems(defaultItems);
-    }
-  }
-  setIsLoading(false);
     };
     
     loadItems();
@@ -248,18 +243,35 @@ export default function GameMode() {
       alert(language === 'sw' ? 'Tafadhali ingiza nambari ya simu sahihi' : 'Please enter a valid phone number');
       return;
     }
-    
-    // Handle empty or invalid purchase amount - show error if invalid
+
+    // Use test phone prefix only if super admin has test mode enabled
+    const formattedPhone = isSuperAdminTestMode
+      ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}`
+      : formatPhoneNumber(phoneNumber);
+
+    // Check for NPN access before purchase validation
+    let hasNPNAccess = false;
+    try {
+      const npnAccessList = await localSettings.get('npn_access') || [];
+      const userNPNAccess = npnAccessList.find((access: any) =>
+        access.phoneNumber === formattedPhone && !access.used
+      );
+      hasNPNAccess = !!userNPNAccess;
+    } catch (error) {
+      console.warn('[GameMode] Failed to check NPN access:', error);
+    }
+
+    // Handle empty or invalid purchase amount - show error if invalid (skip for NPN)
     let amount = parseFloat(purchaseAmount);
-    if (isNaN(amount) || amount < 0) {
+    if (!hasNPNAccess && (isNaN(amount) || amount < 0)) {
       alert(language === 'sw' ? 'Tafadhali ingiza kiwango sahihi cha manunuzi' : 'Please enter a valid purchase amount');
       return;
     }
-    
+
     const qualifyingPurchase = Number(currentShop?.qualifyingPurchase) || 0;
-    
-    // If qualifying purchase is set, enforce minimum
-    if (qualifyingPurchase > 0 && amount < qualifyingPurchase) {
+
+    // If qualifying purchase is set, enforce minimum (skip for NPN)
+    if (!hasNPNAccess && qualifyingPurchase > 0 && amount < qualifyingPurchase) {
       alert(
         language === 'sw'
           ? `Kiwango cha chini ni KSh ${qualifyingPurchase.toLocaleString()}. Tafadhali ingiza kiwango cha juu au sawa na ${qualifyingPurchase.toLocaleString()}.`
@@ -267,6 +279,36 @@ export default function GameMode() {
       );
       return;
     }
+
+    // Validate that shop is available
+    if (!currentShop) {
+      alert(language === 'sw' ? 'Hakuna duka lililochaguliwa' : 'No shop selected');
+      return;
+    }
+
+    setIsAuthorizing(true);
+    setLocationError(null);
+
+    // Check if user is at the shop location (non-blocking - allow play if it fails)
+    try {
+      const locationResult = await verifyShopLocation(currentShop?.location);
+
+      if (!locationResult.isValid) {
+        // Show warning but allow play (location is advisory only)
+        setLocationError(
+          language === 'sw'
+            ? `Maonyo: ${locationResult.error || 'Hauko karibu na duka.'}`
+            : `Warning: ${locationResult.error || 'Not near shop (playing anyway).'}`
+
+        );
+      }
+    } catch (error) {
+      // Location check failed - allow play anyway (non-blocking)
+      console.log('Location verification skipped:', error);
+    }
+
+    // Simulate authorization
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Validate that shop is available
     if (!currentShop) {
@@ -296,39 +338,20 @@ export default function GameMode() {
     
     // Simulate authorization
     await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Use test phone prefix only if super admin has test mode enabled
-    const formattedPhone = isSuperAdminTestMode
-      ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}`
-      : formatPhoneNumber(phoneNumber);
 
-    // Check for available NPN access for this phone number
-    let hasNPNAccess = false;
-    try {
-      const npnAccessList = await localSettings.get('npn_access') || [];
-      const userNPNAccess = npnAccessList.find((access: any) =>
-        access.phoneNumber === formattedPhone && !access.used
-      );
-      hasNPNAccess = !!userNPNAccess;
-    } catch (error) {
-      console.warn('Failed to check NPN access:', error);
-    }
-
-    // If user has NPN access, allow play without purchase validation
-    const effectiveAmount = hasNPNAccess ? 0 : amount;
-    const config = calculateBoxConfiguration(effectiveAmount, hasNPNAccess ? 0 : qualifyingPurchase);
+    const config = calculateBoxConfiguration(amount, hasNPNAccess ? 0 : qualifyingPurchase);
     
     setCustomerSession({
       phoneNumber: formattedPhone,
       attemptsToday: 0,
       lastAttemptDate: getCurrentDateString(),
       authorized: true,
-      purchaseAmount: effectiveAmount,
+      purchaseAmount: amount,
       isNPN: hasNPNAccess
     });
-
+    
     // Update state with parsed amount
-    setPurchaseAmount(String(effectiveAmount));
+    setPurchaseAmount(String(amount));
     
     // Store the threshold for display purposes
     const threshold = config.threshold;
@@ -363,7 +386,7 @@ export default function GameMode() {
    setShowNumberPicker(true);
  };
 
-   const handleNumberSelect = async (number: number) => {
+    const handleNumberSelect = async (number: number) => {
      if (selectedNumber !== null || !correctNumber) return;
      
      setSelectedNumber(number);
@@ -539,31 +562,6 @@ export default function GameMode() {
             className="w-12 h-12 border-4 border-gold-500 border-t-transparent rounded-full mx-auto mb-4"
           />
           <p className="text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // CRITICAL: If no shop data after loading, show error
-  if (!currentShop) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-400 text-xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-white mb-2">Shop Not Available</h2>
-          <p className="text-gray-400 mb-6">Unable to load shop data. Please try logging in again.</p>
-          <button
-            onClick={() => {
-              // Clear everything and go back to login
-              localStorage.removeItem('metofun-auth');
-              localStorage.removeItem('metofun-auth-pw');
-              setCurrentShop(null);
-              setCurrentView('login');
-            }}
-            className="px-6 py-3 bg-gold-500 text-black rounded-lg font-medium hover:bg-gold-400 transition-colors"
-          >
-            Return to Login
-          </button>
         </div>
       </div>
     );

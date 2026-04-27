@@ -217,6 +217,18 @@ export interface CustomerSession {
   isNPN?: boolean; // Whether this session uses NPN entry
 }
 
+export interface NPNEntry {
+  id: string;
+  phoneNumber: string;
+  shopId: string;
+  adminId: string;
+  deviceId: string;
+  timestamp: number;
+  reason: string;
+  used: boolean;
+  usedAt?: number;
+}
+
 // Pending customer purchase - recorded by shop staff
 export interface PendingCustomer {
   id: string;

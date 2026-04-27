@@ -23,10 +23,9 @@ export default function Home() {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     let isHandled = false;
-    let isAuthCompleted = false;
 
     const handleAuthTimeout = () => {
-      if (isHandled || isAuthCompleted) return;
+      if (isHandled) return;
       isHandled = true;
       console.error('Auth restore timed out - clearing auth to prevent loop');
       localStorage.removeItem('metofun-auth');
@@ -34,8 +33,6 @@ export default function Home() {
       localStorage.removeItem('metofun-load-timeout');
       setCurrentShop(null);
       setCurrentView('login');
-      setReady(true);
-      setLoading(false);
     };
 
     // Check for previous load timeout - prevent loop by clearing auth
@@ -62,6 +59,10 @@ export default function Home() {
     timeoutId = setTimeout(handleAuthTimeout, 30000); // 30 second timeout for auth
 
     const checkAuth = async () => {
+      // Show UI immediately first
+      setReady(true);
+      setLoading(false);
+      
       try {
         const authData = localStorage.getItem('metofun-auth');
         if (authData) {
@@ -71,10 +72,6 @@ export default function Home() {
             if (!['super_admin', 'agent_admin', 'shop_admin'].includes(adminData.level)) {
               localStorage.removeItem('metofun-auth');
               localStorage.removeItem('metofun-auth-pw');
-              setCurrentShop(null);
-              setCurrentView('login');
-              isAuthCompleted = true;
-              clearTimeout(timeoutId);
               setReady(true);
               setLoading(false);
               return;
@@ -88,11 +85,6 @@ export default function Home() {
               localStorage.removeItem('metofun-auth');
               localStorage.removeItem('metofun-auth-pw');
               setCurrentShop(null);
-              setCurrentView('login');
-              isAuthCompleted = true;
-              clearTimeout(timeoutId);
-              setReady(true);
-              setLoading(false);
               return;
             }
             const verifiedAdmin = localAdmin.find(a => a.id === adminData.id || a.email === adminData.email);
@@ -101,11 +93,6 @@ export default function Home() {
               localStorage.removeItem('metofun-auth');
               localStorage.removeItem('metofun-auth-pw');
               setCurrentShop(null);
-              setCurrentView('login');
-              isAuthCompleted = true;
-              clearTimeout(timeoutId);
-              setReady(true);
-              setLoading(false);
               return;
             }
             // Use verified admin data from database, not localStorage
@@ -119,24 +106,19 @@ export default function Home() {
                 setTimeout(() => reject(new Error('Shop load timeout')), 15000)
               );
               
-               try {
-                 allShops = await Promise.race([
-                   localShops.getAll(),
-                   shopLoadTimeout
-                 ]);
-               } catch (dbError) {
-                 console.error('Failed to load shops:', dbError);
-                 localStorage.setItem('metofun-load-timeout', Date.now().toString());
-                 localStorage.removeItem('metofun-auth');
-                 localStorage.removeItem('metofun-auth-pw');
-                 setCurrentShop(null);
-                 setCurrentView('login');
-                 isAuthCompleted = true;
-                 clearTimeout(timeoutId);
-                 setReady(true);
-                 setLoading(false);
-                 return;
-               }
+              try {
+                allShops = await Promise.race([
+                  localShops.getAll(),
+                  shopLoadTimeout
+                ]);
+              } catch (dbError) {
+                console.error('Failed to load shops:', dbError);
+                localStorage.setItem('metofun-load-timeout', Date.now().toString());
+                localStorage.removeItem('metofun-auth');
+                localStorage.removeItem('metofun-auth-pw');
+                setCurrentShop(null);
+                return;
+              }
               const deviceId = getDeviceId();
               let shop = allShops.find(s => s.adminEmail?.toLowerCase() === verifiedAdmin.email?.toLowerCase());
               if (!shop && verifiedAdmin.assignedShops?.length) {
@@ -147,22 +129,10 @@ export default function Home() {
                 if (shopsByDevice.length === 1) shop = shopsByDevice[0];
               }
               if (shop) {
-                console.log('[Auth] Shop found for shop_admin, setting customer view:', shop.id);
                 setCurrentShop(shop);
                 setCurrentView('customer');
-              } else {
-                // No shop found for shop_admin - keep user logged in but redirect appropriately
-                console.warn('[Auth] No shop found for shop_admin:', verifiedAdmin.email);
-                setCurrentShop(null);
-                // For shop_admin with no shop, redirect to login with a message
-                setCurrentView('login');
-                // Don't clear auth completely - let them try login again
-                isAuthCompleted = true;
-                clearTimeout(timeoutId);
-                setReady(true);
-                setLoading(false);
-                return;
               }
+              // If no shop found, stay on login (don't crash or close)
             } else {
               // super_admin or agent_admin - load shops in background - with timeout
               let shops;
@@ -175,27 +145,21 @@ export default function Home() {
                   localShops.getAll(),
                   shopLoadTimeout
                 ]);
-               } catch (dbError) {
-                 console.error('Failed to load shops for admin:', dbError);
-                 localStorage.setItem('metofun-load-timeout', Date.now().toString());
-                 localStorage.removeItem('metofun-auth');
-                 localStorage.removeItem('metofun-auth-pw');
-                 setCurrentShop(null);
-                 setCurrentView('login');
-                 isAuthCompleted = true;
-                 clearTimeout(timeoutId);
-                 setReady(true);
-                 setLoading(false);
-                 return;
-               }
+              } catch (dbError) {
+                console.error('Failed to load shops:', dbError);
+                localStorage.setItem('metofun-load-timeout', Date.now().toString());
+                localStorage.removeItem('metofun-auth');
+                localStorage.removeItem('metofun-auth-pw');
+                setCurrentShop(null);
+                return;
+              }
               setShops(shops);
               setCurrentView('admin');
             }
           }
         }
       } finally {
-        // Auth completed - clear the timeout and mark as completed
-        isAuthCompleted = true;
+        // Auth completed - clear the timeout
         clearTimeout(timeoutId);
         setReady(true);
         setLoading(false);
@@ -211,7 +175,15 @@ export default function Home() {
     };
   }, [setAdmin, setCurrentView, setCurrentShop, setShops]);
 
-  // View switching is handled by auth restore logic - don't auto-switch here
+  useEffect(() => {
+    if (admin && currentView === 'login') {
+      if (admin.level === 'shop_admin') {
+        setCurrentView('customer');
+      } else {
+        setCurrentView('admin');
+      }
+    }
+  }, [admin, currentView, setCurrentView]);
 
   if (!ready || loading) {
     return (
@@ -221,30 +193,13 @@ export default function Home() {
     );
   }
 
-  // CRITICAL: Ensure we ALWAYS have a valid view to prevent blank screens
-  console.log('[App] Rendering with currentView:', currentView, 'ready:', ready, 'loading:', loading);
-
   if (currentView === 'admin') {
-    console.log('[App] Showing AdminDashboard');
     return <AdminDashboard />;
   }
 
   if (currentView === 'customer') {
-    console.log('[App] Showing GameMode');
     return <GameMode />;
   }
 
-  // If view is invalid or undefined, force it to login
-  if (!currentView || currentView !== 'login') {
-    console.warn('[App] Invalid or missing currentView, forcing login:', currentView);
-    // Use setTimeout to avoid state update during render
-    setTimeout(() => {
-      console.log('[App] Setting view to login');
-      setCurrentView('login');
-    }, 0);
-    return <LoginPage />;
-  }
-
-  console.log('[App] Showing LoginPage');
   return <LoginPage />;
 }

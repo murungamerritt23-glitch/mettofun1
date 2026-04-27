@@ -54,22 +54,11 @@ interface MetoFunDB extends DBSchema {
 }
 
 let db: IDBPDatabase<MetoFunDB> | null = null;
-let dbInitPromise: Promise<IDBPDatabase<MetoFunDB>> | null = null;
 
 export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
-  // Return existing db if available
   if (db) return db;
 
-  // Return existing promise if already initializing
-  if (dbInitPromise) return dbInitPromise;
-
-  // Check if IndexedDB is available
-  if (typeof window === 'undefined' || !window.indexedDB) {
-    throw new Error('IndexedDB is not available. Please use a modern browser.');
-  }
-
-  // Create initialization promise
-  dbInitPromise = openDB<MetoFunDB>('metofun-db', 3, {
+  db = await openDB<MetoFunDB>('metofun-db', 3, {
     upgrade(database, oldVersion) {
       // Shops store - only create if it doesn't exist
       if (!database.objectStoreNames.contains('shops')) {
@@ -135,25 +124,9 @@ export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
         customerNomStore.createIndex('by-attempt', 'gameAttemptId');
       }
     }
-  }).then((result) => {
-    db = result;
-    dbInitPromise = null; // Clear promise on success
-    return result;
-  }).catch((error) => {
-    dbInitPromise = null; // Clear promise on failure
-    console.error('Failed to initialize IndexedDB:', error);
-
-    // Provide more specific error messages
-    if (error.name === 'QuotaExceededError') {
-      throw new Error('Browser storage is full. Please clear some data and try again.');
-    } else if (error.name === 'VersionError') {
-      throw new Error('Database version conflict. Please clear browser data and try again.');
-    } else {
-      throw new Error(`Database initialization failed: ${error.message}. Please clear browser data or try a different browser.`);
-    }
   });
 
-  return dbInitPromise;
+  return db;
 };
 
 // Shop operations
