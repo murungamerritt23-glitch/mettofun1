@@ -129,66 +129,71 @@ export default function GameMode() {
   // Also refresh when component becomes visible (via currentView changes to customer)
   useEffect(() => {
     let isCancelled = false;
-    
+
     const loadItems = async () => {
-      if (currentShop) {
-        // Create a timeout promise
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Items loading timeout')), 15000)
-        );
-        
-        try {
-          // Always load fresh from DB - this ensures updated images are seen
-          const shopItems = await Promise.race([
-            localItems.getByShop(currentShop.id),
-            timeoutPromise
-          ]) as Item[];
-          
-          if (isCancelled) return;
-          
-          // Use whatever is in DB - no overwriting, just load and display
-          let finalItems = shopItems;
-          
-          // Only create missing items if less than 17 exist (preserve DB data)
-          if (finalItems.length < 17) {
-            const missingCount = 17 - finalItems.length;
-            const newItems = Array.from({ length: missingCount }, (_, i) => ({
-              id: `${currentShop.id}-item-${finalItems.length + i + 1}`,
-              name: `Prize ${finalItems.length + i + 1}`,
-              value: (finalItems.length + i + 1) * 1000,
-              stockStatus: 'unlimited' as const,
-              isActive: true,
-              shopId: currentShop.id,
-              order: finalItems.length + i
-            }));
-            finalItems = [...finalItems, ...newItems];
-            // Only save the NEW items, never overwrite existing
-            if (newItems.length > 0) {
-              await localItems.saveMultiple(newItems);
-            }
-          }
-          
-          setItems(finalItems);
-        } catch (error) {
-          console.error('Failed to load items:', error);
-          // Set flag to prevent auto-login loop on restart
-          localStorage.setItem('metofun-load-timeout', Date.now().toString());
-          // Set default items on error
-          if (currentShop && !isCancelled) {
-            const defaultItems = Array.from({ length: 17 }, (_, i) => ({
-              id: `${currentShop.id}-item-${i + 1}`,
-              name: `Prize ${i + 1}`,
-              value: (i + 1) * 1000,
-              stockStatus: 'unlimited' as const,
-              isActive: true,
-              shopId: currentShop.id,
-              order: i
-            }));
-            setItems(defaultItems);
-          }
-        }
+      // If no shop available, set loading to false and show error state
+      if (!currentShop) {
+        console.warn('[GameMode] No currentShop available, cannot load items');
         setIsLoading(false);
+        return;
       }
+
+    // Create a timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Items loading timeout')), 15000)
+    );
+
+  try {
+    // Always load fresh from DB - this ensures updated images are seen
+    const shopItems = await Promise.race([
+      localItems.getByShop(currentShop.id),
+      timeoutPromise
+    ]) as Item[];
+
+    if (isCancelled) return;
+
+    // Use whatever is in DB - no overwriting, just load and display
+    let finalItems = shopItems;
+
+    // Only create missing items if less than 17 exist (preserve DB data)
+    if (finalItems.length < 17) {
+      const missingCount = 17 - finalItems.length;
+      const newItems = Array.from({ length: missingCount }, (_, i) => ({
+        id: `${currentShop.id}-item-${finalItems.length + i + 1}`,
+        name: `Prize ${finalItems.length + i + 1}`,
+        value: (finalItems.length + i + 1) * 1000,
+        stockStatus: 'unlimited' as const,
+        isActive: true,
+        shopId: currentShop.id,
+        order: finalItems.length + i
+      }));
+      finalItems = [...finalItems, ...newItems];
+      // Only save the NEW items, never overwrite existing
+      if (newItems.length > 0) {
+        await localItems.saveMultiple(newItems);
+      }
+    }
+
+    setItems(finalItems);
+  } catch (error) {
+    console.error('Failed to load items:', error);
+    // Set flag to prevent auto-login loop on restart
+    localStorage.setItem('metofun-load-timeout', Date.now().toString());
+    // Set default items on error
+    if (currentShop && !isCancelled) {
+      const defaultItems = Array.from({ length: 17 }, (_, i) => ({
+        id: `${currentShop.id}-item-${i + 1}`,
+        name: `Prize ${i + 1}`,
+        value: (i + 1) * 1000,
+        stockStatus: 'unlimited' as const,
+        isActive: true,
+        shopId: currentShop.id,
+        order: i
+      }));
+      setItems(defaultItems);
+    }
+  }
+  setIsLoading(false);
     };
     
     loadItems();
