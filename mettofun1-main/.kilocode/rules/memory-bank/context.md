@@ -8,6 +8,11 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix customer mode loading spinner stuck
+  - Issue: Customer mode shows loading indefinitely on first load, but exiting and re-entering shows customer mode immediately (data was loaded in background)
+  - Root cause: In `GameMode.tsx`, `setIsLoading(false)` was inside `if (currentShop)` block. When component mounted before `currentShop` was available, the early return prevented `setIsLoading(false)` from ever being called.
+  - Solution: Moved `setIsLoading(false)` to a `finally` block and added early exit with `setIsLoading(false)` when `currentShop` is falsy. Guarantees loading state always clears.
+
 - [x] Fix super admin delete staff not persisting
   - Issue: Deleting a staff member only removed them from local IndexedDB, not from Firebase RTDB
   - Root cause: `handleDeleteAdmin` was missing `rtdbAdmins.delete(adminId)` call
@@ -390,3 +395,4 @@ export async function GET() {
 | Today | Fix super admin dashboard not synchronizing all devices - add nominations to pullFromRTDB, auto-pull on load, reset failed items on reconnect, post-sync pull in processSyncQueue |
 | Today | Fix super admin delete staff not persisting - add rtdbAdmins.delete() to prevent resurrection after sync |
 | Today | Fix shop credentials logging into wrong shop - prioritize adminEmail over deviceId, fix offline login shop resolution, add assignedShops fallback to session restore |
+| Today | Fix customer mode loading spinner stuck - ensure setIsLoading(false) always called in GameMode |
