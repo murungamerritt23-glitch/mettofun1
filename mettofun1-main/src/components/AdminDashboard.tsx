@@ -6,18 +6,18 @@ import {
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
   Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap, ShoppingCart,
-  Upload, RefreshCw, FlaskConical, Gift, Star, Heart, Lock
+  Upload, RefreshCw, FlaskConical, Gift, Star, Heart, Lock, Ticket
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
-import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
+import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems, localNPNEntries } from '@/lib/local-db';
 import { rtdbShops, rtdbAdmins, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
 import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
-import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier, ItemOfTheDay, NominationItem } from '@/types';
+import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier, ItemOfTheDay, NominationItem, NPNEntry } from '@/types';
 import { ADMIN_PERMISSIONS, SUBSCRIPTION_CHANNELS } from '@/types';
 
-type TabType = 'dashboard' | 'shops' | 'items' | 'qualifyingPurchase' | 'attempts' | 'analytics' | 'settings' | 'customers' | 'myShop' | 'staff';
+type TabType = 'dashboard' | 'shops' | 'items' | 'qualifyingPurchase' | 'attempts' | 'analytics' | 'settings' | 'customers' | 'myShop' | 'staff' | 'npn';
 
 export default function AdminDashboard() {
   // Safety timeout - ensure loading stops after 15 seconds to prevent hang
@@ -67,13 +67,20 @@ export default function AdminDashboard() {
   const [nominationPage, setNominationPage] = useState(1);
   const NOMINATION_PAGE_SIZE = 20;
   
-  // Nomination Items Management state
-  const [nominationItems, setNominationItems] = useState<NominationItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // Initial loading state
-  const [isEditingNominationItems, setIsEditingNominationItems] = useState(false);
-  const [editingNominationItem, setEditingNominationItem] = useState<NominationItem | null>(null);
-  const [isCreatingNominationItem, setIsCreatingNominationItem] = useState(false);
-  const [nominationItemsLoading, setNominationItemsLoading] = useState(false);
+   // Nomination Items Management state
+   const [nominationItems, setNominationItems] = useState<NominationItem[]>([]);
+   const [isLoading, setIsLoading] = useState(true); // Initial loading state
+   const [isEditingNominationItems, setIsEditingNominationItems] = useState(false);
+   const [editingNominationItem, setEditingNominationItem] = useState<NominationItem | null>(null);
+   const [isCreatingNominationItem, setIsCreatingNominationItem] = useState(false);
+   const [nominationItemsLoading, setNominationItemsLoading] = useState(false);
+
+   // NPN Entry Management state
+   const [npnEntries, setNPNEntries] = useState<NPNEntry[]>([]);
+   const [npnLoading, setNpnLoading] = useState(false);
+   const [editingNPN, setEditingNPN] = useState<NPNEntry | null>(null);
+   const [isCreatingNPN, setIsCreatingNPN] = useState(false);
+   const [newNPNPhone, setNewNPNPhone] = useState('');
 
   // Password protection state
   const [isPasswordVerified, setIsPasswordVerified] = useState(false);
@@ -166,14 +173,15 @@ export default function AdminDashboard() {
     }
   }, [activeTab, currentShop]);
 
-  // Initialize qualifying purchase input when currentShop changes (shop switched)
-  useEffect(() => {
-    if (currentShop) {
-      setQpInput(String(currentShop.qualifyingPurchase || 0));
-      loadTopNominations();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentShop?.id]);
+   // Initialize qualifying purchase input when currentShop changes (shop switched)
+   useEffect(() => {
+     if (currentShop) {
+       setQpInput(String(currentShop.qualifyingPurchase || 0));
+       loadTopNominations();
+       loadNPNEntries();
+     }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [currentShop?.id]);
 
    // Load top nominations for the current shop
    const loadTopNominations = async () => {
@@ -194,7 +202,26 @@ export default function AdminDashboard() {
      }
    };
 
-  // Load all nomination items for editing
+   // Load NPN entries for the current shop
+   const loadNPNEntries = async () => {
+     if (!currentShop) return;
+     setNpnLoading(true);
+     try {
+       const entries = await localNPNEntries.getByShop(currentShop.id);
+       // Sort: active first, then by createdAt descending
+       entries.sort((a, b) => {
+         if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+       });
+       setNPNEntries(entries);
+     } catch (error) {
+       console.error('Error loading NPN entries:', error);
+     } finally {
+       setNpnLoading(false);
+     }
+   };
+
+   // Load all nomination items for editing
   const loadNominationItems = async () => {
     if (!currentShop) return;
     setNominationItemsLoading(true);
@@ -214,7 +241,59 @@ export default function AdminDashboard() {
     setIsEditingNominationItems(true);
   };
 
-  // Save nomination item
+   // Save NPN entry
+   const handleSaveNPN = async (phone: string) => {
+     if (!currentShop) return;
+     const normalizedPhone = phone.replace(/\D/g, '');
+     if (normalizedPhone.length < 7) {
+       alert('Please enter a valid phone number');
+       return;
+     }
+     
+     setIsCreatingNPN(true);
+     try {
+       // Check shop limit? Not specified. For now unlimited but could limit.
+       const entry = await localNPNEntries.create({
+         phoneNumber: normalizedPhone,
+         shopId: currentShop.id,
+         createdBy: admin?.id || 'unknown',
+         entrySource: 'NPN'
+       });
+       // Refresh list
+       loadNPNEntries();
+       setNewNPNPhone('');
+       setEditingNPN(null);
+       
+       // Queue background sync
+       import('@/lib/sync-service').then(({ queueForSync }) => {
+         queueForSync({ type: 'npn', operation: 'create', data: entry });
+       }).catch(() => {});
+     } catch (error) {
+       console.error('Error creating NPN entry:', error);
+       alert('Failed to create NPN entry');
+     } finally {
+       setIsCreatingNPN(false);
+     }
+   };
+
+   // Delete NPN entry
+   const handleDeleteNPN = async (id: string) => {
+     if (!confirm('Delete this NPN entry?')) return;
+     try {
+       const entry = await localNPNEntries.getById(id);
+       if (entry) {
+         await localNPNEntries.delete(id);
+         loadNPNEntries();
+         // Queue deletion sync
+         import('@/lib/sync-service').then(({ queueForSync }) => {
+           queueForSync({ type: 'npn', operation: 'delete', data: entry });
+         }).catch(() => {});
+       }
+     } catch (error) {
+       console.error('Error deleting NPN entry:', error);
+       alert('Failed to delete NPN entry');
+     }
+   };
   const handleSaveNominationItem = async (item: NominationItem) => {
     // Limit total nominatable items to 100 (only when creating new)
     if (!editingNominationItem && nominationItems.length >= 100) {
@@ -520,6 +599,7 @@ export default function AdminDashboard() {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
     { id: 'myShop', label: 'My Shop', icon: Store, requiredPermission: 'shop_admin' },
     { id: 'customers', label: 'Customers', icon: ShoppingCart, requiredPermission: 'shop_admin' },
+    { id: 'npn', label: 'NPN Entries', icon: Ticket, requiredPermission: 'shop_admin' },
     { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageAllShops' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
     { id: 'qualifyingPurchase', label: 'Qualifying Purchase', icon: Zap, requiredPermission: 'canEditQualifyingPurchase' },
@@ -1978,10 +2058,109 @@ export default function AdminDashboard() {
           </div>
         </main>
       </div>
-    );
-  }
+     );
+   }
+ 
+   // NPN Entries view
+   if (activeTab === 'npn') {
+     return (
+       <div className="min-h-screen flex">
+         <AdminSidebar 
+           tabs={tabs} 
+           activeTab={activeTab} 
+           setActiveTab={setActiveTab}
+           isMobileMenuOpen={isMobileMenuOpen}
+           setIsMobileMenuOpen={setIsMobileMenuOpen}
+           onLogout={handleLogout}
+           admin={admin}
+         />
+         
+         <main className="flex-1 p-6 overflow-auto">
+           <div className="max-w-4xl mx-auto">
+             <h1 className="gold-gradient-text text-2xl font-bold mb-6">
+               No Purchase Needed (NPN) Entries
+             </h1>
+             
+             {!currentShop ? (
+               <div className="card text-center py-8">
+                 <p className="text-gray-400">
+                   Please select a shop first (go to <button onClick={() => setActiveTab('myShop')} className="text-gold-400 underline">My Shop</button>).
+                 </p>
+               </div>
+             ) : (
+               <>
+                 {/* Create NPN Entry */}
+                 <div className="card mb-6">
+                   <h3 className="font-semibold mb-4">Create New NPN Entry</h3>
+                   <div className="flex gap-2">
+                     <input
+                       type="tel"
+                       value={newNPNPhone}
+                       onChange={(e) => setNewNPNPhone(e.target.value)}
+                       placeholder="Enter customer phone number"
+                       className="input flex-1"
+                     />
+                     <button
+                       onClick={() => handleSaveNPN(newNPNPhone)}
+                       disabled={npnLoading || isCreatingNPN || !newNPNPhone.trim()}
+                       className="btn-gold"
+                     >
+                       {isCreatingNPN ? 'Creating...' : 'Create Entry'}
+                     </button>
+                   </div>
+                   <p className="text-xs text-gray-500 mt-2">
+                     Single-use entry. Expires at midnight. Customer can play once without purchase.
+                   </p>
+                 </div>
 
-  // Shops view
+                 {/* NPN Entries List */}
+                 {npnLoading ? (
+                   <div className="text-center py-8">
+                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500 mx-auto"></div>
+                     <p className="text-gray-400 mt-2">Loading NPN entries...</p>
+                   </div>
+                 ) : npnEntries.length === 0 ? (
+                   <div className="card text-center py-8">
+                     <p className="text-gray-500">No NPN entries for this shop.</p>
+                   </div>
+                 ) : (
+                   <div className="space-y-2">
+                     {npnEntries.map((entry) => (
+                       <div key={entry.id} className="card flex items-center justify-between">
+                         <div>
+                           <p className="text-white font-medium">
+                             +{entry.phoneNumber}
+                           </p>
+                           <p className="text-gray-400 text-xs">
+                             {entry.isActive 
+                               ? '✅ Active – unused' 
+                               : `✅ Used ${entry.usedAt ? new Date(entry.usedAt).toLocaleString() : ''}`
+                             }
+                             {' • '}Expires: {new Date(entry.expiresAt).toLocaleTimeString()}
+                           </p>
+                           {entry.usedAttemptId && entry.usedAttemptId !== 'PENDING' && (
+                             <p className="text-xs text-blue-400">Attempt: {entry.usedAttemptId.slice(0,8)}...</p>
+                           )}
+                         </div>
+                         <button
+                           onClick={() => handleDeleteNPN(entry.id)}
+                           className="text-red-400 hover:text-red-300 p-2"
+                         >
+                           <Trash2 size={18} />
+                         </button>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+               </>
+             )}
+           </div>
+         </main>
+       </div>
+     );
+   }
+ 
+   // Shops view
   if (activeTab === 'shops') {
     return (
       <div className="min-h-screen flex">

@@ -45,7 +45,7 @@ import {
   Database,
   connectDatabaseEmulator
 } from 'firebase/database';
-import type { Shop, Subscription, SubscriptionTier, Admin, GameAttempt, Item, NominationItem, CustomerNomination } from '@/types';
+import type { Shop, Subscription, SubscriptionTier, Admin, GameAttempt, Item, NominationItem, CustomerNomination, NPNEntry } from '@/types';
 import { localSettings } from './local-db';
 
 // Firebase configuration
@@ -1381,9 +1381,115 @@ export const rtdbSettings = {
     }
   },
 
-  async update(key: string, value: any): Promise<{ success: boolean; error?: string }> {
+   async update(key: string, value: any): Promise<{ success: boolean; error?: string }> {
+     try {
+       await update(ref(rtdb, `settings/${key}`), convertToSerializable(value));
+       return { success: true };
+     } catch (error: any) {
+       return { success: false, error: error.message };
+     }
+   }
+ };
+
+// NPN Entries - Realtime Database
+export const rtdbNPN = {
+  async getByShop(shopId: string): Promise<NPNEntry[]> {
     try {
-      await update(ref(rtdb, `settings/${key}`), convertToSerializable(value));
+      const snapshot = await get(ref(rtdb, `npnEntries/${shopId}`));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data).map(([id, entry]: [string, any]) => ({ ...entry, id }));
+    } catch (error) {
+      console.error('RTDB Error fetching NPN entries by shop:', error);
+      return [];
+    }
+  },
+
+  async getByPhone(phoneNumber: string): Promise<NPNEntry[]> {
+    try {
+      const snapshot = await get(ref(rtdb, 'npnEntriesByPhone'));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      // Phone number is key under each shop
+      const entries: NPNEntry[] = [];
+      Object.entries(data).forEach(([shopId, phoneData]: [string, any]) => {
+        if (phoneData[phoneNumber]) {
+          entries.push({ ...phoneData[phoneNumber], id: phoneData[phoneNumber].id, shopId });
+        }
+      });
+      return entries;
+    } catch (error) {
+      console.error('RTDB Error fetching NPN entries by phone:', error);
+      return [];
+    }
+  },
+
+  async getActive(shopId?: string): Promise<NPNEntry[]> {
+    try {
+      const snapshot = shopId 
+        ? await get(ref(rtdb, `npnEntries/${shopId}`))
+        : await get(ref(rtdb, 'npnEntries'));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      const now = Date.now();
+      const all: NPNEntry[] = [];
+      Object.entries(data).forEach(([shopOrEntryId, entryOrShop]: [string, any]) => {
+        if (shopId) {
+          // Single shop case
+          all.push({ ...entryOrShop, id: shopOrEntryId });
+        } else {
+          // All shops: entryOrShop is shop object with entries
+          Object.entries(entryOrShop).forEach(([entryId, entry]: [string, any]) => {
+            all.push({ ...entry, id: entryId, shopId: shopOrEntryId });
+          });
+        }
+      });
+      return all.filter(e => e.isActive && !e.used && new Date(e.expiresAt).getTime() > now);
+    } catch (error) {
+      console.error('RTDB Error fetching active NPN entries:', error);
+      return [];
+    }
+  },
+
+  async create(shopId: string, entry: NPNEntry): Promise<{ success: boolean; id?: string; error?: string }> {
+    try {
+      await set(ref(rtdb, `npnEntries/${shopId}/${entry.id}`), convertToSerializable(entry));
+      // Also index by phone for quick lookup
+      await set(ref(rtdb, `npnEntriesByPhone/${shopId}/${entry.phoneNumber}`), { id: entry.id, shopId });
+      return { success: true, id: entry.id };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async update(entry: NPNEntry): Promise<{ success: boolean; error?: string }> {
+    try {
+      const shopId = entry.shopId || 'unknown';
+      await update(ref(rtdb, `npnEntries/${shopId}/${entry.id}`), convertToSerializable(entry));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async markUsed(entryId: string, shopId: string, attemptId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const updates: Record<string, any> = {
+        'used': true,
+        'isActive': false,
+        'usedAt': new Date().toISOString(),
+        'usedAttemptId': attemptId
+      };
+      await update(ref(rtdb, `npnEntries/${shopId}/${entryId}`), updates);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async delete(entryId: string, shopId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await remove(ref(rtdb, `npnEntries/${shopId}/${entryId}`));
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };

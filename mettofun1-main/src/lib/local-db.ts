@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import type { Shop, Item, GameAttempt, Admin, SyncQueue, CustomerSession, PendingCustomer, AdminLevel, NominationItem, CustomerNomination } from '@/types';
+import type { Shop, Item, GameAttempt, Admin, SyncQueue, CustomerSession, PendingCustomer, AdminLevel, NominationItem, CustomerNomination, NPNEntry } from '@/types';
 import { verifyGameAttemptIntegrity } from './game-utils';
 
 interface MetoFunDB extends DBSchema {
@@ -51,6 +51,12 @@ interface MetoFunDB extends DBSchema {
     value: CustomerNomination;
     indexes: { 'by-phone': string; 'by-shop': string; 'by-attempt': string };
   };
+  // NPN entries store (v4)
+  npnEntries: {
+    key: string;
+    value: NPNEntry;
+    indexes: { 'by-phone': string; 'by-shop': string };
+  };
 }
 
 let db: IDBPDatabase<MetoFunDB> | null = null;
@@ -58,7 +64,7 @@ let db: IDBPDatabase<MetoFunDB> | null = null;
 export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
   if (db) return db;
 
-  db = await openDB<MetoFunDB>('metofun-db', 3, {
+  db = await openDB<MetoFunDB>('metofun-db', 4, {
     upgrade(database, oldVersion) {
       // Shops store - only create if it doesn't exist
       if (!database.objectStoreNames.contains('shops')) {
@@ -116,15 +122,22 @@ export const initDB = async (): Promise<IDBPDatabase<MetoFunDB>> => {
         nominationStore.createIndex('by-count', 'nominationCount');
       }
 
-      // Customer nominations store (v3) - only create if it doesn't exist
-      if (!database.objectStoreNames.contains('customerNominations')) {
-        const customerNomStore = database.createObjectStore('customerNominations', { keyPath: 'id' });
-        customerNomStore.createIndex('by-phone', 'phoneNumber');
-        customerNomStore.createIndex('by-shop', 'shopId');
-        customerNomStore.createIndex('by-attempt', 'gameAttemptId');
-      }
-    }
-  });
+       // Customer nominations store (v3) - only create if it doesn't exist
+       if (!database.objectStoreNames.contains('customerNominations')) {
+         const customerNomStore = database.createObjectStore('customerNominations', { keyPath: 'id' });
+         customerNomStore.createIndex('by-phone', 'phoneNumber');
+         customerNomStore.createIndex('by-shop', 'shopId');
+         customerNomStore.createIndex('by-attempt', 'gameAttemptId');
+       }
+
+       // NPN entries store (v4) - only create if it doesn't exist
+       if (!database.objectStoreNames.contains('npnEntries')) {
+         const npnStore = database.createObjectStore('npnEntries', { keyPath: 'id' });
+         npnStore.createIndex('by-phone', 'phoneNumber');
+         npnStore.createIndex('by-shop', 'shopId');
+       }
+     }
+   });
 
   return db;
 };
@@ -733,5 +746,113 @@ export const localDB = {
     const database = await initDB();
     const pending = await database.getAll('syncQueue');
     return pending.filter(q => q.status === 'pending').length;
+  }
+};
+
+// NPN Entry operations
+export const localNPNEntries = {
+  async getAll(): Promise<NPNEntry[]> {
+    const database = await initDB();
+    return database.getAll('npnEntries');
+  },
+
+  async getByShop(shopId: string): Promise<NPNEntry[]> {
+    const database = await initDB();
+    return database.getAllFromIndex('npnEntries', 'by-shop', shopId);
+  },
+
+  async getByPhone(phoneNumber: string): Promise<NPNEntry[]> {
+    const database = await initDB();
+    return database.getAllFromIndex('npnEntries', 'by-phone', phoneNumber);
+  },
+
+  async getActive(shopId?: string): Promise<NPNEntry[]> {
+    const database = await initDB();
+    let entries = await database.getAll('npnEntries');
+    entries = entries.filter(e => e.isActive && !e.used);
+    if (shopId) {
+      entries = entries.filter(e => e.shopId === shopId);
+    }
+    // Also filter expired
+    const now = new Date();
+    entries = entries.filter(e => e.expiresAt > now);
+    return entries;
+  },
+
+  async getActiveByPhone(phoneNumber: string, shopId?: string): Promise<NPNEntry | null> {
+    const entries = await this.getByPhone(phoneNumber);
+    const now = new Date();
+    const active = entries.find(e => 
+      e.isActive && 
+      !e.used && 
+      e.expiresAt > now &&
+      (!shopId || e.shopId === shopId)
+    );
+    return active || null;
+  },
+
+  async save(entry: NPNEntry): Promise<void> {
+    const database = await initDB();
+    await database.put('npnEntries', entry);
+  },
+
+  async create(entry: Omit<NPNEntry, 'id' | 'createdAt' | 'used' | 'usedAt' | 'usedAttemptId' | 'isActive' | 'expiresAt'>): Promise<NPNEntry> {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    // Expires at end of current day (23:59:59)
+    const expiresAt = new Date(now);
+    expiresAt.setHours(23, 59, 59, 999);
+    
+    const entryObj: NPNEntry = {
+      ...entry,
+      id,
+      createdAt: now,
+      used: false,
+      isActive: true,
+      expiresAt,
+    };
+    await this.save(entryObj);
+    return entryObj;
+  },
+
+  async markUsed(entryId: string, attemptId: string): Promise<void> {
+    const database = await initDB();
+    const entry = await database.get('npnEntries', entryId);
+    if (entry) {
+      entry.used = true;
+      entry.isActive = false;
+      entry.usedAt = new Date();
+      entry.usedAttemptId = attemptId;
+      await database.put('npnEntries', entry);
+    }
+  },
+
+  async getById(id: string): Promise<NPNEntry | undefined> {
+    const database = await initDB();
+    return database.get('npnEntries', id);
+  },
+
+  async delete(id: string): Promise<void> {
+    const database = await initDB();
+    await database.delete('npnEntries', id);
+  },
+
+  async cleanupExpired(): Promise<void> {
+    const database = await initDB();
+    const all = await database.getAll('npnEntries');
+    const now = new Date();
+    const expired = all.filter(e => e.expiresAt <= now);
+    const tx = database.transaction('npnEntries', 'readwrite');
+    await Promise.all([
+      ...expired.map(e => tx.store.delete(e.id)),
+      tx.done
+    ]);
+  },
+
+  async getCountByShop(shopId: string): Promise<number> {
+    const database = await initDB();
+    const all = await database.getAllFromIndex('npnEntries', 'by-shop', shopId);
+    const now = new Date();
+    return all.filter(e => e.isActive && !e.used && e.expiresAt > now).length;
   }
 };
