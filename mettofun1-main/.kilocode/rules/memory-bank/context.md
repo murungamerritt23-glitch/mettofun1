@@ -420,4 +420,3 @@ export async function GET() {
 | Today | Fix customer mode loading spinner stuck - ensure setIsLoading(false) always called in GameMode |
 | Today | Fix offline attempts not syncing - make sync* functions throw on failure and ensure admin exists before processing queue |
 | Today | Ensure likes and nomination counts persist across logout and sync reliably - queue setting updates and fix nomination sync result checks |
-| Today | Change analytics "Most Selected Items" to "Top 10 Nominated Items" - fix top10 sorting and update dashboard label

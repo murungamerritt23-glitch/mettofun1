@@ -1754,12 +1754,16 @@ export default function AdminDashboard() {
         purchaseAmount: customer.purchaseAmount
       });
       
-      // Set the selected item and game parameters
-      if (item) {
-        setSelectedItem(item);
-      }
-      setCorrectNumber(winningNum);
-      setThresholdNumber(threshold);
+       // Set the selected item and game parameters
+       if (item) {
+         setSelectedItem(item);
+         setCorrectNumber(winningNum);
+       } else {
+         console.error('Item not found for customer:', customer.itemId);
+         alert('Error: Selected item not found. Please try again.');
+         return;
+       }
+       setThresholdNumber(threshold);
       
       // Set game to playing state
       setGameStatus('playing');
