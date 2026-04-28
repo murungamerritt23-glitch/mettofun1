@@ -598,9 +598,9 @@ export default function AdminDashboard() {
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
     { id: 'myShop', label: 'My Shop', icon: Store, requiredPermission: 'shop_admin' },
-    { id: 'customers', label: 'Customers', icon: ShoppingCart, requiredPermission: 'shop_admin' },
-    { id: 'npn', label: 'NPN Entries', icon: Ticket, requiredPermission: null} }
-    { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageAllShops' },
+     { id: 'customers', label: 'Customers', icon: ShoppingCart, requiredPermission: 'shop_admin' },
+     { id: 'npn', label: 'NPN Entries', icon: Ticket, requiredPermission: null },
+     { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageAllShops' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
     { id: 'qualifyingPurchase', label: 'Qualifying Purchase', icon: Zap, requiredPermission: 'canEditQualifyingPurchase' },
     { id: 'attempts', label: 'Attempts', icon: Users, requiredPermission: 'canViewAnalytics' },
@@ -2088,71 +2088,76 @@ export default function AdminDashboard() {
                  </p>
                </div>
              ) : (
-               <>
-                 {/* Create NPN Entry */}
-                 <div className="card mb-6">
-                   <h3 className="font-semibold mb-4">Create New NPN Entry</h3>
-                   <div className="flex gap-2">
-                     <input
-                       type="tel"
-                       value={newNPNPhone}
-                       onChange={(e) => setNewNPNPhone(e.target.value)}
-                       placeholder="Enter customer phone number"
-                       className="input flex-1"
-                     />
-                     <button
-                       onClick={() => handleSaveNPN(newNPNPhone)}
-                       disabled={npnLoading || isCreatingNPN || !newNPNPhone.trim()}
-                       className="btn-gold"
-                     >
-                       {isCreatingNPN ? 'Creating...' : 'Create Entry'}
-                     </button>
-                   </div>
-                   <p className="text-xs text-gray-500 mt-2">
-                     Single-use entry. Expires at midnight. Customer can play once without purchase.
-                   </p>
-                 </div>
+                <>
+                  {/* Create NPN Entry - shop_admin only */}
+                  {isShopAdmin && (
+                    <div className="card mb-6">
+                      <h3 className="font-semibold mb-4">Create New NPN Entry</h3>
+                      <div className="flex gap-2">
+                        <input
+                          type="tel"
+                          value={newNPNPhone}
+                          onChange={(e) => setNewNPNPhone(e.target.value)}
+                          placeholder="Enter customer phone number"
+                          className="input flex-1"
+                        />
+                        <button
+                          onClick={() => handleSaveNPN(newNPNPhone)}
+                          disabled={npnLoading || isCreatingNPN || !newNPNPhone.trim()}
+                          className="btn-gold"
+                        >
+                          {isCreatingNPN ? 'Creating...' : 'Create Entry'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Single-use entry. Expires at midnight. Customer can play once without purchase.
+                      </p>
+                    </div>
+                  )}
 
-                 {/* NPN Entries List */}
-                 {npnLoading ? (
-                   <div className="text-center py-8">
-                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500 mx-auto"></div>
-                     <p className="text-gray-400 mt-2">Loading NPN entries...</p>
-                   </div>
-                 ) : npnEntries.length === 0 ? (
-                   <div className="card text-center py-8">
-                     <p className="text-gray-500">No NPN entries for this shop.</p>
-                   </div>
-                 ) : (
-                   <div className="space-y-2">
-                     {npnEntries.map((entry) => (
-                       <div key={entry.id} className="card flex items-center justify-between">
-                         <div>
-                           <p className="text-white font-medium">
-                             +{entry.phoneNumber}
-                           </p>
-                           <p className="text-gray-400 text-xs">
-                             {entry.isActive 
-                               ? '✅ Active – unused' 
-                               : `✅ Used ${entry.usedAt ? new Date(entry.usedAt).toLocaleString() : ''}`
-                             }
-                             {' • '}Expires: {new Date(entry.expiresAt).toLocaleTimeString()}
-                           </p>
-                           {entry.usedAttemptId && entry.usedAttemptId !== 'PENDING' && (
-                             <p className="text-xs text-blue-400">Attempt: {entry.usedAttemptId.slice(0,8)}...</p>
-                           )}
-                         </div>
-                         <button
-                           onClick={() => handleDeleteNPN(entry.id)}
-                           className="text-red-400 hover:text-red-300 p-2"
-                         >
-                           <Trash2 size={18} />
-                         </button>
-                       </div>
-                     ))}
-                   </div>
-                 )}
-               </>
+                  {/* NPN Entries List */}
+                  {npnLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500 mx-auto"></div>
+                      <p className="text-gray-400 mt-2">Loading NPN entries...</p>
+                    </div>
+                  ) : npnEntries.length === 0 ? (
+                    <div className="card text-center py-8">
+                      <p className="text-gray-500">No NPN entries for this shop.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {npnEntries.map((entry) => (
+                        <div key={entry.id} className="card flex items-center justify-between">
+                          <div>
+                            <p className="text-white font-medium">
+                              +{entry.phoneNumber}
+                            </p>
+                            <p className="text-gray-400 text-xs">
+                              {entry.isActive 
+                                ? '✅ Active – unused' 
+                                : `✅ Used ${entry.usedAt ? new Date(entry.usedAt).toLocaleString() : ''}`
+                              }
+                              {' • '}Expires: {new Date(entry.expiresAt).toLocaleTimeString()}
+                            </p>
+                            {entry.usedAttemptId && entry.usedAttemptId !== 'PENDING' && (
+                              <p className="text-xs text-blue-400">Attempt: {entry.usedAttemptId.slice(0,8)}...</p>
+                            )}
+                          </div>
+                          {/* Delete button only for shop_admin */}
+                          {isShopAdmin && (
+                            <button
+                              onClick={() => handleDeleteNPN(entry.id)}
+                              className="text-red-400 hover:text-red-300 p-2"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
              )}
            </div>
          </main>
