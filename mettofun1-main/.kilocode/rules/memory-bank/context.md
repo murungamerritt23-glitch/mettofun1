@@ -8,6 +8,11 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix attempt saving to include selected item name
+  - Issue: Game attempts were saving with selectedItem undefined (or "box 0") because createGameAttempt was passed winningItem (only set on wins) instead of selectedItem (set on every item selection).
+  - Fix: In GameMode.handleNumberSelect (line 393), changed from `winningItem || undefined` to `selectedItem || undefined`. Now all attempts — win or lose — correctly record which item the customer selected, including the item name.
+  - This also works with admin-launched customers via handleLaunchCustomer, which sets selectedItem before game starts.
+
 - [x] Fix game flow: ensure winning number is set only after item is selected
   - In AdminDashboard.handleLaunchCustomer, setCorrectNumber was called unconditionally even when the selected item lookup failed (item === undefined). This could set a winning number without a selected item, causing inconsistent state.
   - Fixed: Moved setCorrectNumber inside the `if (item)` block and added error handling to abort launch if item not found.
@@ -427,3 +432,4 @@ export async function GET() {
 | Today | Fix offline attempts not syncing - make sync* functions throw on failure and ensure admin exists before processing queue |
 | Today | Ensure likes and nomination counts persist across logout and sync reliably - queue setting updates and fix nomination sync result checks |
 | Today | Fix game flow: ensure correctNumber set only after item selected - guard admin launch path |
+| Today | Fix attempt saving - pass selectedItem instead of winningItem to preserve item name for all outcomes |
