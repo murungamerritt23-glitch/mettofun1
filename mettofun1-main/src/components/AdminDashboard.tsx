@@ -1583,30 +1583,35 @@ export default function AdminDashboard() {
                           min={0}
                         />
                         <button
-                          onClick={async () => {
-                            if (!currentShop || qpSaving) return;
-                            setQpSaving(true);
-                            try {
-                              const newValue = Number(qpInput) || 0;
-                              const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                              
-                              // Save using sync service (handles offline)
-                              await saveShopWithSync(updatedShop, false);
-                              
-                              // Update state
-                              setCurrentShop(updatedShop);
-                              setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
-                              localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
-                              loadAttempts();
-                              
-                              alert('Qualifying purchase updated successfully!');
-                            } catch (err) {
-                              console.error('Error saving qualifying purchase:', err);
-                              alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
-                            } finally {
-                              setQpSaving(false);
-                            }
-                          }}
+                       onClick={async () => {
+                         if (!currentShop || qpSaving) return;
+                         setQpSaving(true);
+                         try {
+                           const newValue = Number(qpInput) || 0;
+                           const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                           
+                           // Save to local immediately (fast)
+                           await localShops.save(updatedShop);
+                           
+                           // Fire RTDB sync in background (non-blocking)
+                           saveShopWithSync(updatedShop, false).catch(err => {
+                             console.error('[Background sync] qualifying purchase failed:', err);
+                           });
+                           
+                           // Update state immediately
+                           setCurrentShop(updatedShop);
+                           setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
+                           localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+                           loadAttempts();
+                           
+                           alert('Qualifying purchase updated successfully!');
+                         } catch (err) {
+                           console.error('Error saving qualifying purchase:', err);
+                           alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                         } finally {
+                           setQpSaving(false);
+                         }
+                       }}
                           disabled={qpSaving}
                           className="btn-gold px-4 py-2"
                         >
@@ -2421,30 +2426,35 @@ export default function AdminDashboard() {
                       min={0}
                     />
                     <button
-                      onClick={async () => {
-                        if (!currentShop || qpSaving) return;
-                        setQpSaving(true);
-                        try {
-                          const newValue = Number(qpInput) || 0;
-                          const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                          
-                          // Save using sync service (handles offline)
-                          await saveShopWithSync(updatedShop, false);
-                          
-                          // Update state
-                          setCurrentShop(updatedShop);
-                          setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
-                          localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
-                          loadAttempts();
-                          
-                          alert('Qualifying purchase updated successfully!');
-                        } catch (err) {
-                          console.error('Error saving qualifying purchase:', err);
-                          alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
-                        } finally {
-                          setQpSaving(false);
-                        }
-                      }}
+                        onClick={async () => {
+                          if (!currentShop || qpSaving) return;
+                          setQpSaving(true);
+                          try {
+                            const newValue = Number(qpInput) || 0;
+                            const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                            
+                            // Save to local immediately (fast)
+                            await localShops.save(updatedShop);
+                            
+                            // Fire RTDB sync in background (non-blocking)
+                            saveShopWithSync(updatedShop, false).catch(err => {
+                              console.error('[Background sync] qualifying purchase failed:', err);
+                            });
+                            
+                            // Update state immediately
+                            setCurrentShop(updatedShop);
+                            setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
+                            localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+                            loadAttempts();
+                            
+                            alert('Qualifying purchase updated successfully!');
+                          } catch (err) {
+                            console.error('Error saving qualifying purchase:', err);
+                            alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                          } finally {
+                            setQpSaving(false);
+                          }
+                        }}
                       disabled={qpSaving}
                       className="btn-gold px-4 py-2"
                     >
