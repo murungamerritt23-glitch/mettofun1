@@ -8,6 +8,12 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix nomination screen image sizing to match select screen
+  - Issue: Nomination screen item images appeared tiny with excessive padding around them compared to the item select screen.
+  - Root cause: Nomination buttons had `p-2 sm:p-3` padding and image had `mb-1` margin, while GameMode item picker uses tight `gap-1 px-1` spacing with no extra margin.
+  - Fix: Changed nomination button classes from `game-box p-2 sm:p-3 ...` to `game-box flex flex-col items-center justify-center relative gap-1 px-1`. Also removed `mb-1` from image and simplified Gift placeholder to `w-6 h-6` (removed responsive sm: variants). Images now use `w-8 h-8 object-cover rounded` exactly like select screen.
+  - Nomination item images now fill the frame identically to the customer item selection screen.
+
 - [x] Fix attempt saving to include selected item name
   - Issue: Game attempts were saving with selectedItem undefined (or "box 0") because createGameAttempt was passed winningItem (only set on wins) instead of selectedItem (set on every item selection).
   - Fix: In GameMode.handleNumberSelect (line 393), changed from `winningItem || undefined` to `selectedItem || undefined`. Now all attempts — win or lose — correctly record which item the customer selected, including the item name.
@@ -433,3 +439,4 @@ export async function GET() {
 | Today | Ensure likes and nomination counts persist across logout and sync reliably - queue setting updates and fix nomination sync result checks |
 | Today | Fix game flow: ensure correctNumber set only after item selected - guard admin launch path |
 | Today | Fix attempt saving - pass selectedItem instead of winningItem to preserve item name for all outcomes |
+| Today | Fix nomination screen image sizing - remove extra padding, match select screen layout |
