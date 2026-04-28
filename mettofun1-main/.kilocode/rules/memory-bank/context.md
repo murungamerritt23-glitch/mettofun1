@@ -8,6 +8,15 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Performance optimization: make admin save operations non-blocking and fix nomination images
+  - Add staff, add shop, and save nomination items were slow due to blocking network calls (RTDB operations).
+  - Changes:
+    1. **Nomination images**: Increased image size from w-10 to w-12 (and Gift w-8→w-10) so items fill the box properly. Removed extra padding.
+    2. **handleSaveShop**: Removed the `rtdbShops.getAll()` duplicate check that downloaded entire shops list (slow). Local duplicate checks remain. Background sync now fire-and-forget.
+    3. **handleSaveAdmin**: Removed redundant `rtdbAdmins.save(admin!)` that saved current admin twice. Now only saves the edited admin and does it in background after local save.
+    4. **handleSaveNominationItem** & **handleToggleNominationItemActive**: Changed from `await saveNominationItemWithSync` to local-save-then-fire-background. UI updates immediately; sync retries in background.
+  - Result: Add staff, add shop, and save nomination items now feel instant.
+
 - [x] Fix nomination screen image sizing to match select screen
   - Issue: Nomination screen item images appeared tiny with excessive padding around them compared to the item select screen.
   - Root cause: Nomination buttons had `p-2 sm:p-3` padding and image had `mb-1` margin, while GameMode item picker uses tight `gap-1 px-1` spacing with no extra margin.
@@ -440,3 +449,4 @@ export async function GET() {
 | Today | Fix game flow: ensure correctNumber set only after item selected - guard admin launch path |
 | Today | Fix attempt saving - pass selectedItem instead of winningItem to preserve item name for all outcomes |
 | Today | Fix nomination screen image sizing - remove extra padding, match select screen layout |
+| Today | Performance: speed up admin saves (staff, shop, nominations) by removing blocking RTDB calls and firing sync in background |
