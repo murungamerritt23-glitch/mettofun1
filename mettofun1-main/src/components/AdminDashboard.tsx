@@ -221,7 +221,13 @@ export default function AdminDashboard() {
       alert('Maximum 100 nomination items reached. Delete some items first.');
       return;
     }
-    await saveNominationItemWithSync(item, !editingNominationItem);
+    // Save locally first for immediate UI update
+    await localNominationItems.save(item);
+    // Fire off RTDB sync in background (don't await) to keep UI responsive
+    saveNominationItemWithSync(item, !editingNominationItem).catch(err => {
+      console.error('[Background sync] nomination item failed:', err);
+    });
+    // Close modal and refresh UI from local DB (already includes the item)
     setEditingNominationItem(null);
     setIsCreatingNominationItem(false);
     loadNominationItems();
@@ -240,7 +246,13 @@ export default function AdminDashboard() {
   // Toggle nomination item active status
   const handleToggleNominationItemActive = async (item: NominationItem) => {
     const updatedItem = { ...item, isActive: !item.isActive, updatedAt: new Date() };
-    await saveNominationItemWithSync(updatedItem, false);
+    // Save locally first (fast)
+    await localNominationItems.save(updatedItem);
+    // Fire sync in background
+    saveNominationItemWithSync(updatedItem, false).catch(err => {
+      console.error('[Background sync] toggle nomination failed:', err);
+    });
+    // Refresh list from local DB
     loadNominationItems();
   };
 
@@ -460,32 +472,31 @@ export default function AdminDashboard() {
   }, []);
 
   // Admin handlers
-  const handleSaveAdmin = async (adminData: Admin) => {
-    // Check if trying to set as super_admin
-    if (adminData.level === 'super_admin') {
-      // Check if there's already a super_admin
-      const existingAdmins = admins.filter(a => a.level === 'super_admin' && a.id !== adminData.id);
-      if (existingAdmins.length > 0) {
-        alert('There can only be ONE Super Admin. Please contact the existing Admin to change this.');
-        return;
-      }
-    }
-    
-    // Save to local database
-    await localAdmins.save(adminData);
-    
-    // Also sync to RTDB (ensure our admin is in RTDB first so security rules pass)
-    try {
-      await rtdbAdmins.save(admin!);
-      await rtdbAdmins.save(adminData);
-    } catch (e) {
-      console.log('RTDB sync skipped (local only mode)');
-    }
-    
-    setEditingAdmin(null);
-    setIsCreatingAdmin(false);
-    localAdmins.getAll().then(setAdmins);
-  };
+   const handleSaveAdmin = async (adminData: Admin) => {
+     // Check if trying to set as super_admin
+     if (adminData.level === 'super_admin') {
+       // Check if there's already a super_admin
+       const existingAdmins = admins.filter(a => a.level === 'super_admin' && a.id !== adminData.id);
+       if (existingAdmins.length > 0) {
+         alert('There can only be ONE Super Admin. Please contact the existing Admin to change this.');
+         return;
+       }
+     }
+     
+     // Save to local database first (fast)
+     await localAdmins.save(adminData);
+     
+     // Sync to RTDB in background (don't await to keep UI fast)
+     rtdbAdmins.save(adminData).catch(err => {
+       console.log('RTDB sync skipped or failed (local only mode):', err);
+     });
+     
+     // Update UI immediately
+     setEditingAdmin(null);
+     setIsCreatingAdmin(false);
+     // Refresh local list (fast)
+     localAdmins.getAll().then(setAdmins);
+   };
 
   const handleDeleteAdmin = async (adminId: string) => {
     if (confirm('Are you sure you want to delete this admin?')) {
@@ -803,95 +814,61 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSaveShop = async (shop: Shop) => {
-    // Check for duplicate shopCode in local shops (case-insensitive)
-    const existingByCode = shops.find(s => 
-      s.shopCode.toLowerCase() === shop.shopCode.toLowerCase() && 
-      s.id !== shop.id // Exclude current shop if editing
-    );
-    if (existingByCode) {
-      alert(`A shop with code "${shop.shopCode}" already exists. Please use a different shop code.`);
-      return;
-    }
-    
-    // Check for duplicate deviceId in local shops
-    const existingByDevice = shops.find(s => 
-      s.deviceId === shop.deviceId && 
-      s.id !== shop.id // Exclude current shop if editing
-    );
-    if (existingByDevice) {
-      alert(`This device is already registered to another shop. Each device can only be linked to one shop.`);
-      return;
-    }
-    
-    // Check for duplicate adminEmail in local shops
-    if (shop.adminEmail) {
-      const existingByEmail = shops.find(s => 
-        s.adminEmail?.toLowerCase() === shop.adminEmail!.toLowerCase() && 
-        s.id !== shop.id
-      );
-      if (existingByEmail) {
-        alert(`A shop with admin email "${shop.adminEmail}" already exists. Each email can only be linked to one shop.`);
-        return;
-      }
-    }
-    
-    // Also check Firebase for duplicates (in case other devices added shops)
-    try {
-      const allFbShops = await rtdbShops.getAll();
-      const fbDuplicateByCode = allFbShops.find(s => 
-        s.shopCode.toLowerCase() === shop.shopCode.toLowerCase() && 
-        s.id !== shop.id
-      );
-      if (fbDuplicateByCode) {
-        alert(`A shop with code "${shop.shopCode}" already exists in the system. Please use a different shop code.`);
-        return;
-      }
-      
-      const fbDuplicateByDevice = allFbShops.find(s => 
-        s.deviceId === shop.deviceId && 
-        s.id !== shop.id
-      );
-      if (fbDuplicateByDevice) {
-        alert(`This device is already registered to another shop in the system. Each device can only be linked to one shop.`);
-        return;
-      }
-      
-      // Check Firebase for duplicate adminEmail
-      if (shop.adminEmail) {
-        const fbDuplicateByEmail = allFbShops.find(s => 
-          s.adminEmail?.toLowerCase() === shop.adminEmail!.toLowerCase() && 
-          s.id !== shop.id
-        );
-        if (fbDuplicateByEmail) {
-          alert(`A shop with admin email "${shop.adminEmail}" already exists in the system. Each email can only be linked to one shop.`);
-          return;
-        }
-      }
-    } catch (e) {
-      // If Firebase check fails, proceed with local validation (user might be offline)
-      console.warn('Could not check Firebase for duplicates:', e);
-    }
-    
-    // Save to local first for offline support
-    await saveShopWithSync(shop, !editingShop);
-    
-    setEditingShop(null);
-    setIsCreatingShop(false);
-    setUserActive(false);
-    
-    // Update current shop if this is the active one
-    if (currentShop?.id === shop.id) {
-      setCurrentShop(shop);
-    }
-    
-    // Update shops list with the saved shop (don't refetch - use saved data)
-    const updatedShops = shops.map(s => s.id === shop.id ? shop : s);
-    if (!editingShop) {
-      updatedShops.push(shop);
-    }
-    setShops(updatedShops);
-  };
+   const handleSaveShop = async (shop: Shop) => {
+     // Check for duplicate shopCode in local shops (case-insensitive)
+     const existingByCode = shops.find(s => 
+       s.shopCode.toLowerCase() === shop.shopCode.toLowerCase() && 
+       s.id !== shop.id // Exclude current shop if editing
+     );
+     if (existingByCode) {
+       alert(`A shop with code "${shop.shopCode}" already exists. Please use a different shop code.`);
+       return;
+     }
+     
+     // Check for duplicate deviceId in local shops
+     const existingByDevice = shops.find(s => 
+       s.deviceId === shop.deviceId && 
+       s.id !== shop.id // Exclude current shop if editing
+     );
+     if (existingByDevice) {
+       alert(`This device is already registered to another shop. Each device can only be linked to one shop.`);
+       return;
+     }
+     
+     // Check for duplicate adminEmail in local shops
+     if (shop.adminEmail) {
+       const existingByEmail = shops.find(s => 
+         s.adminEmail?.toLowerCase() === shop.adminEmail!.toLowerCase() && 
+         s.id !== shop.id
+       );
+       if (existingByEmail) {
+         alert(`A shop with admin email "${shop.adminEmail}" already exists. Each email can only be linked to one shop.`);
+         return;
+       }
+     }
+     
+     // Save and sync in background - don't await to keep UI responsive
+     saveShopWithSync(shop, !editingShop).catch(err => {
+       console.error('[Background sync] shop save failed:', err);
+     });
+     
+     // Update UI immediately (optimistic)
+     setEditingShop(null);
+     setIsCreatingShop(false);
+     setUserActive(false);
+     
+     // Update current shop if this is the active one
+     if (currentShop?.id === shop.id) {
+       setCurrentShop(shop);
+     }
+     
+     // Update shops list with the saved shop (optimistic update)
+     const updatedShops = shops.map(s => s.id === shop.id ? shop : s);
+     if (!editingShop) {
+       updatedShops.push(shop);
+     }
+     setShops(updatedShops);
+   };
 
   const handleToggleShopActive = async (shop: Shop) => {
     const updatedShop = { ...shop, isActive: !shop.isActive };
