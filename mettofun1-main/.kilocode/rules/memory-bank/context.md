@@ -8,6 +8,11 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Qualifying purchase save now instant
+  - Both qualifying purchase save handlers (myShop tab and qualifyingPurchase tab) were blocking on `saveShopWithSync()`.
+  - Changed to: local save first → fire RTDB sync in background (fire-and-forget) → update UI immediately.
+  - Qualifying purchase edits now feel instant, consistent with other admin operations.
+
 - [x] Performance optimization: make admin save operations non-blocking and fix nomination images
   - Add staff, add shop, and save nomination items were slow due to blocking network calls (RTDB operations).
   - Changes:
@@ -450,3 +455,4 @@ export async function GET() {
 | Today | Fix attempt saving - pass selectedItem instead of winningItem to preserve item name for all outcomes |
 | Today | Fix nomination screen image sizing - remove extra padding, match select screen layout |
 | Today | Performance: speed up admin saves (staff, shop, nominations) by removing blocking RTDB calls and firing sync in background |
+| Today | Qualifying purchase save instant - local save + background sync, no blocking |
