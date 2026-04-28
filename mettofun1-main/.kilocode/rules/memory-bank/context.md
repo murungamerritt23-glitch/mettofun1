@@ -8,15 +8,7 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
-- [x] Implement NPN (No Purchase Needed) entry system
-  - Single-use entries that bypass qualifying purchase requirement. Expire at midnight. Fully offline-capable with background sync.
-  - Added types: NPNEntry interface, extended CustomerSession with entrySource & npnEntryId.
-  - Added npnEntries store to IndexedDB (v4) with indexes by phone/shop, plus helper methods (getActiveByPhone, markUsed, create, etc.).
-  - Added RTDB support (rtdbNPN) with create/update/delete/markUsed, indexed by shop and phone.
-  - Integrated into GameMode.handleAuthorize: checks for active NPN before purchase validation; reserves NPN immediately (used=true, isActive=false, usedAttemptId='PENDING') to prevent reuse.
-  - After attempt is saved, NPN entry is updated with final attemptId and synced.
-  - AdminDashboard: Added NPN tab (permission: shop_admin) with UI to create/delete NPN entries per shop. Creates entry locally and queues background sync.
-  - NPN entries survive logout, sync across devices, and cannot be reused even offline.
+- [x] Qualifying purchase save now instant
   - Both qualifying purchase save handlers (myShop tab and qualifyingPurchase tab) were blocking on `saveShopWithSync()`.
   - Changed to: local save first → fire RTDB sync in background (fire-and-forget) → update UI immediately.
   - Qualifying purchase edits now feel instant, consistent with other admin operations.
