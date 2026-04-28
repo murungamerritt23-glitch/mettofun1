@@ -282,19 +282,19 @@ export default function NominationScreen() {
               }
             </div>
           ) : activeItems.map((item, index) => (
-              <motion.button
-                key={item.id}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.02 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleNominate(item)}
-                disabled={isSaving}
-                className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center relative ${
-                  isSaving ? 'opacity-50 cursor-not-allowed' : ''
-                } ${tappedItemId === item.id ? 'nomination-success' : ''}`}
-              >
+               <motion.button
+                 key={item.id}
+                 initial={{ opacity: 0, scale: 0.8 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 transition={{ delay: index * 0.02 }}
+                 whileHover={{ scale: 1.05 }}
+                 whileTap={{ scale: 0.95 }}
+                 onClick={() => handleNominate(item)}
+                 disabled={isSaving}
+                 className={`game-box flex flex-col items-center justify-center relative gap-1 px-1 ${
+                   isSaving ? 'opacity-50 cursor-not-allowed' : ''
+                 } ${tappedItemId === item.id ? 'nomination-success' : ''}`}
+               >
                 {/* Rank badge for top items */}
                 {index < 3 && (
                   <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -306,15 +306,15 @@ export default function NominationScreen() {
                   </div>
                 )}
                 
-                {item.imageUrl ? (
-                  <img 
-                    src={item.imageUrl} 
-                    alt={item.name}
-                    className="w-8 h-8 object-cover rounded mb-1"
-                  />
-                ) : (
-                  <Gift className="w-6 h-6 sm:w-8 sm:h-8 mb-1 text-gold-400" />
-                )}
+                 {item.imageUrl ? (
+                   <img 
+                     src={item.imageUrl} 
+                     alt={item.name}
+                     className="w-8 h-8 object-cover rounded"
+                   />
+                 ) : (
+                   <Gift className="w-6 h-6 text-gold-400" />
+                 )}
                 
                 <span className="text-xs font-medium truncate w-full text-center">
                   {item.name}
