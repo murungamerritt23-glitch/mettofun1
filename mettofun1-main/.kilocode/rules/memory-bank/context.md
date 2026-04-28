@@ -8,6 +8,12 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
 
 ## Recently Completed
 
+- [x] Fix game flow: ensure winning number is set only after item is selected
+  - In AdminDashboard.handleLaunchCustomer, setCorrectNumber was called unconditionally even when the selected item lookup failed (item === undefined). This could set a winning number without a selected item, causing inconsistent state.
+  - Fixed: Moved setCorrectNumber inside the `if (item)` block and added error handling to abort launch if item not found.
+  - GameMode.handleItemSelect already had correct order (setSelectedItem first, then setCorrectNumber).
+  - Now the winning number is guaranteed to be set only after an item is successfully selected.
+
 - [x] Change analytics "Most Selected Items" to "Top 10 Nominated Items"
   - The analytics dashboard previously showed the 5 most selected game items (what customers picked when winning). Changed to display the top 10 customer nomination items sorted by nominationCount descending.
   - Updated AdminDashboard.tsx analytics view to use `topNominations` state with proper sorting (already loaded by `loadTopNominations`). Now admins see which nomination items customers want to see more of.
@@ -420,3 +426,4 @@ export async function GET() {
 | Today | Fix customer mode loading spinner stuck - ensure setIsLoading(false) always called in GameMode |
 | Today | Fix offline attempts not syncing - make sync* functions throw on failure and ensure admin exists before processing queue |
 | Today | Ensure likes and nomination counts persist across logout and sync reliably - queue setting updates and fix nomination sync result checks |
+| Today | Fix game flow: ensure correctNumber set only after item selected - guard admin launch path |
