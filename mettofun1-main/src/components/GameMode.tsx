@@ -7,7 +7,7 @@ import {
   Check, X, Star, Zap, Trophy, Sparkles, Languages, MapPin, Heart, Settings, LogOut
 } from 'lucide-react';
 import { useGameStore, useShopStore, useItemStore, useUIStore, useAuthStore } from '@/store';
-import { localItems, localAttempts, localSettings, localNPNEntries } from '@/lib/local-db';
+import { localItems, localAttempts, localSettings } from '@/lib/local-db';
 import { saveAttemptWithSync } from '@/lib/sync-service';
 import { 
   calculateBoxConfiguration, 
@@ -233,65 +233,23 @@ export default function GameMode() {
       );
       return;
     }
-
+    
     // More lenient validation - accept any phone number with at least 7 digits
     const digits = phoneNumber.replace(/\D/g, '');
     if (digits.length < 7) {
       alert(language === 'sw' ? 'Tafadhali ingiza nambari ya simu sahihi' : 'Please enter a valid phone number');
       return;
     }
-
-    const formattedPhone = isSuperAdminTestMode 
-      ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}` 
-      : formatPhoneNumber(phoneNumber);
-
-    // Check for active NPN entry first (bypasses purchase requirement)
-    const activeNPN = currentShop 
-      ? await localNPNEntries.getActiveByPhone(formattedPhone, currentShop.id)
-      : null;
-
-    if (activeNPN) {
-      // Reserve NPN immediately (mark as used to prevent reuse)
-      activeNPN.used = true;
-      activeNPN.isActive = false;
-      activeNPN.usedAt = new Date();
-      activeNPN.usedAttemptId = 'PENDING'; // Will be updated after attempt is created
-      await localNPNEntries.save(activeNPN);
-      // Fire RTDB sync in background
-      import('@/lib/sync-service').then(({ queueForSync }) => {
-        queueForSync({ type: 'npn', operation: 'update', data: activeNPN });
-      }).catch(() => {});
-
-      // Set session with NPN entry source
-      setCustomerSession({
-        phoneNumber: formattedPhone,
-        attemptsToday: 0,
-        lastAttemptDate: getCurrentDateString(),
-        authorized: true,
-        purchaseAmount: 0, // NPN doesn't require purchase
-        entrySource: 'NPN',
-        npnEntryId: activeNPN.id
-      });
-
-      // Continue to game without purchase validation
-      setPurchaseAmount('0');
-      const config = calculateBoxConfiguration(0, 0); // threshold 1 (minimum)
-      setThresholdNumber(config.threshold);
-      setGameStatus('playing');
-      setShowItemPicker(true);
-      setIsAuthorizing(false);
-      return;
-    }
-
-    // Normal purchase flow
+    
+    // Handle empty or invalid purchase amount - show error if invalid
     let amount = parseFloat(purchaseAmount);
     if (isNaN(amount) || amount < 0) {
       alert(language === 'sw' ? 'Tafadhali ingiza kiwango sahihi cha manunuzi' : 'Please enter a valid purchase amount');
       return;
     }
-
+    
     const qualifyingPurchase = Number(currentShop?.qualifyingPurchase) || 0;
-
+    
     // If qualifying purchase is set, enforce minimum
     if (qualifyingPurchase > 0 && amount < qualifyingPurchase) {
       alert(
@@ -310,15 +268,15 @@ export default function GameMode() {
 
     setIsAuthorizing(true);
     setLocationError(null);
-
+    
     // Check if user is at the shop location (non-blocking - allow play if it fails)
     try {
       const locationResult = await verifyShopLocation(currentShop?.location);
-
+      
       if (!locationResult.isValid) {
         // Show warning but allow play (location is advisory only)
         setLocationError(
-          language === 'sw'
+          language === 'sw' 
             ? `Maonyo: ${locationResult.error || 'Hauko karibu na duka.'}`
             : `Warning: ${locationResult.error || 'Not near shop (playing anyway).'}`
         );
@@ -327,29 +285,32 @@ export default function GameMode() {
       // Location check failed - allow play anyway (non-blocking)
       console.log('Location verification skipped:', error);
     }
-
+    
     // Simulate authorization
     await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Calculate config for threshold (used for both session and display)
+    
+    // Use test phone prefix only if super admin has test mode enabled
+    const formattedPhone = isSuperAdminTestMode 
+      ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}` 
+      : formatPhoneNumber(phoneNumber);
+    
     const config = calculateBoxConfiguration(amount, qualifyingPurchase);
-
+    
     setCustomerSession({
       phoneNumber: formattedPhone,
       attemptsToday: 0,
       lastAttemptDate: getCurrentDateString(),
       authorized: true,
-      purchaseAmount: amount,
-      entrySource: 'PURCHASE'
+      purchaseAmount: amount
     });
-
+    
     // Update state with parsed amount
     setPurchaseAmount(String(amount));
-
+    
     // Store the threshold for display purposes
     const threshold = config.threshold;
     setThresholdNumber(threshold);
-
+    
     setGameStatus('playing');
     setShowItemPicker(true); // Show item selection first
     setIsAuthorizing(false);
@@ -384,7 +345,7 @@ export default function GameMode() {
   setShowNumberPicker(true);
 }; 
 
-  const handleNumberSelect = async (number: number) => {
+  const handleNumberSelect = (number: number) => {
     if (selectedNumber !== null || !correctNumber) return;
     
     setSelectedNumber(number);
@@ -435,22 +396,9 @@ export default function GameMode() {
       
       // Fire and forget - don't await
       saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
-
+      
       // Store the attempt ID for nomination tracking
       setCurrentGameAttemptId(attempt.id);
-
-      // If this was an NPN entry, link NPN to attempt and queue sync
-      if (customerSession?.entrySource === 'NPN' && customerSession.npnEntryId) {
-        const npnEntry = await localNPNEntries.getById(customerSession.npnEntryId);
-        if (npnEntry) {
-          npnEntry.usedAttemptId = attempt.id;
-          await localNPNEntries.save(npnEntry);
-          // Queue RTDB sync for NPN update (non-blocking)
-          import('@/lib/sync-service').then(({ queueForSync }) => {
-            queueForSync({ type: 'npn', operation: 'update', data: npnEntry });
-          }).catch(() => {});
-        }
-      }
     } catch (error) {
       console.error('Error saving game attempt:', error);
     }

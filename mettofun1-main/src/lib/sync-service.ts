@@ -1,7 +1,7 @@
 import { useUIStore, useSyncStore } from '@/store';
-import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations, localSettings, localNPNEntries } from './local-db';
-import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations, rtdbAdmins, rtdbNPN } from './firebase';
-import type { GameAttempt, Item, Shop, NominationItem, CustomerNomination, NPNEntry, SyncItemType, SyncOperation } from '@/types';
+import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations, localSettings } from './local-db';
+import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations, rtdbAdmins } from './firebase';
+import type { GameAttempt, Item, Shop, NominationItem, CustomerNomination } from '@/types';
 
 // Ensure admin record exists in RTDB before any write operation
 // This is critical because RTDB security rules check root.child('admins').child(auth.uid).exists()
@@ -32,6 +32,10 @@ const ensureAdminInRTDB = async (): Promise<boolean> => {
     return false;
   }
 };
+
+// Sync service types
+export type SyncItemType = 'attempt' | 'item' | 'shop' | 'nominationItem' | 'customerNomination' | 'setting';
+export type SyncOperation = 'create' | 'update' | 'delete';
 
 export interface SyncTask {
   id: string;
@@ -423,9 +427,6 @@ const syncItem = async (type: SyncItemType, operation: SyncOperation, data: any)
     case 'setting':
       await syncSetting(operation, data);
       break;
-    case 'npn':
-      await syncNPNEntry(operation, data);
-      break;
   }
 };
 
@@ -552,27 +553,6 @@ const syncSetting = async (operation: SyncOperation, data: { key: string; value:
   }
   if (!result.success) {
     throw new Error(result.error || 'Failed to sync setting');
-  }
-};
-
-// Sync NPN entry
-const syncNPNEntry = async (operation: SyncOperation, data: NPNEntry): Promise<void> => {
-  const { rtdbNPN } = await import('./firebase');
-
-  let result: { success: boolean; error?: string };
-  switch (operation) {
-    case 'create':
-      result = await rtdbNPN.create(data.shopId, data);
-      break;
-    case 'update':
-      result = await rtdbNPN.update(data);
-      break;
-    case 'delete':
-      result = await rtdbNPN.delete(data.id, data.shopId);
-      break;
-  }
-  if (!result.success) {
-    throw new Error(result.error || 'Failed to sync NPN entry');
   }
 };
 

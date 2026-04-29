@@ -200,26 +200,10 @@ export interface GameAttempt {
   timestamp: Date;
   synced: boolean;
   isTest?: boolean; // Test mode flag - marks test attempts to exclude from real analytics
-  entrySource?: 'PURCHASE' | 'NPN'; // Track how customer gained entry
   // Anti-tamper fields
   integrityHash?: string;      // SHA256 hash of game data for integrity verification
   integrityVerified?: boolean; // Whether the integrity has been verified
   hashSeed?: string;           // Random seed used for generating the result
-}
-
-// NPN (No Purchase Needed) Entry - single-use, expires at midnight
-export interface NPNEntry {
-  id: string;
-  phoneNumber: string;      // Normalized phone (e.g., "+254700...")
-  shopId: string;           // Shop where entry is valid
-  createdAt: Date;
-  used: boolean;            // True if attempt has been consumed
-  usedAt?: Date;            // Timestamp when used
-  usedAttemptId?: string;   // Linked attempt ID
-  isActive: boolean;        // True if unused and not expired
-  expiresAt: Date;          // End-of-day expiration (midnight)
-  createdBy: string;        // Admin ID who created this entry
-  entrySource: 'NPN';       // Always 'NPN'
 }
 
 export interface CustomerSession {
@@ -228,8 +212,6 @@ export interface CustomerSession {
   lastAttemptDate: string;
   authorized: boolean;
   purchaseAmount?: number;
-  entrySource?: 'PURCHASE' | 'NPN'; // Track how customer entered
-  npnEntryId?: string;             // NPN entry ID if entrySource === 'NPN'
 }
 
 // Pending customer purchase - recorded by shop staff
@@ -289,7 +271,7 @@ export interface AppSettings {
 }
 
 // Sync Types
-export type SyncItemType = 'attempt' | 'item' | 'shop' | 'nominationItem' | 'customerNomination' | 'setting' | 'npn';
+export type SyncItemType = 'attempt' | 'item' | 'shop' | 'nominationItem' | 'customerNomination' | 'setting';
 export type SyncOperation = 'create' | 'update' | 'delete';
 
 export interface SyncQueue {
