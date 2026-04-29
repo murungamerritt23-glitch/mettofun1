@@ -685,6 +685,114 @@ export const localCustomerNominations = {
   }
 };
 
+// NPN Entry operations
+export const localNPNEntries = {
+  async getAll(): Promise<NPNEntry[]> {
+    const database = await initDB();
+    return database.getAll('npnEntries');
+  },
+
+  async getByShop(shopId: string): Promise<NPNEntry[]> {
+    const database = await initDB();
+    return database.getAllFromIndex('npnEntries', 'by-shop', shopId);
+  },
+
+  async getByPhone(phoneNumber: string): Promise<NPNEntry[]> {
+    const database = await initDB();
+    return database.getAllFromIndex('npnEntries', 'by-phone', phoneNumber);
+  },
+
+  async getActive(shopId?: string): Promise<NPNEntry[]> {
+    const database = await initDB();
+    let entries = await database.getAll('npnEntries');
+    entries = entries.filter(e => e.isActive && !e.used);
+    if (shopId) {
+      entries = entries.filter(e => e.shopId === shopId);
+    }
+    // Also filter expired
+    const now = new Date();
+    entries = entries.filter(e => e.expiresAt > now);
+    return entries;
+  },
+
+  async getActiveByPhone(phoneNumber: string, shopId?: string): Promise<NPNEntry | null> {
+    const entries = await this.getByPhone(phoneNumber);
+    const now = new Date();
+    const active = entries.find(e => 
+      e.isActive && 
+      !e.used && 
+      e.expiresAt > now &&
+      (!shopId || e.shopId === shopId)
+    );
+    return active || null;
+  },
+
+  async save(entry: NPNEntry): Promise<void> {
+    const database = await initDB();
+    await database.put('npnEntries', entry);
+  },
+
+  async create(entry: Omit<NPNEntry, 'id' | 'createdAt' | 'used' | 'usedAt' | 'usedAttemptId' | 'isActive' | 'expiresAt'>): Promise<NPNEntry> {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    // Expires at end of current day (23:59:59)
+    const expiresAt = new Date(now);
+    expiresAt.setHours(23, 59, 59, 999);
+    
+    const entryObj: NPNEntry = {
+      ...entry,
+      id,
+      createdAt: now,
+      used: false,
+      isActive: true,
+      expiresAt,
+    };
+    await this.save(entryObj);
+    return entryObj;
+  },
+
+  async markUsed(entryId: string, attemptId: string): Promise<void> {
+    const database = await initDB();
+    const entry = await database.get('npnEntries', entryId);
+    if (entry) {
+      entry.used = true;
+      entry.isActive = false;
+      entry.usedAt = new Date();
+      entry.usedAttemptId = attemptId;
+      await database.put('npnEntries', entry);
+    }
+  },
+
+  async getById(id: string): Promise<NPNEntry | undefined> {
+    const database = await initDB();
+    return database.get('npnEntries', id);
+  },
+
+  async delete(id: string): Promise<void> {
+    const database = await initDB();
+    await database.delete('npnEntries', id);
+  },
+
+  async cleanupExpired(): Promise<void> {
+    const database = await initDB();
+    const all = await database.getAll('npnEntries');
+    const now = new Date();
+    const expired = all.filter(e => e.expiresAt <= now);
+    const tx = database.transaction('npnEntries', 'readwrite');
+    await Promise.all([
+      ...expired.map(e => tx.store.delete(e.id)),
+      tx.done
+    ]);
+  },
+
+  async getCountByShop(shopId: string): Promise<number> {
+    const database = await initDB();
+    const all = await database.getAllFromIndex('npnEntries', 'by-shop', shopId);
+    const now = new Date();
+    return all.filter(e => e.isActive && !e.used && e.expiresAt > now).length;
+  }
+};
+
 // LocalDB wrapper for sync service
 export const localDB = {
   // Add item to sync queue

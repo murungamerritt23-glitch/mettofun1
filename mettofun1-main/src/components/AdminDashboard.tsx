@@ -598,8 +598,7 @@ export default function AdminDashboard() {
   const allTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, requiredPermission: null },
     { id: 'myShop', label: 'My Shop', icon: Store, requiredPermission: 'shop_admin' },
-    { id: 'customers', label: 'Customers', icon: ShoppingCart, requiredPermission: 'shop_admin' },
-     id: 'customers', label: 'Customers', icon: ShoppingCart, requiredPermission: 'shop_admin' },
+     { id: 'customers', label: 'Customers', icon: ShoppingCart, requiredPermission: 'shop_admin' },
      { id: 'npn', label: 'NPN Entries', icon: Ticket, requiredPermission: null },
     { id: 'shops', label: 'Shops', icon: Store, requiredPermission: 'canManageAllShops' },
     { id: 'items', label: 'Items', icon: Package, requiredPermission: 'canEditItems' },
