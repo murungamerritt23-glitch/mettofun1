@@ -11,7 +11,7 @@ import {
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
 import { rtdbShops, rtdbAdmins, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
-import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive } from '@/lib/sync-service';
+import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive, queueForSync } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier, ItemOfTheDay, NominationItem } from '@/types';
@@ -588,59 +588,76 @@ export default function AdminDashboard() {
     }
   };
 
-  // Save Item of the Day
-  const handleSaveItemOfDay = async () => {
-    if (!itemOfDayForm.name || !itemOfDayForm.value) {
-      alert('Please enter item name and value');
-      return;
-    }
-    
-    const newItem: ItemOfTheDay = {
-      id: 'item-of-the-day',
-      name: itemOfDayForm.name,
-      value: parseFloat(itemOfDayForm.value) || 0,
-      imageUrl: itemOfDayForm.imageUrl || undefined,
-      isActive: true,
-      likes: itemOfTheDay?.likes || 0,
-      createdAt: itemOfTheDay?.createdAt || new Date(),
-      updatedAt: new Date()
-    };
-    
-    // Save to local for offline support
-    await localSettings.set('itemOfTheDay', newItem);
-    setItemOfTheDay(newItem);
-    
-    // Also sync to RTDB for other devices
-    try {
-      await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
-      const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-      await rtdbSettingsApi.set('itemOfTheDay', newItem);
-    } catch (e) {
-      // RTDB sync failed, but local save succeeded
-    }
-    
-    setIsEditingItemOfDay(false);
-    setItemOfDaySaved(true);
-    setTimeout(() => setItemOfDaySaved(false), 3000);
-  };
+   // Save Item of the Day
+   const handleSaveItemOfDay = async () => {
+     if (!itemOfDayForm.name || !itemOfDayForm.value) {
+       alert('Please enter item name and value');
+       return;
+     }
+     
+     const newItem: ItemOfTheDay = {
+       id: 'item-of-the-day',
+       name: itemOfDayForm.name,
+       value: parseFloat(itemOfDayForm.value) || 0,
+       imageUrl: itemOfDayForm.imageUrl || undefined,
+       isActive: true,
+       likes: itemOfTheDay?.likes || 0,
+       createdAt: itemOfTheDay?.createdAt || new Date(),
+       updatedAt: new Date()
+     };
+     
+     // Save to local for offline support
+     await localSettings.set('itemOfTheDay', newItem);
+     setItemOfTheDay(newItem);
+     
+     // Sync to RTDB for other devices
+     if (isOnline()) {
+       try {
+         await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
+         const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+         const result = await rtdbSettingsApi.set('itemOfTheDay', newItem);
+         if (!result.success) {
+           // Queue for later if RTDB write failed
+           await queueForSync({ type: 'setting', operation: 'update', data: { key: 'itemOfTheDay', value: newItem } });
+         }
+       } catch (e) {
+         // Queue for later if error occurs
+         await queueForSync({ type: 'setting', operation: 'update', data: { key: 'itemOfTheDay', value: newItem } });
+       }
+     } else {
+       // Offline - queue for later sync
+       await queueForSync({ type: 'setting', operation: 'update', data: { key: 'itemOfTheDay', value: newItem } });
+     }
+     
+     setIsEditingItemOfDay(false);
+     setItemOfDaySaved(true);
+     setTimeout(() => setItemOfDaySaved(false), 3000);
+   };
 
-  // Clear Item of the Day
-  const handleClearItemOfDay = async () => {
-    if (confirm('Are you sure you want to remove the Item of the Day?')) {
-      await localSettings.set('itemOfTheDay', null);
-      
-      // Also clear from RTDB
-      try {
-        await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
-        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-        await rtdbSettingsApi.set('itemOfTheDay', null);
-      } catch (e) {
-        // RTDB sync failed
-      }
-      setItemOfTheDay(null);
-      setItemOfDayForm({ name: '', value: '', imageUrl: '' });
-    }
-  };
+   // Clear Item of the Day
+   const handleClearItemOfDay = async () => {
+     if (confirm('Are you sure you want to remove the Item of the Day?')) {
+       await localSettings.set('itemOfTheDay', null);
+       
+       // Also clear from RTDB
+       if (isOnline()) {
+         try {
+           await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
+           const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+           const result = await rtdbSettingsApi.set('itemOfTheDay', null);
+           if (!result.success) {
+             await queueForSync({ type: 'setting', operation: 'delete', data: { key: 'itemOfTheDay' } });
+           }
+         } catch (e) {
+           await queueForSync({ type: 'setting', operation: 'delete', data: { key: 'itemOfTheDay' } });
+         }
+       } else {
+         await queueForSync({ type: 'setting', operation: 'delete', data: { key: 'itemOfTheDay' } });
+       }
+       setItemOfTheDay(null);
+       setItemOfDayForm({ name: '', value: '', imageUrl: '' });
+     }
+   };
 
   // Start editing Item of the Day
   const handleEditItemOfDay = () => {

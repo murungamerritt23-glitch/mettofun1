@@ -1,7 +1,7 @@
-import { useUIStore, useSyncStore } from '@/store';
+import { useUIStore, useSyncStore, useGameStore } from '@/store';
 import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations, localSettings } from './local-db';
 import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations, rtdbAdmins } from './firebase';
-import type { GameAttempt, Item, Shop, NominationItem, CustomerNomination } from '@/types';
+import type { GameAttempt, Item, Shop, NominationItem, CustomerNomination, SyncItemType, SyncOperation } from '@/types';
 
 // Ensure admin record exists in RTDB before any write operation
 // This is critical because RTDB security rules check root.child('admins').child(auth.uid).exists()
@@ -32,10 +32,6 @@ const ensureAdminInRTDB = async (): Promise<boolean> => {
     return false;
   }
 };
-
-// Sync service types
-export type SyncItemType = 'attempt' | 'item' | 'shop' | 'nominationItem' | 'customerNomination';
-export type SyncOperation = 'create' | 'update' | 'delete';
 
 export interface SyncTask {
   id: string;
@@ -413,11 +409,14 @@ const syncItem = async (type: SyncItemType, operation: SyncOperation, data: any)
     case 'nominationItem':
       await syncNominationItem(operation, data);
       break;
-    case 'customerNomination':
-      await syncCustomerNomination(operation, data);
-      break;
-  }
-};
+     case 'customerNomination':
+       await syncCustomerNomination(operation, data);
+       break;
+     case 'setting':
+       await syncSetting(operation, data);
+       break;
+   }
+ };
 
 // Sync game attempt
 const syncAttempt = async (operation: SyncOperation, data: GameAttempt): Promise<void> => {
@@ -503,10 +502,31 @@ const syncCustomerNomination = async (operation: SyncOperation, data: CustomerNo
     case 'delete':
       await rtdbCustomerNominations.delete(data.id, data.shopId);
       break;
+   }
+ };
+
+ // Sync setting (for Item of the Day and other settings)
+const syncSetting = async (operation: SyncOperation, data: { key: string; value: any }): Promise<void> => {
+  const { rtdbSettings } = await import('./firebase');
+  
+  switch (operation) {
+    case 'create':
+    case 'update':
+      const setResult = await rtdbSettings.set(data.key, data.value);
+      if (!setResult.success) {
+        throw new Error(setResult.error || 'Failed to set setting');
+      }
+      break;
+    case 'delete':
+      const delResult = await rtdbSettings.set(data.key, null);
+      if (!delResult.success) {
+        throw new Error(delResult.error || 'Failed to delete setting');
+      }
+      break;
   }
 };
 
-// Save attempt with offline support
+ // Save attempt with offline support
 export const saveAttemptWithSync = async (attempt: GameAttempt): Promise<void> => {
   // Always save to local first
   await localAttempts.save(attempt);
@@ -723,8 +743,8 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
   if (!isOnline()) return;
   
   try {
-    const { rtdbShops, rtdbItems, rtdbAdmins, rtdbAttempts, rtdbNominationItems, rtdbCustomerNominations } = await import('./firebase');
-    const { localShops, localItems, localAdmins, localAttempts, localNominationItems, localCustomerNominations } = await import('./local-db');
+     const { rtdbShops, rtdbItems, rtdbAdmins, rtdbAttempts, rtdbNominationItems, rtdbCustomerNominations, rtdbSettings } = await import('./firebase');
+     const { localShops, localItems, localAdmins, localAttempts, localNominationItems, localCustomerNominations, localSettings } = await import('./local-db');
     
     // Pull shops - with conflict resolution to prevent overwriting newer local data
     const fbShops = await rtdbShops.getAll();
@@ -831,11 +851,22 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
           await localAdmins.save(admin);
         }
       }
-    } catch (adminErr) {
-      console.log('[Sync] Admin pull skipped (auth may not be active)');
-    }
-    
-    console.log('[Sync] Pull from RTDB completed');
+     } catch (adminErr) {
+       console.log('[Sync] Admin pull skipped (auth may not be active)');
+     }
+     
+     // Pull settings (Item of the Day)
+     try {
+       const fbItemOfTheDay = await rtdbSettings.get('itemOfTheDay');
+       await localSettings.set('itemOfTheDay', fbItemOfTheDay);
+       // Update the game store for live UI updates
+       useGameStore.getState().setItemOfTheDay(fbItemOfTheDay);
+       console.log('[Sync] Item of the Day updated from RTDB');
+     } catch (settingErr) {
+       console.log('[Sync] Settings pull skipped:', settingErr);
+     }
+     
+     console.log('[Sync] Pull from RTDB completed');
   } catch (error) {
     console.error('[Sync] Pull from RTDB failed:', error);
   }
