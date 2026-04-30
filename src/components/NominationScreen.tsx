@@ -306,15 +306,15 @@ export default function NominationScreen() {
                   </div>
                 )}
                 
-                {item.imageUrl ? (
-                  <img 
-                    src={item.imageUrl} 
-                    alt={item.name}
-                    className="w-8 h-8 object-cover rounded mb-1"
-                  />
-                ) : (
-                  <Gift className="w-6 h-6 sm:w-8 sm:h-8 mb-1 text-gold-400" />
-                )}
+                 {item.imageUrl ? (
+                   <img 
+                     src={item.imageUrl} 
+                     alt={item.name}
+                     className="w-10 h-10 sm:w-12 sm:h-12 mb-1 object-cover rounded"
+                   />
+                 ) : (
+                   <Gift className="w-6 h-6 sm:w-8 sm:h-8 mb-1 text-gold-400" />
+                 )}
                 
                 <span className="text-xs font-medium truncate w-full text-center">
                   {item.name}

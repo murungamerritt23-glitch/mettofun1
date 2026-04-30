@@ -1,0 +1,76 @@
+IMAGE DISPLAY PATTERNS ANALYSIS
+
+=== GAMEMODE.TSX ===
+
+1. Shop Logo Image (lines 600-604)
+   Container: <div className="card text-center mb-6">
+   Image: 
+     <img 
+       src="/metofun-logo.png" 
+       alt="ETO FUN" 
+       className="w-32 h-auto mx-auto mb-3"
+     />
+   Styling: 
+     - Width: w-32 (fixed 32 units)
+     - Height: h-auto (auto-scaling)
+     - Centering: mx-auto (horizontal center)
+     - Margin: mb-3 (bottom margin)
+     - Object-fit: not specified (defaults to contain)
+
+2. Item of the Day Image (lines 824-828)
+   Container: <div className="w-16 h-16 bg-amber-900/50 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+   Image:
+     <img 
+       src={itemOfTheDay.imageUrl} 
+       alt={itemOfTheDay.name} 
+       className="w-full h-full object-cover"
+     />
+   Styling:
+     - Width: w-full (100% of container)
+     - Height: h-full (100% of container)
+     - Object-fit: object-cover (crops to fill container)
+     - Container dimensions: fixed 16x16 (w-16 h-16)
+     - Overflow: overflow-hidden on container
+
+3. Item Picker Grid Images (lines 886-890)
+   Container: <motion.button className="game-box p-2 sm:p-3 flex flex-col items-center justify-center">
+   Image:
+     <img 
+       src={item.imageUrl} 
+       alt={item.name}
+       className="w-10 h-10 sm:w-12 sm:h-12 mb-1 object-cover rounded"
+     />
+   Styling:
+     - Width: w-10 h-10 (base), sm:w-12 sm:h-12 (sm+ screens)
+     - Object-fit: object-cover (crops to fill)
+     - Border radius: rounded
+     - Margin: mb-1 (bottom margin)
+
+4. Box Grid Images (lines 1066-1070)
+   Container: <div className="w-full flex flex-col items-center justify-center gap-1 px-1">
+   Image:
+     <img 
+       src={item.imageUrl} 
+       alt={item.name}
+       className="w-8 h-8 object-cover rounded"
+     />
+   Styling:
+     - Width: w-8 h-8 (fixed 8x8 units)
+     - Object-fit: object-cover (crops to fill)
+     - Border radius: rounded
+
+=== NOMINATIONSCREEN.TSX ===
+
+1. Nomination Item Grid Images (lines 310-314)
+   Container: <motion.button className="game-box p-2 sm:p-3 flex flex-col items-center justify-center relative">
+   Image:
+     <img 
+       src={item.imageUrl} 
+       alt={item.name}
+       className="w-8 h-8 object-cover rounded mb-1"
+     />
+   Styling:
+     - Width: w-8 h-8 (fixed 8x8 units)
+     - Object-fit: object-cover (crops to fill)
+     - Border radius: rounded
+     - Margin: mb-1 (bottom margin)

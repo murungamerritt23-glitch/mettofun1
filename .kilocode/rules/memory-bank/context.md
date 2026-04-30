@@ -140,3 +140,4 @@ export async function GET() {
 | Today | Fix Item of the Day not syncing across devices - add setting sync type, implement syncSetting, add to pullFromRTDB, queue on failure, exclude duplicate folder |
 | Today | Make IOTD likes live across devices - queue sync, add RTDB onValue listener for IOTD |
 | Today | Clarify nomination items are shop-isolated - remove global store state, remove cross-device sync listeners, use per-shop local only |
+| Today | Standardize nomination screen image sizing - match GameMode picker grid (w-10 h-10 sm:w-12 sm:h-12) for consistent display |
