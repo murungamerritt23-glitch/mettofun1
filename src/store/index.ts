@@ -263,22 +263,28 @@ export const useGameStore = create<GameState>()(
        setHasNominatedThisAttempt: (hasNominatedThisAttempt) => set({ hasNominatedThisAttempt }),
        setItemOfTheDay: (itemOfTheDay) => set({ itemOfTheDay }),
       incrementItemOfDayLikes: async () => {
-        const current = useGameStore.getState().itemOfTheDay;
-        if (!current) return;
+        let newItem: ItemOfTheDay | null = null;
         
-        const newLikes = (current.likes || 0) + 1;
-        const updated = { ...current, likes: newLikes };
+        // Compute new value atomically inside setState functional update
+        useGameStore.setState((state) => {
+          const current = state.itemOfTheDay;
+          if (!current) return state;
+          const newLikes = (current.likes || 0) + 1;
+          newItem = { ...current, likes: newLikes, updatedAt: new Date() };
+          return { itemOfTheDay: newItem };
+        });
         
-        set({ itemOfTheDay: updated });
+        if (!newItem) return;
+        
+        // Persist and sync the computed value
         try {
-          await localSettings.set('itemOfTheDay', updated);
+          await localSettings.set('itemOfTheDay', newItem);
         } catch (e) {
           console.warn('[Store] Failed to save IOTD locally:', e);
         }
         
-        // Queue RTDB sync (update setting itemOfTheDay) - handles offline and errors
         try {
-          await queueForSync({ type: 'setting', operation: 'update', data: { key: 'itemOfTheDay', value: updated } });
+          await queueForSync({ type: 'setting', operation: 'update', data: { key: 'itemOfTheDay', value: newItem } });
         } catch (e) {
           console.warn('[Store] Failed to queue IOTD like sync:', e);
         }

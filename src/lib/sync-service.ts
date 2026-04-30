@@ -7,18 +7,19 @@ import { ref, onValue } from 'firebase/database';
 // Ensure admin record exists in RTDB before any write operation
 // This is critical because RTDB security rules check root.child('admins').child(auth.uid).exists()
 // Without the admin in RTDB, ALL writes fail with permission denied
-let adminSyncedToRTDB = false;
+let lastSyncedAdminUid: string | null = null;
 const ensureAdminInRTDB = async (): Promise<boolean> => {
-  if (adminSyncedToRTDB) return true;
+  const { useAuthStore } = await import('@/store');
+  const admin = useAuthStore.getState().admin;
+  if (!admin) return false;
+  
+  // If same admin already synced, skip
+  if (lastSyncedAdminUid === admin.id) return true;
   
   try {
-    const { useAuthStore } = await import('@/store');
-    const admin = useAuthStore.getState().admin;
-    if (!admin) return false;
-    
     const result = await rtdbAdmins.save(admin);
     if (result.success) {
-      adminSyncedToRTDB = true;
+      lastSyncedAdminUid = admin.id;
       return true;
     }
     // Permission denied is expected for unlinked devices - don't log as error
@@ -99,39 +100,47 @@ const isQueueFull = async (): Promise<boolean> => {
 
 // Clean stale queue items (older than MAX_QUEUE_AGE_MS)
 export const cleanStaleQueueItems = async (): Promise<void> => {
-  const { localDB } = await import('./local-db');
-  const pendingItems = await localDB.getPendingSyncItems();
-  const now = Date.now();
-  
-  let cleaned = 0;
-  for (const item of pendingItems) {
-    const itemTime = new Date(item.createdAt).getTime();
-    if (now - itemTime > SYNC_CONFIG.MAX_QUEUE_AGE_MS) {
-      await localDB.deleteSyncItem(item.id);
-      cleaned++;
+  try {
+    const { localDB } = await import('./local-db');
+    const pendingItems = await localDB.getPendingSyncItems();
+    const now = Date.now();
+    
+    let cleaned = 0;
+    for (const item of pendingItems) {
+      const itemTime = new Date(item.createdAt).getTime();
+      if (now - itemTime > SYNC_CONFIG.MAX_QUEUE_AGE_MS) {
+        await localDB.deleteSyncItem(item.id);
+        cleaned++;
+      }
     }
-  }
-  
-  if (cleaned > 0) {
-    console.log(`[Sync] Cleaned ${cleaned} stale queue items`);
+    
+    if (cleaned > 0) {
+      console.log(`[Sync] Cleaned ${cleaned} stale queue items`);
+    }
+  } catch (error) {
+    console.error('[Sync] Error cleaning stale queue items:', error);
   }
 };
 
 // Reset failed sync items back to pending for retry
 export const resetFailedSyncItems = async (): Promise<void> => {
-  const { localDB } = await import('./local-db');
-  const pendingItems = await localDB.getPendingSyncItems();
-  
-  let resetCount = 0;
-  for (const item of pendingItems) {
-    if (item.status === 'failed') {
-      await localDB.updateSyncItemStatus(item.id, 'pending', 0);
-      resetCount++;
+  try {
+    const { localDB } = await import('./local-db');
+    const pendingItems = await localDB.getPendingSyncItems();
+    
+    let resetCount = 0;
+    for (const item of pendingItems) {
+      if (item.status === 'failed') {
+        await localDB.updateSyncItemStatus(item.id, 'pending', 0);
+        resetCount++;
+      }
     }
-  }
-  
-  if (resetCount > 0) {
-    console.log(`[Sync] Reset ${resetCount} failed items to pending for retry`);
+    
+    if (resetCount > 0) {
+      console.log(`[Sync] Reset ${resetCount} failed items to pending for retry`);
+    }
+  } catch (error) {
+    console.error('[Sync] Error resetting failed sync items:', error);
   }
 };
 
@@ -141,28 +150,32 @@ export const initSyncService = (): (() => void) => {
     return () => {};
   }
 
-  const handleOnline = async () => {
-    console.log('[Sync] Back online - starting sync');
-    lastOnlineTime = Date.now();
-    useUIStore.getState().setOnline(true);
-    
-    // Clean stale queue items before syncing
-    await cleanStaleQueueItems();
-    
-    // Reset failed items to pending so they get retried
-    await resetFailedSyncItems();
-    
-    // Trigger immediate sync after 2 seconds
-    setTimeout(() => {
-      if (isOnline()) {
-        console.log('[Sync] Running delayed sync after 2 seconds');
-        processSyncQueue();
-      }
-    }, SYNC_CONFIG.INITIAL_SYNC_DELAY);
-    
-    // Start periodic auto-sync while online
-    startAutoSync();
-  };
+   const handleOnline = async () => {
+     console.log('[Sync] Back online - starting sync');
+     lastOnlineTime = Date.now();
+     useUIStore.getState().setOnline(true);
+     
+     try {
+       // Clean stale queue items before syncing
+       await cleanStaleQueueItems();
+       
+       // Reset failed items to pending so they get retried
+       await resetFailedSyncItems();
+       
+       // Trigger immediate sync after 2 seconds
+       setTimeout(() => {
+         if (isOnline()) {
+           console.log('[Sync] Running delayed sync after 2 seconds');
+           processSyncQueue();
+         }
+       }, SYNC_CONFIG.INITIAL_SYNC_DELAY);
+       
+       // Start periodic auto-sync while online
+       startAutoSync();
+     } catch (error) {
+       console.error('[Sync] Error during online initialization:', error);
+     }
+   };
 
   const handleOffline = () => {
     console.log('[Sync] Gone offline');
@@ -274,51 +287,56 @@ const stopAutoSync = (): void => {
 
 // Add item to sync queue (called when offline)
 export const queueForSync = async (task: Omit<SyncTask, 'id' | 'timestamp' | 'retryCount'>): Promise<boolean> => {
-  // Check if queue is full
-  if (await isQueueFull()) {
-    console.warn('[Sync] Queue is full, cannot add more items');
-    
-    // Try to clean stale items first
-    await cleanStaleQueueItems();
-    
-    // Check again
+  try {
+    // Check if queue is full
     if (await isQueueFull()) {
-      console.error('[Sync] Queue still full after cleanup, dropping item');
-      return false;
+      console.warn('[Sync] Queue is full, cannot add more items');
+      
+      // Try to clean stale items first
+      await cleanStaleQueueItems();
+      
+      // Check again
+      if (await isQueueFull()) {
+        console.error('[Sync] Queue still full after cleanup, dropping item');
+        return false;
+      }
     }
+
+    const syncTask: SyncTask = {
+      ...task,
+      id: crypto.randomUUID(),
+      timestamp: new Date(),
+      retryCount: 0,
+    };
+
+    // Save to IndexedDB queue
+    const { localDB } = await import('./local-db');
+    await localDB.addToSyncQueue({
+      id: syncTask.id,
+      type: syncTask.type,
+      operation: syncTask.operation,
+      data: JSON.stringify(syncTask.data),
+      status: 'pending',
+      createdAt: syncTask.timestamp.toISOString(),
+      updatedAt: syncTask.timestamp.toISOString(),
+    });
+
+    // Update store
+    useSyncStore.getState().addToQueue({
+      type: syncTask.type,
+      operation: syncTask.operation,
+      data: syncTask.data,
+      status: 'pending',
+      createdAt: syncTask.timestamp.toISOString(),
+      updatedAt: syncTask.timestamp.toISOString(),
+    });
+
+    console.log(`[Sync] Queued ${syncTask.type} ${syncTask.operation} for later sync`);
+    return true;
+  } catch (error) {
+    console.error('[Sync] Failed to queue item for sync:', error);
+    return false;
   }
-
-  const syncTask: SyncTask = {
-    ...task,
-    id: crypto.randomUUID(),
-    timestamp: new Date(),
-    retryCount: 0,
-  };
-
-  // Save to IndexedDB queue
-  const { localDB } = await import('./local-db');
-  await localDB.addToSyncQueue({
-    id: syncTask.id,
-    type: syncTask.type,
-    operation: syncTask.operation,
-    data: JSON.stringify(syncTask.data),
-    status: 'pending',
-    createdAt: syncTask.timestamp.toISOString(),
-    updatedAt: syncTask.timestamp.toISOString(),
-  });
-
-  // Update store
-  useSyncStore.getState().addToQueue({
-    type: syncTask.type,
-    operation: syncTask.operation,
-    data: syncTask.data,
-    status: 'pending',
-    createdAt: syncTask.timestamp.toISOString(),
-    updatedAt: syncTask.timestamp.toISOString(),
-  });
-
-  console.log(`[Sync] Queued ${syncTask.type} ${syncTask.operation} for later sync`);
-  return true;
 };
 
 // Process the sync queue - ONLY runs when online
@@ -452,15 +470,21 @@ const syncAttempt = async (operation: SyncOperation, data: GameAttempt): Promise
   const shopId = data.shopId || 'unknown';
   
   switch (operation) {
-    case 'create':
-      await rtdbAttempts.create(shopId, data);
+    case 'create': {
+      const result = await rtdbAttempts.create(shopId, data);
+      if (!result.success) throw new Error(result.error || 'Failed to create attempt');
       break;
-    case 'update':
-      await rtdbAttempts.update(shopId, data.id, data);
+    }
+    case 'update': {
+      const result = await rtdbAttempts.update(shopId, data.id, data);
+      if (!result.success) throw new Error(result.error || 'Failed to update attempt');
       break;
-    case 'delete':
-      await rtdbAttempts.delete(shopId, data.id);
+    }
+    case 'delete': {
+      const result = await rtdbAttempts.delete(shopId, data.id);
+      if (!result.success) throw new Error(result.error || 'Failed to delete attempt');
       break;
+    }
   }
 };
 
@@ -470,15 +494,21 @@ const syncItemData = async (operation: SyncOperation, data: Item): Promise<void>
   const shopId = data.shopId || 'unknown';
   
   switch (operation) {
-    case 'create':
-      await rtdbItems.create(shopId, data);
+    case 'create': {
+      const result = await rtdbItems.create(shopId, data);
+      if (!result.success) throw new Error(result.error || 'Failed to create item');
       break;
-    case 'update':
-      await rtdbItems.update(shopId, data.id, data);
+    }
+    case 'update': {
+      const result = await rtdbItems.update(shopId, data.id, data);
+      if (!result.success) throw new Error(result.error || 'Failed to update item');
       break;
-    case 'delete':
-      await rtdbItems.delete(shopId, data.id);
+    }
+    case 'delete': {
+      const result = await rtdbItems.delete(shopId, data.id);
+      if (!result.success) throw new Error(result.error || 'Failed to delete item');
       break;
+    }
   }
 };
 
@@ -487,15 +517,21 @@ const syncShop = async (operation: SyncOperation, data: Shop): Promise<void> => 
   const { rtdbShops } = await import('./firebase');
   
   switch (operation) {
-    case 'create':
-      await rtdbShops.save(data);
+    case 'create': {
+      const result = await rtdbShops.save(data);
+      if (!result.success) throw new Error(result.error || 'Failed to create shop');
       break;
-    case 'update':
-      await rtdbShops.update(data.id, data);
+    }
+    case 'update': {
+      const result = await rtdbShops.update(data.id, data);
+      if (!result.success) throw new Error(result.error || 'Failed to update shop');
       break;
-    case 'delete':
-      await rtdbShops.delete(data.id);
+    }
+    case 'delete': {
+      const result = await rtdbShops.delete(data.id);
+      if (!result.success) throw new Error(result.error || 'Failed to delete shop');
       break;
+    }
   }
 };
 
@@ -504,15 +540,21 @@ const syncNominationItem = async (operation: SyncOperation, data: NominationItem
   const { rtdbNominationItems } = await import('./firebase');
   
   switch (operation) {
-    case 'create':
-      await rtdbNominationItems.create(data);
+    case 'create': {
+      const result = await rtdbNominationItems.create(data);
+      if (!result.success) throw new Error(result.error || 'Failed to create nomination item');
       break;
-    case 'update':
-      await rtdbNominationItems.update(data.id, data);
+    }
+    case 'update': {
+      const result = await rtdbNominationItems.update(data.id, data);
+      if (!result.success) throw new Error(result.error || 'Failed to update nomination item');
       break;
-    case 'delete':
-      await rtdbNominationItems.delete(data.id);
+    }
+    case 'delete': {
+      const result = await rtdbNominationItems.delete(data.id);
+      if (!result.success) throw new Error(result.error || 'Failed to delete nomination item');
       break;
+    }
   }
 };
 
@@ -521,17 +563,23 @@ const syncCustomerNomination = async (operation: SyncOperation, data: CustomerNo
   const { rtdbCustomerNominations } = await import('./firebase');
   
   switch (operation) {
-    case 'create':
-      await rtdbCustomerNominations.create(data);
+    case 'create': {
+      const result = await rtdbCustomerNominations.create(data);
+      if (!result.success) throw new Error(result.error || 'Failed to create customer nomination');
       break;
-    case 'update':
-      await rtdbCustomerNominations.update(data.id, data);
+    }
+    case 'update': {
+      const result = await rtdbCustomerNominations.update(data.id, data);
+      if (!result.success) throw new Error(result.error || 'Failed to update customer nomination');
       break;
-    case 'delete':
-      await rtdbCustomerNominations.delete(data.id, data.shopId);
+    }
+    case 'delete': {
+      const result = await rtdbCustomerNominations.delete(data.id, data.shopId);
+      if (!result.success) throw new Error(result.error || 'Failed to delete customer nomination');
       break;
-   }
- };
+    }
+  }
+};
 
  // Sync setting (for Item of the Day and other settings)
 const syncSetting = async (operation: SyncOperation, data: { key: string; value: any }): Promise<void> => {

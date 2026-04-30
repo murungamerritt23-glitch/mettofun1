@@ -37,13 +37,28 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
     3. On change, updates localSettings and store's IOTD instantly across devices
 
 - [x] Clarify nomination item scope: shop-isolated (not global)
-  - Nomination items belong to individual shops, not globally synced
-  - Removed global Zustand state for nominationItems
-  - Removed cross-device live listeners for nominationItems
-  - Each shop manages its own nomination items locally via IndexedDB
-  - AdminDashboard and NominationScreen load items per-shop using localNominationItems.getByShop(shopId)
-  - Top Customer Nominations are shop-specific, computed locally
-  - Only Item of the Day is global (super admin controlled)
+   - Nomination items belong to individual shops, not globally synced
+   - Removed global Zustand state for nominationItems
+   - Removed cross-device live listeners for nominationItems
+   - Each shop manages its own nomination items locally via IndexedDB
+   - AdminDashboard and NominationScreen load items per-shop using localNominationItems.getByShop(shopId)
+   - Top Customer Nominations are shop-specific, computed locally
+   - Only Item of the Day is global (super admin controlled)
+
+- [x] Stabilize sync service error handling and reliability
+   - Added try-catch to `queueForSync` to prevent crashes on IndexedDB failures
+   - Added try-catch to `cleanStaleQueueItems` and `resetFailedSyncItems`
+   - Wrapped `handleOnline` body in try-catch to prevent event handler crashes
+   - Fixed all `sync*` functions (syncAttempt, syncItemData, syncShop, syncNominationItem, syncCustomerNomination) to check RTDB result.success and throw on failure (previously silent failures meant data loss)
+   - Changed admin sync flag to track by admin.id (supports admin logout/login without stale state)
+
+- [x] Fix IOTD like race condition
+   - Changed store's `incrementItemOfDayLikes` to use functional state update with captured new value
+   - Prevents lost likes when rapid multi-tap
+
+- [x] Improve error handling in NominationScreen
+   - Added try-catch around item loading useEffect
+   - Maintains existing error handling for nomination submission
 
 ## Current Structure
 
@@ -140,4 +155,7 @@ export async function GET() {
 | Today | Fix Item of the Day not syncing across devices - add setting sync type, implement syncSetting, add to pullFromRTDB, queue on failure, exclude duplicate folder |
 | Today | Make IOTD likes live across devices - queue sync, add RTDB onValue listener for IOTD |
 | Today | Clarify nomination items are shop-isolated - remove global store state, remove cross-device sync listeners, use per-shop local only |
-| Today | Standardize nomination screen image sizing - match GameMode picker grid (w-10 h-10 sm:w-12 sm:h-12) for consistent display |
+| Today | Stabilize sync service: add error handling to queueForSync, cleanStaleQueueItems, resetFailedSyncItems, handleOnline; fix all sync* functions to throw on RTDB failure; track admin sync by uid |
+| Today | Fix IOTD like race condition - use functional state update with captured value |
+| Today | Add error handling to NominationScreen item load useEffect |
+| Today | Standardize nomination screen image sizing - match GameMode picker grid |

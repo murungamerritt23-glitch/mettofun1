@@ -34,18 +34,23 @@ export default function NominationScreen() {
   const isSuperAdminTestMode = isTestMode && admin?.level === 'super_admin';
 
    // Load nomination items on mount
-    useEffect(() => {
-      const loadItems = async () => {
-        if (!currentShop) return;
-        
-        // Load or create default items
-        const nominationItems = await localNominationItems.ensureDefaultItems(currentShop.id);
-        setItems(nominationItems);
-        setIsLoading(false);
-      };
-      
-      loadItems();
-    }, [currentShop]);
+   useEffect(() => {
+     const loadItems = async () => {
+       if (!currentShop) return;
+       
+       try {
+         // Load or create default items
+         const nominationItems = await localNominationItems.ensureDefaultItems(currentShop.id);
+         setItems(nominationItems);
+       } catch (error) {
+         console.error('Failed to load nomination items:', error);
+       } finally {
+         setIsLoading(false);
+       }
+     };
+     
+     loadItems();
+   }, [currentShop]);
 
   const handleNominate = async (item: NominationItem) => {
     if (!currentGameAttemptId || !customerSession || isSaving) return;
