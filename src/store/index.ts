@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings, NominationItem, ItemOfTheDay, SyncQueue, SyncItemType, SyncOperation } from '@/types';
-import { localShops, localItems, localAttempts, localSessions, localSettings, getDeviceId } from '@/lib/local-db';
+import { localShops, localItems, localAttempts, localSessions, localSettings, localNominationItems, getDeviceId } from '@/lib/local-db';
+import { queueForSync } from '@/lib/sync-service';
 
 // Auth Store with Security Features
 interface AuthState {
@@ -225,7 +226,7 @@ interface GameState {
   setCurrentGameAttemptId: (id: string | null) => void;
   setHasNominatedThisAttempt: (hasNominated: boolean) => void;
   setItemOfTheDay: (item: ItemOfTheDay | null) => void;
-  incrementItemOfDayLikes: () => void;
+   incrementItemOfDayLikes: () => Promise<void>;
   setHasLikedItemOfDay: (hasLiked: boolean) => void;
   resetGame: () => void;
   clearTestData: () => void;
@@ -265,7 +266,7 @@ export const useGameStore = create<GameState>()(
       setCurrentGameAttemptId: (currentGameAttemptId) => set({ currentGameAttemptId }),
       setHasNominatedThisAttempt: (hasNominatedThisAttempt) => set({ hasNominatedThisAttempt }),
       setItemOfTheDay: (itemOfTheDay) => set({ itemOfTheDay }),
-      incrementItemOfDayLikes: () => {
+      incrementItemOfDayLikes: async () => {
         const current = useGameStore.getState().itemOfTheDay;
         if (!current) return;
         
@@ -273,12 +274,18 @@ export const useGameStore = create<GameState>()(
         const updated = { ...current, likes: newLikes };
         
         set({ itemOfTheDay: updated });
-        localSettings.set('itemOfTheDay', updated);
+        try {
+          await localSettings.set('itemOfTheDay', updated);
+        } catch (e) {
+          console.warn('[Store] Failed to save IOTD locally:', e);
+        }
         
-        // Sync to RTDB for aggregation across all shops
-        import('@/lib/firebase').then(({ rtdbSettings }) => {
-          rtdbSettings.set('itemOfTheDay', updated).catch(() => {});
-        }).catch(() => {});
+        // Queue RTDB sync (update setting itemOfTheDay) - handles offline and errors
+        try {
+          await queueForSync({ type: 'setting', operation: 'update', data: { key: 'itemOfTheDay', value: updated } });
+        } catch (e) {
+          console.warn('[Store] Failed to queue IOTD like sync:', e);
+        }
       },
       setHasLikedItemOfDay: (hasLikedItemOfDay) => set({ hasLikedItemOfDay }),
       resetGame: () => set({

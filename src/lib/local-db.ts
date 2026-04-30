@@ -619,9 +619,15 @@ export const localNominationItems = {
       tx.done
     ]);
 
-    return defaultItems;
-  }
-};
+     return defaultItems;
+   },
+   
+   // Get all nomination items (global)
+   async getAll(): Promise<NominationItem[]> {
+     const database = await initDB();
+     return database.getAll('nominationItems');
+   }
+ };
 
 // Customer Nomination operations - track who nominated what
 export const localCustomerNominations = {
