@@ -9,6 +9,7 @@ import { saveNominationWithSync, saveNominationItemWithSync } from '@/lib/sync-s
 import type { NominationItem } from '@/types';
 
 export default function NominationScreen() {
+  const [items, setItems] = useState<NominationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -23,9 +24,7 @@ export default function NominationScreen() {
     setHasNominatedThisAttempt,
     customerSession,
     resetGame,
-    isTestMode,
-    nominationItems,
-    setNominationItems
+    isTestMode
   } = useGameStore();
   
   const { currentShop } = useShopStore();
@@ -35,18 +34,18 @@ export default function NominationScreen() {
   const isSuperAdminTestMode = isTestMode && admin?.level === 'super_admin';
 
    // Load nomination items on mount
-   useEffect(() => {
-     const loadItems = async () => {
-       if (!currentShop) return;
-       
-       // Load or create default items
-       const nominationItems = await localNominationItems.ensureDefaultItems(currentShop.id);
-       setNominationItems(nominationItems);
-       setIsLoading(false);
-     };
-     
-     loadItems();
-    }, [currentShop, setNominationItems]);
+    useEffect(() => {
+      const loadItems = async () => {
+        if (!currentShop) return;
+        
+        // Load or create default items
+        const nominationItems = await localNominationItems.ensureDefaultItems(currentShop.id);
+        setItems(nominationItems);
+        setIsLoading(false);
+      };
+      
+      loadItems();
+    }, [currentShop]);
 
   const handleNominate = async (item: NominationItem) => {
     if (!currentGameAttemptId || !customerSession || isSaving) return;
@@ -88,7 +87,7 @@ export default function NominationScreen() {
       // Reload items to show updated counts
       if (currentShop) {
         const updatedItems = await localNominationItems.getByShop(currentShop.id);
-        setNominationItems(updatedItems);
+        setItems(updatedItems);
       }
       
       // Show success after animation
@@ -215,7 +214,7 @@ export default function NominationScreen() {
   }
 
    // Only show active items, sorted by nomination count (filtered by search if query exists)
-   const activeItems = nominationItems
+   const activeItems = items
      .filter(item => item.isActive)
      .filter(item => 
        searchQuery.trim() === '' || 

@@ -98,23 +98,11 @@ export default function AdminDashboard() {
     });
   };
 
-  const { admin, logout } = useAuthStore();
-  const { currentShop, setCurrentShop } = useShopStore();
+   const { admin, logout } = useAuthStore();
+   const { currentShop, setCurrentShop } = useShopStore();
    const { items, setItems } = useItemStore();
    const { setCurrentView } = useUIStore();
-   const gameStore = useGameStore();
-    const { setCustomerSession, setSelectedItem, setGameStatus, setCorrectNumber, setThresholdNumber, setDemoMode, isTestMode, setTestMode, clearTestData } = gameStore;
-    const globalNominationItems = gameStore.nominationItems;
-
-   // Keep top nominations live synced with global store
-   useEffect(() => {
-     if (!currentShop) return;
-     const top = globalNominationItems
-       .filter(item => item.shopId === currentShop.id && item.nominationCount > 0)
-       .sort((a, b) => b.nominationCount - a.nominationCount)
-       .slice(0, 10);
-     setTopNominations(top);
-   }, [globalNominationItems, currentShop]);
+   const { setCustomerSession, setSelectedItem, setGameStatus, setCorrectNumber, setThresholdNumber, setDemoMode, isTestMode, setTestMode, clearTestData } = useGameStore();
 
    // Default password
    const DEFAULT_PASSWORD = '0000';
@@ -209,20 +197,15 @@ export default function AdminDashboard() {
    const loadNominationItems = async () => {
      if (!currentShop) return;
      setNominationItemsLoading(true);
-     try {
-       const items = await localNominationItems.getByShop(currentShop.id);
-       setNominationItems(items);
-       
-       // Merge into global store for live updates
-       const existing = useGameStore.getState().nominationItems;
-       const merged = [...existing.filter(i => i.shopId !== currentShop.id), ...items];
-       useGameStore.getState().setNominationItems(merged);
-     } catch (error) {
-       console.error('Error loading nomination items:', error);
-     } finally {
-       setNominationItemsLoading(false);
-     }
-   };
+      try {
+        const items = await localNominationItems.getByShop(currentShop.id);
+        setNominationItems(items);
+      } catch (error) {
+        console.error('Error loading nomination items:', error);
+      } finally {
+        setNominationItemsLoading(false);
+      }
+    };
 
   // Open nomination items editor
   const handleOpenNominationItemsEditor = async () => {

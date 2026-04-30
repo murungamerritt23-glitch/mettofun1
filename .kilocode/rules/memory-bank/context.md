@@ -36,16 +36,14 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
     2. Added RTDB `onValue` listener for `settings/itemOfTheDay` in `initSyncService`
     3. On change, updates localSettings and store's IOTD instantly across devices
 
-- [x] Make nomination item counts live across all devices
-  - Issue: Nomination item nomination counts were not live; required page reload
-  - Solution:
-    1. Added RTDB listeners (`onChildAdded/Changed/Removed`) for `nominationItems` in `initSyncService`
-    2. Listeners update local DB and store's `nominationItems` in real-time
-    3. Added `getAll()` method to `localNominationItems`
-    4. Updated `loadNominationItems` in AdminDashboard to merge items into global store
-    5. Added effect in AdminDashboard to compute `topNominations` from global store (live)
-    6. Updated NominationScreen to use store's `nominationItems` and `setNominationItems`
-    7. Now all nomination count updates propagate instantly across devices
+- [x] Clarify nomination item scope: shop-isolated (not global)
+  - Nomination items belong to individual shops, not globally synced
+  - Removed global Zustand state for nominationItems
+  - Removed cross-device live listeners for nominationItems
+  - Each shop manages its own nomination items locally via IndexedDB
+  - AdminDashboard and NominationScreen load items per-shop using localNominationItems.getByShop(shopId)
+  - Top Customer Nominations are shop-specific, computed locally
+  - Only Item of the Day is global (super admin controlled)
 
 ## Current Structure
 
@@ -141,4 +139,4 @@ export async function GET() {
 | Today | Fix shop credentials logging into wrong shop - prioritize adminEmail over deviceId, fix offline login shop resolution, add assignedShops fallback to session restore |
 | Today | Fix Item of the Day not syncing across devices - add setting sync type, implement syncSetting, add to pullFromRTDB, queue on failure, exclude duplicate folder |
 | Today | Make IOTD likes live across devices - queue sync, add RTDB onValue listener for IOTD |
-| Today | Make nomination item counts live across devices - add RTDB child listeners, store updates, live AdminDashboard top nominations, NominationScreen uses store |
+| Today | Clarify nomination items are shop-isolated - remove global store state, remove cross-device sync listeners, use per-shop local only |

@@ -2,7 +2,7 @@ import { useUIStore, useSyncStore, useGameStore } from '@/store';
 import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations, localSettings } from './local-db';
 import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations, rtdbAdmins, rtdbSettings, rtdb } from './firebase';
 import type { GameAttempt, Item, Shop, NominationItem, CustomerNomination, SyncItemType, SyncOperation } from '@/types';
-import { ref, onValue, off, onChildChanged, onChildAdded, onChildRemoved } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 
 // Ensure admin record exists in RTDB before any write operation
 // This is critical because RTDB security rules check root.child('admins').child(auth.uid).exists()
@@ -219,65 +219,18 @@ export const initSyncService = (): (() => void) => {
      } catch (err) {
        console.warn('[Sync Live] IOTD listener error:', err);
      }
-   }, (error) => {
-     console.warn('[Sync Live] IOTD listener error:', error);
-   });
+    }, (error) => {
+      console.warn('[Sync Live] IOTD listener error:', error);
+    });
 
-   // Listen for nomination item changes (for live nomination item updates)
-   const nomItemsRef = ref(rtdb, 'nominationItems');
-   const unsubscribeNomAdded = onChildAdded(nomItemsRef, async (snapshot) => {
-     const item = snapshot.val() as NominationItem;
-     if (item) {
-       try {
-         await localNominationItems.save(item);
-         // Update store with full list to reflect changes live
-         const allItems = await localNominationItems.getAll();
-         useGameStore.getState().setNominationItems(allItems);
-         console.log('[Sync Live] Nomination item added from RTDB:', item.id);
-       } catch (err) {
-         console.warn('[Sync Live] Nomination add error:', err);
-       }
-     }
-   });
-   const unsubscribeNomChanged = onChildChanged(nomItemsRef, async (snapshot) => {
-     const item = snapshot.val() as NominationItem;
-     if (item) {
-       try {
-         await localNominationItems.save(item);
-         const allItems = await localNominationItems.getAll();
-         useGameStore.getState().setNominationItems(allItems);
-         console.log('[Sync Live] Nomination item updated from RTDB:', item.id);
-       } catch (err) {
-         console.warn('[Sync Live] Nomination update error:', err);
-       }
-     }
-   });
-   const unsubscribeNomRemoved = onChildRemoved(nomItemsRef, async (snapshot) => {
-     const id = snapshot.key;
-     if (id) {
-       try {
-         await localNominationItems.delete(id);
-         const state = useGameStore.getState();
-         const updated = state.nominationItems.filter(i => i.id !== id);
-         state.setNominationItems(updated);
-         console.log('[Sync Live] Nomination item removed from RTDB:', id);
-       } catch (err) {
-         console.warn('[Sync Live] Nomination remove error:', err);
-       }
-     }
-   });
-
-   // Return cleanup function
-   return () => {
-     window.removeEventListener('online', handleOnline);
-     window.removeEventListener('offline', handleOffline);
-     stopAutoSync();
-     // Detach RTDB listeners
-     unsubscribeIOTD();
-     unsubscribeNomAdded();
-     unsubscribeNomChanged();
-     unsubscribeNomRemoved();
-   };
+    // Return cleanup function
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      stopAutoSync();
+      // Detach RTDB listeners
+      unsubscribeIOTD();
+    };
 };
 
 // Start automatic periodic sync - ONLY runs while online

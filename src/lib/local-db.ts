@@ -620,12 +620,6 @@ export const localNominationItems = {
     ]);
 
      return defaultItems;
-   },
-   
-   // Get all nomination items (global)
-   async getAll(): Promise<NominationItem[]> {
-     const database = await initDB();
-     return database.getAll('nominationItems');
    }
  };
 
