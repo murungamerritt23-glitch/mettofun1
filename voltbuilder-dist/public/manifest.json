@@ -1,0 +1,20 @@
+{
+  "name": "ETO FUN",
+  "short_name": "ETO FUN",
+  "description": "Promotional reward game for shops - play offline, win prizes!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A1628",
+  "theme_color": "#0A1628",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/metofun-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "lang": "en"
+}
