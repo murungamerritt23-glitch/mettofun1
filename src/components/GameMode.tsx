@@ -327,23 +327,23 @@ export default function GameMode() {
     setShowNumberPicker(true);
   };
 
- const handleItemSelect = (item: Item) => {
-  if (!item || !item.isActive) return;
-  
-  setTappedItemId(item.id);
-  setTimeout(() => setTappedItemId(null), 400);
-  
-  setSelectedItem(item);
-  
-  // Generate RANDOM winning number from available range (1 to 18-threshold)
-  // This makes the game fair and unpredictable
-  const threshold = thresholdNumber || 1;
-  const winningNum = generateSecureRandomNumber(18 - threshold);
-  setCorrectNumber(winningNum);
-  
-  setShowItemPicker(false);
-  setShowNumberPicker(true);
-}; 
+  const handleItemSelect = (item: Item) => {
+    if (!item || !item.isActive) return;
+    
+    setTappedItemId(item.id);
+    setTimeout(() => setTappedItemId(null), 400);
+    
+    setSelectedItem(item);
+    
+    // Generate RANDOM winning number from available range (1 to 18-threshold)
+    // This makes the game fair and unpredictable
+    const threshold = thresholdNumber || 1;
+    const winningNum = generateSecureRandomNumber(18 - threshold);
+    setCorrectNumber(winningNum);
+    
+    setShowItemPicker(false);
+    setShowNumberPicker(true);
+  };
 
   const handleNumberSelect = (number: number) => {
     if (selectedNumber !== null || !correctNumber) return;
@@ -776,7 +776,7 @@ export default function GameMode() {
     );
   }
 
-  // Item picker - customer selects an item before picking number
+  // Item picker - LATEST SCREEN CODE RETAINED - customer selects an item before picking number
   if (showItemPicker && !showResult && gameStatus === 'playing') {
     const activeItems = items.filter(i => i.isActive);
     
