@@ -913,13 +913,18 @@ export default function GameMode() {
             ))}
           </div>
           
-          {/* Next button - only show when item selected */}
-          {/* Always show Next button - prominent - when item is selected */}
+          {/* Next button - generates winning number when proceeding from item picker */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
               if (!selectedItem) return;
+              // Generate winning number if not already generated
+              if (!correctNumber) {
+                const threshold = thresholdNumber || 1;
+                const winningNum = generateSecureRandomNumber(18 - threshold);
+                setCorrectNumber(winningNum);
+              }
               setShowItemPicker(false);
               setShowNumberPicker(true);
             }}
