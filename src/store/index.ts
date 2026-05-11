@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings, NominationItem, ItemOfTheDay, SyncQueue, SyncItemType, SyncOperation } from '@/types';
 import { localShops, localItems, localAttempts, localSessions, localSettings, getDeviceId } from '@/lib/local-db';
-import { queueForSync } from '@/lib/sync-service';
 
 // Auth Store with Security Features
 interface AuthState {
@@ -203,29 +202,31 @@ interface GameState {
   selectedItem: Item | null;
   isDemoMode: boolean;
   language: 'en' | 'sw';
-   // Test Mode - only for Super Admin
-   isTestMode: boolean;
-   testPhonePrefix: string; // Mock phone prefix for test data isolation
-   // Nomination session state (not the items list)
-   currentGameAttemptId: string | null;
-   hasNominatedThisAttempt: boolean;
-   // Item of the Day - global marketing banner
-   itemOfTheDay: ItemOfTheDay | null;
-   hasLikedItemOfDay: boolean; // Track if customer has liked in this session
-   setGameStatus: (status: 'idle' | 'playing' | 'won' | 'lost' | 'nominating') => void;
-   setSelectedBox: (box: number | null) => void;
-   setCorrectNumber: (number: number | null) => void;
-   setThresholdNumber: (threshold: number | null) => void;
-   setCustomerSession: (session: CustomerSession | null) => void;
-   setSelectedItem: (item: Item | null) => void;
-   setDemoMode: (isDemo: boolean) => void;
-   setTestMode: (isTest: boolean, prefix?: string) => void;
-   setLanguage: (lang: 'en' | 'sw') => void;
-   setCurrentGameAttemptId: (id: string | null) => void;
-   setHasNominatedThisAttempt: (hasNominated: boolean) => void;
-   setItemOfTheDay: (item: ItemOfTheDay | null) => void;
-   incrementItemOfDayLikes: () => Promise<void>;
-   setHasLikedItemOfDay: (hasLiked: boolean) => void;
+  // Test Mode - only for Super Admin
+  isTestMode: boolean;
+  testPhonePrefix: string; // Mock phone prefix for test data isolation
+  // Nomination state
+  nominationItems: NominationItem[];
+  currentGameAttemptId: string | null;
+  hasNominatedThisAttempt: boolean;
+  // Item of the Day - global marketing banner
+  itemOfTheDay: ItemOfTheDay | null;
+  hasLikedItemOfDay: boolean; // Track if customer has liked in this session
+  setGameStatus: (status: 'idle' | 'playing' | 'won' | 'lost' | 'nominating') => void;
+  setSelectedBox: (box: number | null) => void;
+  setCorrectNumber: (number: number | null) => void;
+  setThresholdNumber: (threshold: number | null) => void;
+  setCustomerSession: (session: CustomerSession | null) => void;
+  setSelectedItem: (item: Item | null) => void;
+  setDemoMode: (isDemo: boolean) => void;
+  setTestMode: (isTest: boolean, prefix?: string) => void;
+  setLanguage: (lang: 'en' | 'sw') => void;
+  setNominationItems: (items: NominationItem[]) => void;
+  setCurrentGameAttemptId: (id: string | null) => void;
+  setHasNominatedThisAttempt: (hasNominated: boolean) => void;
+  setItemOfTheDay: (item: ItemOfTheDay | null) => void;
+  incrementItemOfDayLikes: () => void;
+  setHasLikedItemOfDay: (hasLiked: boolean) => void;
   resetGame: () => void;
   clearTestData: () => void;
 }
@@ -241,52 +242,49 @@ export const useGameStore = create<GameState>()(
       selectedItem: null,
       isDemoMode: false,
       language: 'en',
-       // Test Mode - only for Super Admin
-       isTestMode: false,
-       testPhonePrefix: 'TEST',
-       // Nomination session state (not items list)
-       currentGameAttemptId: null,
-       hasNominatedThisAttempt: false,
-       // Item of the Day
-       itemOfTheDay: null,
-       hasLikedItemOfDay: false,
-       setGameStatus: (gameStatus) => set({ gameStatus }),
-       setSelectedBox: (selectedBox) => set({ selectedBox }),
-       setCorrectNumber: (correctNumber) => set({ correctNumber }),
-       setThresholdNumber: (thresholdNumber) => set({ thresholdNumber }),
-       setCustomerSession: (customerSession) => set({ customerSession }),
-       setSelectedItem: (selectedItem) => set({ selectedItem }),
-       setDemoMode: (isDemoMode) => set({ isDemoMode }),
-       setTestMode: (isTestMode, testPhonePrefix = 'TEST') => set({ isTestMode, testPhonePrefix }),
-       setLanguage: (language) => set({ language }),
-       setCurrentGameAttemptId: (currentGameAttemptId) => set({ currentGameAttemptId }),
-       setHasNominatedThisAttempt: (hasNominatedThisAttempt) => set({ hasNominatedThisAttempt }),
-       setItemOfTheDay: (itemOfTheDay) => set({ itemOfTheDay }),
+      // Test Mode - only for Super Admin
+      isTestMode: false,
+      testPhonePrefix: 'TEST',
+      // Nomination state
+      nominationItems: [],
+      currentGameAttemptId: null,
+      hasNominatedThisAttempt: false,
+      // Item of the Day
+      itemOfTheDay: null,
+      hasLikedItemOfDay: false,
+      setGameStatus: (gameStatus) => set({ gameStatus }),
+      setSelectedBox: (selectedBox) => set({ selectedBox }),
+      setCorrectNumber: (correctNumber) => set({ correctNumber }),
+      setThresholdNumber: (thresholdNumber) => set({ thresholdNumber }),
+      setCustomerSession: (customerSession) => set({ customerSession }),
+      setSelectedItem: (selectedItem) => set({ selectedItem }),
+      setDemoMode: (isDemoMode) => set({ isDemoMode }),
+      setTestMode: (isTestMode, testPhonePrefix = 'TEST') => set({ isTestMode, testPhonePrefix }),
+      setLanguage: (language) => set({ language }),
+      setNominationItems: (nominationItems) => set({ nominationItems }),
+      setCurrentGameAttemptId: (currentGameAttemptId) => set({ currentGameAttemptId }),
+      setHasNominatedThisAttempt: (hasNominatedThisAttempt) => set({ hasNominatedThisAttempt }),
+      setItemOfTheDay: (itemOfTheDay) => set({ itemOfTheDay }),
       incrementItemOfDayLikes: async () => {
-        let newItem: ItemOfTheDay | null = null;
-        
-        // Compute new value atomically inside setState functional update
-        useGameStore.setState((state) => {
-          const current = state.itemOfTheDay;
-          if (!current) return state;
-          const newLikes = (current.likes || 0) + 1;
-          newItem = { ...current, likes: newLikes, updatedAt: new Date() };
-          return { itemOfTheDay: newItem };
-        });
-        
-        if (!newItem) return;
-        
-        // Persist and sync the computed value
+        const current = useGameStore.getState().itemOfTheDay;
+        if (!current) return;
+
+        const newLikes = (current.likes || 0) + 1;
+        const updated = { ...current, likes: newLikes };
+
+        set({ itemOfTheDay: updated });
+        await localSettings.set('itemOfTheDay', updated);
+
+        // Queue for sync to RTDB so likes persist across devices
         try {
-          await localSettings.set('itemOfTheDay', newItem);
-        } catch (e) {
-          console.warn('[Store] Failed to save IOTD locally:', e);
-        }
-        
-        try {
-          await queueForSync({ type: 'setting', operation: 'update', data: { key: 'itemOfTheDay', value: newItem } });
-        } catch (e) {
-          console.warn('[Store] Failed to queue IOTD like sync:', e);
+          const { queueForSync } = await import('@/lib/sync-service');
+          await queueForSync({
+            type: 'setting',
+            operation: 'update',
+            data: { key: 'itemOfTheDay', value: updated }
+          });
+        } catch (error) {
+          console.error('[Sync] Failed to queue item of the day update:', error);
         }
       },
       setHasLikedItemOfDay: (hasLikedItemOfDay) => set({ hasLikedItemOfDay }),

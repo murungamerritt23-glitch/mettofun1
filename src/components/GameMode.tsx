@@ -12,7 +12,6 @@ import { saveAttemptWithSync } from '@/lib/sync-service';
 import { 
   calculateBoxConfiguration, 
   generateSecureRandomNumber,
-  getWinningItem,
   createGameAttempt,
   getCurrentDateString,
   isValidPhoneNumber,
@@ -122,68 +121,73 @@ export default function GameMode() {
   // Also refresh when component becomes visible (via currentView changes to customer)
   useEffect(() => {
     let isCancelled = false;
-    
+
     const loadItems = async () => {
-      if (currentShop) {
+      if (!currentShop) {
+        // No shop selected yet - still need to clear loading
+        setIsLoading(false);
+        return;
+      }
+
+      try {
         // Create a timeout promise
-        const timeoutPromise = new Promise<never>((_, reject) => 
+        const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('Items loading timeout')), 15000)
         );
-        
-        try {
-          // Always load fresh from DB - this ensures updated images are seen
-          const shopItems = await Promise.race([
-            localItems.getByShop(currentShop.id),
-            timeoutPromise
-          ]) as Item[];
-          
-          if (isCancelled) return;
-          
-          // Use whatever is in DB - no overwriting, just load and display
-          let finalItems = shopItems;
-          
-          // Only create missing items if less than 17 exist (preserve DB data)
-          if (finalItems.length < 17) {
-            const missingCount = 17 - finalItems.length;
-            const newItems = Array.from({ length: missingCount }, (_, i) => ({
-              id: `${currentShop.id}-item-${finalItems.length + i + 1}`,
-              name: `Prize ${finalItems.length + i + 1}`,
-              value: (finalItems.length + i + 1) * 1000,
-              stockStatus: 'unlimited' as const,
-              isActive: true,
-              shopId: currentShop.id,
-              order: finalItems.length + i
-            }));
-            finalItems = [...finalItems, ...newItems];
-            // Only save the NEW items, never overwrite existing
-            if (newItems.length > 0) {
-              await localItems.saveMultiple(newItems);
-            }
-          }
-          
-          setItems(finalItems);
-        } catch (error) {
-          console.error('Failed to load items:', error);
-          // Set flag to prevent auto-login loop on restart
-          localStorage.setItem('metofun-load-timeout', Date.now().toString());
-          // Set default items on error
-          if (currentShop && !isCancelled) {
-            const defaultItems = Array.from({ length: 17 }, (_, i) => ({
-              id: `${currentShop.id}-item-${i + 1}`,
-              name: `Prize ${i + 1}`,
-              value: (i + 1) * 1000,
-              stockStatus: 'unlimited' as const,
-              isActive: true,
-              shopId: currentShop.id,
-              order: i
-            }));
-            setItems(defaultItems);
+
+        // Always load fresh from DB - this ensures updated images are seen
+        const shopItems = await Promise.race([
+          localItems.getByShop(currentShop.id),
+          timeoutPromise
+        ]) as Item[];
+
+        if (isCancelled) return;
+
+        // Use whatever is in DB - no overwriting, just load and display
+        let finalItems = shopItems;
+
+        // Only create missing items if less than 17 exist (preserve DB data)
+        if (finalItems.length < 17) {
+          const missingCount = 17 - finalItems.length;
+          const newItems = Array.from({ length: missingCount }, (_, i) => ({
+            id: `${currentShop.id}-item-${finalItems.length + i + 1}`,
+            name: `Prize ${finalItems.length + i + 1}`,
+            value: (finalItems.length + i + 1) * 1000,
+            stockStatus: 'unlimited' as const,
+            isActive: true,
+            shopId: currentShop.id,
+            order: finalItems.length + i
+          }));
+          finalItems = [...finalItems, ...newItems];
+          // Only save the NEW items, never overwrite existing
+          if (newItems.length > 0) {
+            await localItems.saveMultiple(newItems);
           }
         }
+
+        setItems(finalItems);
+      } catch (error) {
+        console.error('Failed to load items:', error);
+        // Set flag to prevent auto-login loop on restart
+        localStorage.setItem('metofun-load-timeout', Date.now().toString());
+        // Set default items on error
+        if (currentShop && !isCancelled) {
+          const defaultItems = Array.from({ length: 17 }, (_, i) => ({
+            id: `${currentShop.id}-item-${i + 1}`,
+            name: `Prize ${i + 1}`,
+            value: (i + 1) * 1000,
+            stockStatus: 'unlimited' as const,
+            isActive: true,
+            shopId: currentShop.id,
+            order: i
+          }));
+          setItems(defaultItems);
+        }
+      } finally {
         setIsLoading(false);
       }
     };
-    
+
     loadItems();
     return () => { isCancelled = true; };
   }, [currentShop, setItems]);
@@ -386,7 +390,7 @@ export default function GameMode() {
         selectedBox || 0,
         correctNumber,
         won,
-        winningItem || undefined,
+        selectedItem || undefined,
         isSuperAdminTestMode
       );
       
@@ -410,14 +414,14 @@ export default function GameMode() {
     // Reset liked state for fresh session (allows new like on item of the day)
     setHasLikedItemOfDay(false);
     
-    // Generate new winning number from displayed range (1 to 18-threshold)
+    // Recalculate threshold only - winning number must NOT be set here.
+    // The winning number is generated in handleItemSelect, AFTER the customer picks an item.
+    // This ensures the game is fair and the outcome is not predetermined before item selection.
     const config = calculateBoxConfiguration(
       parseFloat(purchaseAmount), 
       currentShop?.qualifyingPurchase || 0
     );
     const newThreshold = config.threshold;
-    const newWinningNum = generateSecureRandomNumber(18 - newThreshold);
-    setCorrectNumber(newWinningNum);
     setThresholdNumber(newThreshold);
     
     // Reset game state
@@ -425,7 +429,7 @@ export default function GameMode() {
     setSelectedNumber(null);
     setShowResult(false);
     setShowNumberPicker(false);
-    setShowItemPicker(false);
+    setShowItemPicker(true); // Show item picker first so customer selects item before winning number is generated
     setGameStatus('playing');
     setWinningItem(null);
     setSelectedItem(null);
@@ -876,27 +880,35 @@ export default function GameMode() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleItemSelect(item)}
-                className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center ${
+                className={`game-box overflow-hidden p-0 flex flex-col justify-start ${
                   selectedItem?.id === item.id 
                     ? 'ring-2 ring-gold-500 bg-gold-900/50 selected' 
                     : ''
                 } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
               >
-                {item.imageUrl ? (
-                  <img 
-                    src={item.imageUrl} 
-                    alt={item.name}
-                    className="w-10 h-10 sm:w-12 sm:h-12 mb-1 object-cover rounded"
-                  />
-                ) : (
-                  <Gift className={`w-6 h-6 sm:w-8 sm:h-8 mb-1 ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`} />
-                )}
-                <span className="text-xs sm:text-sm font-medium truncate w-full text-center">
-                  {item.name}
-                </span>
-                <span className={`text-xs sm:text-sm ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`}>
-                  KSh {(item.value || 0).toLocaleString()}
-                </span>
+                {/* Image fills the top portion of the card */}
+                <div className="w-full flex-1 min-h-0 relative">
+                  {item.imageUrl ? (
+                    <img 
+                      src={item.imageUrl} 
+                      alt={item.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Gift className={`w-8 h-8 ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`} />
+                    </div>
+                  )}
+                </div>
+                {/* Name and price pinned to the bottom */}
+                <div className="w-full px-1 py-1 bg-black/60 text-center shrink-0">
+                  <p className="text-xs font-semibold truncate leading-tight text-white">
+                    {item.name}
+                  </p>
+                  <p className={`text-xs leading-tight font-bold ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`}>
+                    KSh {(item.value || 0).toLocaleString()}
+                  </p>
+                </div>
               </motion.button>
             ))}
           </div>

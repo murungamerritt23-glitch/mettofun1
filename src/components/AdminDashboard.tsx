@@ -11,7 +11,7 @@ import {
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
 import { rtdbShops, rtdbAdmins, firebaseDb, firebaseSettings, firebaseAdmins } from '@/lib/firebase';
-import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive, queueForSync } from '@/lib/sync-service';
+import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, SubscriptionTier, ItemOfTheDay, NominationItem } from '@/types';
@@ -98,14 +98,14 @@ export default function AdminDashboard() {
     });
   };
 
-   const { admin, logout } = useAuthStore();
-   const { currentShop, setCurrentShop } = useShopStore();
-   const { items, setItems } = useItemStore();
-   const { setCurrentView } = useUIStore();
-   const { setCustomerSession, setSelectedItem, setGameStatus, setCorrectNumber, setThresholdNumber, setDemoMode, isTestMode, setTestMode, clearTestData } = useGameStore();
+  const { admin, logout } = useAuthStore();
+  const { currentShop, setCurrentShop } = useShopStore();
+  const { items, setItems } = useItemStore();
+  const { setCurrentView } = useUIStore();
+  const { setCustomerSession, setSelectedItem, setGameStatus, setCorrectNumber, setThresholdNumber, setDemoMode, isTestMode, setTestMode, clearTestData } = useGameStore();
 
-   // Default password
-   const DEFAULT_PASSWORD = '0000';
+  // Default password
+  const DEFAULT_PASSWORD = '0000';
 
   // Handle password verification
   const handlePasswordSubmit = () => {
@@ -175,37 +175,38 @@ export default function AdminDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentShop?.id]);
 
-  // Load top nominations for the current shop
-  const loadTopNominations = async () => {
+   // Load top nominations for the current shop
+   const loadTopNominations = async () => {
+     if (!currentShop) return;
+     setNominationsLoading(true);
+     try {
+       const nominations = await localNominationItems.getByShop(currentShop.id);
+       // Get top 10 with nominations > 0, sorted by count descending
+       const top10 = nominations
+         .filter(item => item.nominationCount > 0)
+         .sort((a, b) => b.nominationCount - a.nominationCount)
+         .slice(0, 10);
+       setTopNominations(top10);
+     } catch (error) {
+       console.error('Error loading nominations:', error);
+     } finally {
+       setNominationsLoading(false);
+     }
+   };
+
+  // Load all nomination items for editing
+  const loadNominationItems = async () => {
     if (!currentShop) return;
-    setNominationsLoading(true);
+    setNominationItemsLoading(true);
     try {
-      const nominations = await localNominationItems.getByShop(currentShop.id);
-      // Get top 10 with nominations > 0, sorted by count descending
-      const top10 = nominations
-        .filter(item => item.nominationCount > 0)
-        .slice(0, 10);
-      setTopNominations(top10);
+      const items = await localNominationItems.getByShop(currentShop.id);
+      setNominationItems(items);
     } catch (error) {
-      console.error('Error loading nominations:', error);
+      console.error('Error loading nomination items:', error);
     } finally {
-      setNominationsLoading(false);
+      setNominationItemsLoading(false);
     }
   };
-
-   // Load all nomination items for editing
-   const loadNominationItems = async () => {
-     if (!currentShop) return;
-     setNominationItemsLoading(true);
-      try {
-        const items = await localNominationItems.getByShop(currentShop.id);
-        setNominationItems(items);
-      } catch (error) {
-        console.error('Error loading nomination items:', error);
-      } finally {
-        setNominationItemsLoading(false);
-      }
-    };
 
   // Open nomination items editor
   const handleOpenNominationItemsEditor = async () => {
@@ -220,7 +221,13 @@ export default function AdminDashboard() {
       alert('Maximum 100 nomination items reached. Delete some items first.');
       return;
     }
-    await saveNominationItemWithSync(item, !editingNominationItem);
+    // Save locally first for immediate UI update
+    await localNominationItems.save(item);
+    // Fire off RTDB sync in background (don't await) to keep UI responsive
+    saveNominationItemWithSync(item, !editingNominationItem).catch(err => {
+      console.error('[Background sync] nomination item failed:', err);
+    });
+    // Close modal and refresh UI from local DB (already includes the item)
     setEditingNominationItem(null);
     setIsCreatingNominationItem(false);
     loadNominationItems();
@@ -239,7 +246,13 @@ export default function AdminDashboard() {
   // Toggle nomination item active status
   const handleToggleNominationItemActive = async (item: NominationItem) => {
     const updatedItem = { ...item, isActive: !item.isActive, updatedAt: new Date() };
-    await saveNominationItemWithSync(updatedItem, false);
+    // Save locally first (fast)
+    await localNominationItems.save(updatedItem);
+    // Fire sync in background
+    saveNominationItemWithSync(updatedItem, false).catch(err => {
+      console.error('[Background sync] toggle nomination failed:', err);
+    });
+    // Refresh list from local DB
     loadNominationItems();
   };
 
@@ -459,32 +472,31 @@ export default function AdminDashboard() {
   }, []);
 
   // Admin handlers
-  const handleSaveAdmin = async (adminData: Admin) => {
-    // Check if trying to set as super_admin
-    if (adminData.level === 'super_admin') {
-      // Check if there's already a super_admin
-      const existingAdmins = admins.filter(a => a.level === 'super_admin' && a.id !== adminData.id);
-      if (existingAdmins.length > 0) {
-        alert('There can only be ONE Super Admin. Please contact the existing Admin to change this.');
-        return;
-      }
-    }
-    
-    // Save to local database
-    await localAdmins.save(adminData);
-    
-    // Also sync to RTDB (ensure our admin is in RTDB first so security rules pass)
-    try {
-      await rtdbAdmins.save(admin!);
-      await rtdbAdmins.save(adminData);
-    } catch (e) {
-      console.log('RTDB sync skipped (local only mode)');
-    }
-    
-    setEditingAdmin(null);
-    setIsCreatingAdmin(false);
-    localAdmins.getAll().then(setAdmins);
-  };
+   const handleSaveAdmin = async (adminData: Admin) => {
+     // Check if trying to set as super_admin
+     if (adminData.level === 'super_admin') {
+       // Check if there's already a super_admin
+       const existingAdmins = admins.filter(a => a.level === 'super_admin' && a.id !== adminData.id);
+       if (existingAdmins.length > 0) {
+         alert('There can only be ONE Super Admin. Please contact the existing Admin to change this.');
+         return;
+       }
+     }
+     
+     // Save to local database first (fast)
+     await localAdmins.save(adminData);
+     
+     // Sync to RTDB in background (don't await to keep UI fast)
+     rtdbAdmins.save(adminData).catch(err => {
+       console.log('RTDB sync skipped or failed (local only mode):', err);
+     });
+     
+     // Update UI immediately
+     setEditingAdmin(null);
+     setIsCreatingAdmin(false);
+     // Refresh local list (fast)
+     localAdmins.getAll().then(setAdmins);
+   };
 
   const handleDeleteAdmin = async (adminId: string) => {
     if (confirm('Are you sure you want to delete this admin?')) {
@@ -588,76 +600,59 @@ export default function AdminDashboard() {
     }
   };
 
-   // Save Item of the Day
-   const handleSaveItemOfDay = async () => {
-     if (!itemOfDayForm.name || !itemOfDayForm.value) {
-       alert('Please enter item name and value');
-       return;
-     }
-     
-     const newItem: ItemOfTheDay = {
-       id: 'item-of-the-day',
-       name: itemOfDayForm.name,
-       value: parseFloat(itemOfDayForm.value) || 0,
-       imageUrl: itemOfDayForm.imageUrl || undefined,
-       isActive: true,
-       likes: itemOfTheDay?.likes || 0,
-       createdAt: itemOfTheDay?.createdAt || new Date(),
-       updatedAt: new Date()
-     };
-     
-     // Save to local for offline support
-     await localSettings.set('itemOfTheDay', newItem);
-     setItemOfTheDay(newItem);
-     
-     // Sync to RTDB for other devices
-     if (isOnline()) {
-       try {
-         await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
-         const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-         const result = await rtdbSettingsApi.set('itemOfTheDay', newItem);
-         if (!result.success) {
-           // Queue for later if RTDB write failed
-           await queueForSync({ type: 'setting', operation: 'update', data: { key: 'itemOfTheDay', value: newItem } });
-         }
-       } catch (e) {
-         // Queue for later if error occurs
-         await queueForSync({ type: 'setting', operation: 'update', data: { key: 'itemOfTheDay', value: newItem } });
-       }
-     } else {
-       // Offline - queue for later sync
-       await queueForSync({ type: 'setting', operation: 'update', data: { key: 'itemOfTheDay', value: newItem } });
-     }
-     
-     setIsEditingItemOfDay(false);
-     setItemOfDaySaved(true);
-     setTimeout(() => setItemOfDaySaved(false), 3000);
-   };
+  // Save Item of the Day
+  const handleSaveItemOfDay = async () => {
+    if (!itemOfDayForm.name || !itemOfDayForm.value) {
+      alert('Please enter item name and value');
+      return;
+    }
+    
+    const newItem: ItemOfTheDay = {
+      id: 'item-of-the-day',
+      name: itemOfDayForm.name,
+      value: parseFloat(itemOfDayForm.value) || 0,
+      imageUrl: itemOfDayForm.imageUrl || undefined,
+      isActive: true,
+      likes: itemOfTheDay?.likes || 0,
+      createdAt: itemOfTheDay?.createdAt || new Date(),
+      updatedAt: new Date()
+    };
+    
+    // Save to local for offline support
+    await localSettings.set('itemOfTheDay', newItem);
+    setItemOfTheDay(newItem);
+    
+    // Also sync to RTDB for other devices
+    try {
+      await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
+      const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+      await rtdbSettingsApi.set('itemOfTheDay', newItem);
+    } catch (e) {
+      // RTDB sync failed, but local save succeeded
+    }
+    
+    setIsEditingItemOfDay(false);
+    setItemOfDaySaved(true);
+    setTimeout(() => setItemOfDaySaved(false), 3000);
+  };
 
-   // Clear Item of the Day
-   const handleClearItemOfDay = async () => {
-     if (confirm('Are you sure you want to remove the Item of the Day?')) {
-       await localSettings.set('itemOfTheDay', null);
-       
-       // Also clear from RTDB
-       if (isOnline()) {
-         try {
-           await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
-           const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-           const result = await rtdbSettingsApi.set('itemOfTheDay', null);
-           if (!result.success) {
-             await queueForSync({ type: 'setting', operation: 'delete', data: { key: 'itemOfTheDay' } });
-           }
-         } catch (e) {
-           await queueForSync({ type: 'setting', operation: 'delete', data: { key: 'itemOfTheDay' } });
-         }
-       } else {
-         await queueForSync({ type: 'setting', operation: 'delete', data: { key: 'itemOfTheDay' } });
-       }
-       setItemOfTheDay(null);
-       setItemOfDayForm({ name: '', value: '', imageUrl: '' });
-     }
-   };
+  // Clear Item of the Day
+  const handleClearItemOfDay = async () => {
+    if (confirm('Are you sure you want to remove the Item of the Day?')) {
+      await localSettings.set('itemOfTheDay', null);
+      
+      // Also clear from RTDB
+      try {
+        await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
+        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+        await rtdbSettingsApi.set('itemOfTheDay', null);
+      } catch (e) {
+        // RTDB sync failed
+      }
+      setItemOfTheDay(null);
+      setItemOfDayForm({ name: '', value: '', imageUrl: '' });
+    }
+  };
 
   // Start editing Item of the Day
   const handleEditItemOfDay = () => {
@@ -819,95 +814,61 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSaveShop = async (shop: Shop) => {
-    // Check for duplicate shopCode in local shops (case-insensitive)
-    const existingByCode = shops.find(s => 
-      s.shopCode.toLowerCase() === shop.shopCode.toLowerCase() && 
-      s.id !== shop.id // Exclude current shop if editing
-    );
-    if (existingByCode) {
-      alert(`A shop with code "${shop.shopCode}" already exists. Please use a different shop code.`);
-      return;
-    }
-    
-    // Check for duplicate deviceId in local shops
-    const existingByDevice = shops.find(s => 
-      s.deviceId === shop.deviceId && 
-      s.id !== shop.id // Exclude current shop if editing
-    );
-    if (existingByDevice) {
-      alert(`This device is already registered to another shop. Each device can only be linked to one shop.`);
-      return;
-    }
-    
-    // Check for duplicate adminEmail in local shops
-    if (shop.adminEmail) {
-      const existingByEmail = shops.find(s => 
-        s.adminEmail?.toLowerCase() === shop.adminEmail!.toLowerCase() && 
-        s.id !== shop.id
-      );
-      if (existingByEmail) {
-        alert(`A shop with admin email "${shop.adminEmail}" already exists. Each email can only be linked to one shop.`);
-        return;
-      }
-    }
-    
-    // Also check Firebase for duplicates (in case other devices added shops)
-    try {
-      const allFbShops = await rtdbShops.getAll();
-      const fbDuplicateByCode = allFbShops.find(s => 
-        s.shopCode.toLowerCase() === shop.shopCode.toLowerCase() && 
-        s.id !== shop.id
-      );
-      if (fbDuplicateByCode) {
-        alert(`A shop with code "${shop.shopCode}" already exists in the system. Please use a different shop code.`);
-        return;
-      }
-      
-      const fbDuplicateByDevice = allFbShops.find(s => 
-        s.deviceId === shop.deviceId && 
-        s.id !== shop.id
-      );
-      if (fbDuplicateByDevice) {
-        alert(`This device is already registered to another shop in the system. Each device can only be linked to one shop.`);
-        return;
-      }
-      
-      // Check Firebase for duplicate adminEmail
-      if (shop.adminEmail) {
-        const fbDuplicateByEmail = allFbShops.find(s => 
-          s.adminEmail?.toLowerCase() === shop.adminEmail!.toLowerCase() && 
-          s.id !== shop.id
-        );
-        if (fbDuplicateByEmail) {
-          alert(`A shop with admin email "${shop.adminEmail}" already exists in the system. Each email can only be linked to one shop.`);
-          return;
-        }
-      }
-    } catch (e) {
-      // If Firebase check fails, proceed with local validation (user might be offline)
-      console.warn('Could not check Firebase for duplicates:', e);
-    }
-    
-    // Save to local first for offline support
-    await saveShopWithSync(shop, !editingShop);
-    
-    setEditingShop(null);
-    setIsCreatingShop(false);
-    setUserActive(false);
-    
-    // Update current shop if this is the active one
-    if (currentShop?.id === shop.id) {
-      setCurrentShop(shop);
-    }
-    
-    // Update shops list with the saved shop (don't refetch - use saved data)
-    const updatedShops = shops.map(s => s.id === shop.id ? shop : s);
-    if (!editingShop) {
-      updatedShops.push(shop);
-    }
-    setShops(updatedShops);
-  };
+   const handleSaveShop = async (shop: Shop) => {
+     // Check for duplicate shopCode in local shops (case-insensitive)
+     const existingByCode = shops.find(s => 
+       s.shopCode.toLowerCase() === shop.shopCode.toLowerCase() && 
+       s.id !== shop.id // Exclude current shop if editing
+     );
+     if (existingByCode) {
+       alert(`A shop with code "${shop.shopCode}" already exists. Please use a different shop code.`);
+       return;
+     }
+     
+     // Check for duplicate deviceId in local shops
+     const existingByDevice = shops.find(s => 
+       s.deviceId === shop.deviceId && 
+       s.id !== shop.id // Exclude current shop if editing
+     );
+     if (existingByDevice) {
+       alert(`This device is already registered to another shop. Each device can only be linked to one shop.`);
+       return;
+     }
+     
+     // Check for duplicate adminEmail in local shops
+     if (shop.adminEmail) {
+       const existingByEmail = shops.find(s => 
+         s.adminEmail?.toLowerCase() === shop.adminEmail!.toLowerCase() && 
+         s.id !== shop.id
+       );
+       if (existingByEmail) {
+         alert(`A shop with admin email "${shop.adminEmail}" already exists. Each email can only be linked to one shop.`);
+         return;
+       }
+     }
+     
+     // Save and sync in background - don't await to keep UI responsive
+     saveShopWithSync(shop, !editingShop).catch(err => {
+       console.error('[Background sync] shop save failed:', err);
+     });
+     
+     // Update UI immediately (optimistic)
+     setEditingShop(null);
+     setIsCreatingShop(false);
+     setUserActive(false);
+     
+     // Update current shop if this is the active one
+     if (currentShop?.id === shop.id) {
+       setCurrentShop(shop);
+     }
+     
+     // Update shops list with the saved shop (optimistic update)
+     const updatedShops = shops.map(s => s.id === shop.id ? shop : s);
+     if (!editingShop) {
+       updatedShops.push(shop);
+     }
+     setShops(updatedShops);
+   };
 
   const handleToggleShopActive = async (shop: Shop) => {
     const updatedShop = { ...shop, isActive: !shop.isActive };
@@ -1622,30 +1583,35 @@ export default function AdminDashboard() {
                           min={0}
                         />
                         <button
-                          onClick={async () => {
-                            if (!currentShop || qpSaving) return;
-                            setQpSaving(true);
-                            try {
-                              const newValue = Number(qpInput) || 0;
-                              const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                              
-                              // Save using sync service (handles offline)
-                              await saveShopWithSync(updatedShop, false);
-                              
-                              // Update state
-                              setCurrentShop(updatedShop);
-                              setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
-                              localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
-                              loadAttempts();
-                              
-                              alert('Qualifying purchase updated successfully!');
-                            } catch (err) {
-                              console.error('Error saving qualifying purchase:', err);
-                              alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
-                            } finally {
-                              setQpSaving(false);
-                            }
-                          }}
+                       onClick={async () => {
+                         if (!currentShop || qpSaving) return;
+                         setQpSaving(true);
+                         try {
+                           const newValue = Number(qpInput) || 0;
+                           const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                           
+                           // Save to local immediately (fast)
+                           await localShops.save(updatedShop);
+                           
+                           // Fire RTDB sync in background (non-blocking)
+                           saveShopWithSync(updatedShop, false).catch(err => {
+                             console.error('[Background sync] qualifying purchase failed:', err);
+                           });
+                           
+                           // Update state immediately
+                           setCurrentShop(updatedShop);
+                           setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
+                           localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+                           loadAttempts();
+                           
+                           alert('Qualifying purchase updated successfully!');
+                         } catch (err) {
+                           console.error('Error saving qualifying purchase:', err);
+                           alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                         } finally {
+                           setQpSaving(false);
+                         }
+                       }}
                           disabled={qpSaving}
                           className="btn-gold px-4 py-2"
                         >
@@ -1770,12 +1736,16 @@ export default function AdminDashboard() {
         purchaseAmount: customer.purchaseAmount
       });
       
-      // Set the selected item and game parameters
-      if (item) {
-        setSelectedItem(item);
-      }
-      setCorrectNumber(winningNum);
-      setThresholdNumber(threshold);
+       // Set the selected item and game parameters
+       if (item) {
+         setSelectedItem(item);
+         setCorrectNumber(winningNum);
+       } else {
+         console.error('Item not found for customer:', customer.itemId);
+         alert('Error: Selected item not found. Please try again.');
+         return;
+       }
+       setThresholdNumber(threshold);
       
       // Set game to playing state
       setGameStatus('playing');
@@ -2456,30 +2426,35 @@ export default function AdminDashboard() {
                       min={0}
                     />
                     <button
-                      onClick={async () => {
-                        if (!currentShop || qpSaving) return;
-                        setQpSaving(true);
-                        try {
-                          const newValue = Number(qpInput) || 0;
-                          const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
-                          
-                          // Save using sync service (handles offline)
-                          await saveShopWithSync(updatedShop, false);
-                          
-                          // Update state
-                          setCurrentShop(updatedShop);
-                          setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
-                          localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
-                          loadAttempts();
-                          
-                          alert('Qualifying purchase updated successfully!');
-                        } catch (err) {
-                          console.error('Error saving qualifying purchase:', err);
-                          alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
-                        } finally {
-                          setQpSaving(false);
-                        }
-                      }}
+                        onClick={async () => {
+                          if (!currentShop || qpSaving) return;
+                          setQpSaving(true);
+                          try {
+                            const newValue = Number(qpInput) || 0;
+                            const updatedShop = { ...currentShop, qualifyingPurchase: newValue };
+                            
+                            // Save to local immediately (fast)
+                            await localShops.save(updatedShop);
+                            
+                            // Fire RTDB sync in background (non-blocking)
+                            saveShopWithSync(updatedShop, false).catch(err => {
+                              console.error('[Background sync] qualifying purchase failed:', err);
+                            });
+                            
+                            // Update state immediately
+                            setCurrentShop(updatedShop);
+                            setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
+                            localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+                            loadAttempts();
+                            
+                            alert('Qualifying purchase updated successfully!');
+                          } catch (err) {
+                            console.error('Error saving qualifying purchase:', err);
+                            alert('Failed to save: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                          } finally {
+                            setQpSaving(false);
+                          }
+                        }}
                       disabled={qpSaving}
                       className="btn-gold px-4 py-2"
                     >
@@ -2732,17 +2707,31 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="card">
-                  <h3 className="font-semibold mb-4">Most Selected Items</h3>
-                  <div className="space-y-2">
-                    {analytics.mostSelectedItems.slice(0, 5).map((item, i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <span className="text-gray-300">Item {item.itemId}</span>
-                        <span className="text-gold-400">{item.count} times</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                 <div className="card">
+                   <h3 className="font-semibold mb-4">Top 10 Nominated Items</h3>
+                   {nominationsLoading ? (
+                     <div className="text-center py-8">
+                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500 mx-auto"></div>
+                       <p className="text-gray-400 mt-2">Loading nominations...</p>
+                     </div>
+                   ) : topNominations.length === 0 ? (
+                     <div className="text-center py-8">
+                       <p className="text-gray-500">No customer nominations yet.</p>
+                     </div>
+                   ) : (
+                     <div className="space-y-2">
+                       {topNominations.map((item, index) => (
+                         <div key={item.id} className="flex items-center justify-between">
+                           <div className="flex items-center gap-2">
+                             <span className="text-gold-500 font-bold w-6">#{index + 1}</span>
+                             <span className="text-gray-300">{item.name}</span>
+                           </div>
+                           <span className="text-gold-400">{item.nominationCount} nominations</span>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+                 </div>
               </div>
             ) : (
               <div className="text-center py-12">

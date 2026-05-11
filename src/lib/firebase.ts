@@ -63,7 +63,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
-export let rtdb: Database;
+let rtdb: Database;
 
 if (typeof window !== 'undefined') {
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);

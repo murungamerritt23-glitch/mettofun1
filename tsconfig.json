@@ -37,9 +37,6 @@
     ".next/dev/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "mettofun1-main",
-    "mettofun-github-ready",
-    "android"
+    "node_modules"
   ]
 }

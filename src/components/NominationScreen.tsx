@@ -33,24 +33,19 @@ export default function NominationScreen() {
   // Test mode should only affect super_admin - shop_admin always uses real mode
   const isSuperAdminTestMode = isTestMode && admin?.level === 'super_admin';
 
-   // Load nomination items on mount
-   useEffect(() => {
-     const loadItems = async () => {
-       if (!currentShop) return;
-       
-       try {
-         // Load or create default items
-         const nominationItems = await localNominationItems.ensureDefaultItems(currentShop.id);
-         setItems(nominationItems);
-       } catch (error) {
-         console.error('Failed to load nomination items:', error);
-       } finally {
-         setIsLoading(false);
-       }
-     };
-     
-     loadItems();
-   }, [currentShop]);
+  // Load nomination items on mount
+  useEffect(() => {
+    const loadItems = async () => {
+      if (!currentShop) return;
+      
+      // Load or create default items
+      const nominationItems = await localNominationItems.ensureDefaultItems(currentShop.id);
+      setItems(nominationItems);
+      setIsLoading(false);
+    };
+    
+    loadItems();
+  }, [currentShop]);
 
   const handleNominate = async (item: NominationItem) => {
     if (!currentGameAttemptId || !customerSession || isSaving) return;
@@ -218,14 +213,14 @@ export default function NominationScreen() {
     );
   }
 
-   // Only show active items, sorted by nomination count (filtered by search if query exists)
-   const activeItems = items
-     .filter(item => item.isActive)
-     .filter(item => 
-       searchQuery.trim() === '' || 
-       item.name.toLowerCase().includes(searchQuery.toLowerCase())
-     )
-     .sort((a, b) => b.nominationCount - a.nominationCount);
+  // Only show active items, sorted by nomination count (filtered by search if query exists)
+  const activeItems = items
+    .filter(item => item.isActive)
+    .filter(item => 
+      searchQuery.trim() === '' || 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => b.nominationCount - a.nominationCount);
 
   return (
     <div className="min-h-screen p-4">
@@ -287,19 +282,19 @@ export default function NominationScreen() {
               }
             </div>
           ) : activeItems.map((item, index) => (
-              <motion.button
-                key={item.id}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.02 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleNominate(item)}
-                disabled={isSaving}
-                className={`game-box p-2 sm:p-3 flex flex-col items-center justify-center relative ${
-                  isSaving ? 'opacity-50 cursor-not-allowed' : ''
-                } ${tappedItemId === item.id ? 'nomination-success' : ''}`}
-              >
+               <motion.button
+                 key={item.id}
+                 initial={{ opacity: 0, scale: 0.8 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 transition={{ delay: index * 0.02 }}
+                 whileHover={{ scale: 1.05 }}
+                 whileTap={{ scale: 0.95 }}
+                 onClick={() => handleNominate(item)}
+                 disabled={isSaving}
+                 className={`game-box flex flex-col items-center justify-center relative gap-1 px-1 ${
+                   isSaving ? 'opacity-50 cursor-not-allowed' : ''
+                 } ${tappedItemId === item.id ? 'nomination-success' : ''}`}
+               >
                 {/* Rank badge for top items */}
                 {index < 3 && (
                   <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -315,10 +310,10 @@ export default function NominationScreen() {
                    <img 
                      src={item.imageUrl} 
                      alt={item.name}
-                     className="w-10 h-10 sm:w-12 sm:h-12 mb-1 object-cover rounded"
+                     className="w-12 h-12 object-cover rounded"
                    />
                  ) : (
-                   <Gift className="w-6 h-6 sm:w-8 sm:h-8 mb-1 text-gold-400" />
+                   <Gift className="w-10 h-10 text-gold-400" />
                  )}
                 
                 <span className="text-xs font-medium truncate w-full text-center">

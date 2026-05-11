@@ -619,9 +619,9 @@ export const localNominationItems = {
       tx.done
     ]);
 
-     return defaultItems;
-   }
- };
+    return defaultItems;
+  }
+};
 
 // Customer Nomination operations - track who nominated what
 export const localCustomerNominations = {
