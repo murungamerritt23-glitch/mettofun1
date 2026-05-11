@@ -799,82 +799,8 @@ export default function GameMode() {
               : 'Pick one of the prizes below'}
           </p>
           
-          {/* Selected item preview - Enhanced visual */}
-          <div className={`mb-4 p-4 rounded-xl border-2 transition-all ${
-            selectedItem 
-              ? 'bg-gold-900/40 border-gold-500 animate-pulse' 
-              : 'bg-gray-800/50 border-gray-700'
-          }`}>
-            {selectedItem ? (
-              <div className="text-center">
-                <p className="text-gray-300 text-sm mb-2">✓ {language === 'sw' ? 'Umechagua:' : 'You selected:'}</p>
-                <p className="gold-gradient-text text-2xl font-bold">{selectedItem.name}</p>
-                <p className="text-gold-400 text-xl font-bold">KSh {(selectedItem.value || 0).toLocaleString()}</p>
-                <p className="text-gray-400 text-xs mt-2">Tap &quot;Next&quot; to continue</p>
-              </div>
-            ) : (
-              <div className="text-center">
-                <p className="text-gray-400 text-sm">{language === 'sw' ? 'Bonyeza kitufe kuchagua' : 'Tap an item to select'}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Item of the Day Banner - Marketing Feature */}
-          {itemOfTheDay && itemOfTheDay.isActive && (
-            <div className="mb-4 p-4 bg-gradient-to-r from-amber-900/40 via-amber-800/30 to-amber-900/40 border-2 border-amber-500/50 rounded-xl">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-amber-900/50 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {itemOfTheDay.imageUrl ? (
-                    <img 
-                      src={itemOfTheDay.imageUrl} 
-                      alt={itemOfTheDay.name} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Gift className="text-amber-400 w-8 h-8" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="text-amber-400 text-xs font-semibold uppercase tracking-wider mb-1">
-                    ✨ {language === 'sw' ? 'Ombi la Leo' : 'Item of the Day'}
-                  </p>
-                  <p className="text-white text-lg font-bold">{itemOfTheDay.name}</p>
-                  <p className="text-amber-400 text-xl font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    // Customer identification - use phone or a device ID fallback
-                    const customerId = phoneNumber || `device-${Date.now()}`;
-                    const today = new Date().toISOString().split('T')[0];
-                    const likedKey = `metofun-liked-${today}`;
-                    const likedCustomers = JSON.parse(localStorage.getItem(likedKey) || '[]');
-                    const alreadyLiked = likedCustomers.includes(customerId);
-                    
-                    if (!alreadyLiked) {
-                      incrementItemOfDayLikes();
-                    }
-                    setHasLikedItemOfDay(true);
-                  }}
-                  disabled={hasLikedItemOfDay}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
-                    hasLikedItemOfDay 
-                      ? 'bg-amber-600/50 cursor-default' 
-                      : 'bg-amber-600/30 hover:bg-amber-600/50 active:scale-95'
-                  }`}
-                >
-                  <Heart 
-                    className={`w-6 h-6 ${hasLikedItemOfDay ? 'fill-amber-400 text-amber-400' : 'text-amber-400'}`} 
-                  />
-                  <span className="text-xs text-amber-300 font-semibold">
-                    {itemOfTheDay.likes || 0}
-                  </span>
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
-            {activeItems.map((item, index) => (
+            {activeItems.map((item) => (
               <motion.button
                 key={item.id}
                 whileHover={{ scale: 1.05 }}
@@ -886,7 +812,6 @@ export default function GameMode() {
                     : ''
                 } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
               >
-                {/* Image fills the top portion of the card */}
                 <div className="w-full flex-1 min-h-0 relative">
                   {item.imageUrl ? (
                     <img 
@@ -896,48 +821,21 @@ export default function GameMode() {
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <Gift className={`w-8 h-8 ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`} />
+                      <Gift className="w-8 h-8 text-gold-400" />
                     </div>
                   )}
                 </div>
-                {/* Name and price pinned to the bottom */}
                 <div className="w-full px-1 py-1 bg-black/60 text-center shrink-0">
                   <p className="text-xs font-semibold truncate leading-tight text-white">
                     {item.name}
                   </p>
-                  <p className={`text-xs leading-tight font-bold ${tappedItemId === item.id ? 'text-white' : 'text-gold-400'}`}>
+                  <p className="text-xs leading-tight font-bold text-gold-400">
                     KSh {(item.value || 0).toLocaleString()}
                   </p>
                 </div>
               </motion.button>
             ))}
           </div>
-          
-          {/* Next button - generates winning number when proceeding from item picker */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              if (!selectedItem) return;
-              // Generate winning number if not already generated
-              if (!correctNumber) {
-                const threshold = thresholdNumber || 1;
-                const winningNum = generateSecureRandomNumber(18 - threshold);
-                setCorrectNumber(winningNum);
-              }
-              setShowItemPicker(false);
-              setShowNumberPicker(true);
-            }}
-            disabled={!selectedItem}
-            className={`btn-gold w-full mt-4 py-4 text-lg font-bold ${
-              !selectedItem ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            {selectedItem 
-              ? (language === 'sw' ? 'Endelea kuchagua nambari →' : 'Next: Pick Your Number →')
-              : (language === 'sw' ? 'Chagua kitufe kwanza' : 'Select an item first')
-            }
-          </motion.button>
         </div>
       </div>
     );
