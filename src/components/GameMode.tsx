@@ -809,18 +809,18 @@ export default function GameMode() {
           {/* Item of the Day Banner */}
           {itemOfTheDay && (
             <div className="card mb-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50">
-<div className="flex items-center gap-2 p-2">
-                 {itemOfTheDay.imageUrl ? (
-                   <img
-                     src={itemOfTheDay.imageUrl}
-                     alt={itemOfTheDay.name}
-                     className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                   />
-                 ) : (
-                   <div className="w-16 h-16 bg-amber-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                     <Gift className="w-8 h-8 text-amber-400" />
-                   </div>
-                 )}
+              <div className="flex items-center gap-2 px-3 py-2">
+                {itemOfTheDay.imageUrl ? (
+                  <img
+                    src={itemOfTheDay.imageUrl}
+                    alt={itemOfTheDay.name}
+                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-amber-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Gift className="w-8 h-8 text-amber-400" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-semibold text-sm truncate">{itemOfTheDay.name}</p>
                   <p className="text-amber-400 text-xs font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
@@ -839,14 +839,14 @@ export default function GameMode() {
                     }
                   }}
                   disabled={hasLikedItemOfDay}
-                  className={`p-2 rounded-full transition-colors ${
+                  className={`p-1 rounded-full transition-colors ${
                     hasLikedItemOfDay
                       ? 'bg-pink-900/30 text-pink-400 cursor-default'
                       : 'bg-amber-900/50 text-amber-400 hover:bg-amber-800/50 hover:text-amber-300'
                   }`}
                   title={hasLikedItemOfDay ? 'Already liked' : 'Like item of the day'}
                 >
-                  <Heart className="w-5 h-5" fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
+                  <Heart className="w-4 h-4" fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
                 </button>
               </div>
             </div>
