@@ -811,15 +811,15 @@ export default function GameMode() {
             <div className="card mb-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50">
               <div className="flex items-center gap-2 px-3 py-2">
                 {itemOfTheDay.imageUrl ? (
-                  <img
-                    src={itemOfTheDay.imageUrl}
-                    alt={itemOfTheDay.name}
-                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-16 h-16 bg-amber-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Gift className="w-8 h-8 text-amber-400" />
-                  </div>
+<img
+                     src={itemOfTheDay.imageUrl}
+                     alt={itemOfTheDay.name}
+                     className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                   />
+                 ) : (
+                   <div className="w-20 h-20 bg-amber-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                     <Gift className="w-10 h-10 text-amber-400" />
+                   </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-semibold text-sm truncate">{itemOfTheDay.name}</p>
