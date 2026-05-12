@@ -1,20 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Gift, ArrowLeft, Volume2, VolumeX, RefreshCw, 
-  Check, X, Star, Zap, Trophy, Sparkles, Languages, MapPin, Heart, Settings, LogOut
+import {
+  Gift, ArrowLeft, Volume2, VolumeX, RefreshCw,
+  Star, Zap, Trophy, Sparkles, Languages, Heart, Settings, LogOut
 } from 'lucide-react';
 import { useGameStore, useShopStore, useItemStore, useUIStore, useAuthStore } from '@/store';
 import { localItems, localAttempts, localSettings } from '@/lib/local-db';
 import { saveAttemptWithSync } from '@/lib/sync-service';
 import { 
-  calculateBoxConfiguration, 
+  calculateBoxConfiguration,
   generateSecureRandomNumber,
   createGameAttempt,
   getCurrentDateString,
-  isValidPhoneNumber,
   formatPhoneNumber,
   validateGameAttempt
 } from '@/lib/game-utils';
@@ -36,8 +35,6 @@ export default function GameMode() {
   const [winningItem, setWinningItem] = useState<Item | null>(null);
   const [todayAttempts, setTodayAttempts] = useState(0);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [selectedItemIndex, setSelectedItemIndex] = useState(0); // For DPAD navigation
-  const [selectedNumberIndex, setSelectedNumberIndex] = useState(0); // For DPAD number navigation
   const [tappedItemId, setTappedItemId] = useState<string | null>(null); // Visual feedback for tapped item
   const [tappedBoxNum, setTappedBoxNum] = useState<number | null>(null); // Visual feedback for tapped box
   const [tappedNumber, setTappedNumber] = useState<number | null>(null); // Visual feedback for tapped number
@@ -100,8 +97,14 @@ export default function GameMode() {
         const { rtdbSettings } = await import('@/lib/firebase');
         const unsubscribe = rtdbSettings.onSettingChange('itemOfTheDay', async (rtdbItem: any) => {
           if (rtdbItem) {
-            // Always update local and store - the server is authoritative for likes
-            await localSettings.set('itemOfTheDay', rtdbItem);
+            // Preserve local likes if we have more (offline likes happened)
+            const localItem = await localSettings.get('itemOfTheDay');
+            if (localItem && rtdbItem.likes < localItem.likes) {
+              rtdbItem.likes = localItem.likes;
+            } else {
+              // Server is authoritative - update local
+              localSettings.set('itemOfTheDay', rtdbItem);
+            }
             useGameStore.getState().setItemOfTheDay(rtdbItem);
           }
         });
@@ -808,29 +811,21 @@ export default function GameMode() {
         <div className="max-w-md mx-auto w-full">
           {/* Item of the Day Banner */}
           {itemOfTheDay && (
-            <div className="card mb-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50">
-              <div className="flex items-center gap-2 px-3 py-2">
+            <div className="card mb-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50 overflow-hidden">
+              {/* Image takes top ~75% of card */}
+              <div className="w-full h-32 relative">
                 {itemOfTheDay.imageUrl ? (
-<img
-                     src={itemOfTheDay.imageUrl}
-                     alt={itemOfTheDay.name}
-                     className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
-                   />
-                 ) : (
-                   <div className="w-20 h-20 bg-amber-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                     <Gift className="w-10 h-10 text-amber-400" />
-                   </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold text-sm truncate">{itemOfTheDay.name}</p>
-                  <p className="text-amber-400 text-xs font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <Heart className={`w-3 h-3 ${hasLikedItemOfDay ? 'text-pink-400' : 'text-gray-500'}`} />
-                    <span className="text-[10px] text-gray-400">
-                      {itemOfTheDay.likes || 0} likes
-                    </span>
+                  <img
+                    src={itemOfTheDay.imageUrl}
+                    alt={itemOfTheDay.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-amber-900/30 flex items-center justify-center">
+                    <Gift className="w-16 h-16 text-amber-400" />
                   </div>
-                </div>
+                )}
+                {/* Like button overlaid on top-right of image */}
                 <button
                   onClick={() => {
                     if (!hasLikedItemOfDay) {
@@ -839,15 +834,28 @@ export default function GameMode() {
                     }
                   }}
                   disabled={hasLikedItemOfDay}
-                  className={`p-1 rounded-full transition-colors ${
+                  className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors flex-shrink-0 ${
                     hasLikedItemOfDay
-                      ? 'bg-pink-900/30 text-pink-400 cursor-default'
-                      : 'bg-amber-900/50 text-amber-400 hover:bg-amber-800/50 hover:text-amber-300'
+                      ? 'bg-pink-900/60 text-pink-400 cursor-default'
+                      : 'bg-black/40 text-amber-400 hover:bg-black/60 hover:text-amber-300'
                   }`}
                   title={hasLikedItemOfDay ? 'Already liked' : 'Like item of the day'}
                 >
-                  <Heart className="w-4 h-4" fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
+                  <Heart className="w-5 h-5" fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
                 </button>
+              </div>
+              {/* Details at bottom ~25% */}
+              <div className="px-3 py-2">
+                <p className="text-white font-semibold text-sm truncate">{itemOfTheDay.name}</p>
+                <div className="flex items-center justify-between mt-0.5">
+                  <p className="text-amber-400 text-xs font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
+                  <div className="flex items-center gap-1">
+                    <Heart className={`w-3 h-3 ${hasLikedItemOfDay ? 'text-pink-400 fill-pink-400' : 'text-gray-500'}`} />
+                    <span className="text-[10px] text-gray-400">
+                      {itemOfTheDay.likes || 0} likes
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
