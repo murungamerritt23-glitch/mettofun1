@@ -367,7 +367,7 @@ interface SyncState {
   queue: SyncQueueItem[];
   isSyncing: boolean;
   lastSyncTime: Date | null;
-  addToQueue: (item: Omit<SyncQueueItem, 'id' | 'retryCount'>) => void;
+  addToQueue: (item: Omit<SyncQueueItem, 'retryCount'>) => void;
   removeFromQueue: (id: string) => void;
   updateQueueItem: (id: string, updates: Partial<SyncQueueItem>) => void;
   clearQueue: () => void;
@@ -383,7 +383,7 @@ export const useSyncStore = create<SyncState>()(
       isSyncing: false,
       lastSyncTime: null,
       addToQueue: (item) => set((state) => ({
-        queue: [...state.queue, { ...item, id: crypto.randomUUID(), retryCount: 0 }]
+        queue: [...state.queue, { ...item, retryCount: 0 }]
       })),
       removeFromQueue: (id) => set((state) => ({
         queue: state.queue.filter(item => item.id !== id)

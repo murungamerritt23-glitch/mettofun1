@@ -428,6 +428,8 @@ const syncItem = async (type: SyncItemType, operation: SyncOperation, data: any)
     case 'setting':
       await syncSetting(operation, data);
       break;
+    default:
+      throw new Error(`Unknown sync type: ${type}`);
   }
 };
 
