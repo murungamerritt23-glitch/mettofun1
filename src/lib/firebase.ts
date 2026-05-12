@@ -36,7 +36,6 @@ import {
   update,
   remove,
   onValue,
-  off,
   query as rtdbQuery,
   orderByChild,
   equalTo,
@@ -1388,5 +1387,16 @@ export const rtdbSettings = {
     } catch (error: any) {
       return { success: false, error: error.message };
     }
+  },
+
+  // Listen for real-time changes to a setting (e.g. itemOfTheDay likes)
+  onSettingChange(key: string, callback: (value: any) => void): () => void {
+    const settingRef = ref(rtdb, `settings/${key}`);
+    const handler = (snapshot: any) => {
+      if (snapshot.exists()) {
+        callback(snapshot.val());
+      }
+    };
+    return onValue(settingRef, handler);
   }
 };

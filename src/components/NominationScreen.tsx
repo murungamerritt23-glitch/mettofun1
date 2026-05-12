@@ -281,9 +281,9 @@ export default function NominationScreen() {
                 : (language === 'sw' ? 'Hakuna vyakula vya kuonyesha' : 'No items available')
               }
             </div>
-          ) : activeItems.map((item, index) => (
-               <motion.button
-                 key={item.id}
+) : activeItems.map((item, index) => (
+                  <motion.button
+                   key={item.id}
                  initial={{ opacity: 0, scale: 0.8 }}
                  animate={{ opacity: 1, scale: 1 }}
                  transition={{ delay: index * 0.02 }}
@@ -291,47 +291,55 @@ export default function NominationScreen() {
                  whileTap={{ scale: 0.95 }}
                  onClick={() => handleNominate(item)}
                  disabled={isSaving}
-                 className={`game-box flex flex-col items-center justify-center relative gap-1 px-1 ${
+                 className={`game-box overflow-hidden p-0 flex flex-col justify-start relative ${
                    isSaving ? 'opacity-50 cursor-not-allowed' : ''
                  } ${tappedItemId === item.id ? 'nomination-success' : ''}`}
                >
-                {/* Rank badge for top items */}
-                {index < 3 && (
-                  <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                    index === 0 ? 'bg-yellow-500 text-black' :
-                    index === 1 ? 'bg-gray-400 text-black' :
-                    'bg-amber-700 text-white'
-                  }`}>
-                    {index + 1}
-                  </div>
-                )}
-                
-                 {item.imageUrl ? (
-                   <img 
-                     src={item.imageUrl} 
-                     alt={item.name}
-                     className="w-12 h-12 object-cover rounded"
-                   />
-                 ) : (
-                   <Gift className="w-10 h-10 text-gold-400" />
+                 {/* Rank badge for top items */}
+                 {index < 3 && (
+                   <div className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                     index === 0 ? 'bg-yellow-500 text-black' :
+                     index === 1 ? 'bg-gray-400 text-black' :
+                     'bg-amber-700 text-white'
+                   }`}>
+                     {index + 1}
+                   </div>
                  )}
-                
-                <span className="text-xs font-medium truncate w-full text-center">
-                  {item.name}
-                </span>
-                
-                <span className="text-[10px] text-gold-400">
-                  KSh {item.value.toLocaleString()}
-                </span>
-                
-                {/* Nomination count */}
-                <div className="flex items-center gap-1 mt-1">
-                  <Heart className="w-3 h-3 text-pink-500" />
-                  <span className="text-[10px] text-pink-400">
-                    {item.nominationCount}
-                  </span>
-                </div>
-              </motion.button>
+
+                 {/* Full-width image */}
+                 <div className="w-full flex-1 min-h-0 relative">
+                   {item.imageUrl ? (
+                     <img
+                       src={item.imageUrl}
+                       alt={item.name}
+                       className="absolute inset-0 w-full h-full object-cover"
+                     />
+                   ) : (
+                     <div className="absolute inset-0 flex items-center justify-center">
+                       <Gift className="w-8 h-8 text-gold-400" />
+                     </div>
+                   )}
+                 </div>
+
+                 {/* Details at bottom */}
+                 <div className="w-full px-1 py-1 bg-black/60 text-center shrink-0">
+                   <p className="text-xs font-semibold truncate leading-tight text-white">
+                     {item.name}
+                   </p>
+                   <div className="flex items-center justify-between mt-0.5">
+                     <span className="text-[10px] text-gold-400">
+                       KSh {item.value.toLocaleString()}
+                     </span>
+                     {/* Nomination count */}
+                     <div className="flex items-center gap-1">
+                       <Heart className="w-3 h-3 text-pink-500" />
+                       <span className="text-[10px] text-pink-400">
+                         {item.nominationCount}
+                       </span>
+                     </div>
+                   </div>
+                 </div>
+               </motion.button>
             ))}
         </div>
       </div>
