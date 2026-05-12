@@ -291,7 +291,7 @@ export default function NominationScreen() {
                  whileTap={{ scale: 0.95 }}
                  onClick={() => handleNominate(item)}
                  disabled={isSaving}
-                 className={`nomination-card overflow-hidden flex flex-col justify-start relative ${
+                 className={`game-box overflow-hidden flex flex-col justify-start relative ${
                    isSaving ? 'opacity-50 cursor-not-allowed' : ''
                  } ${tappedItemId === item.id ? 'nomination-success' : ''}`}
                >
