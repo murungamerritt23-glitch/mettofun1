@@ -283,8 +283,9 @@ export const queueForSync = async (task: Omit<SyncTask, 'id' | 'timestamp' | 're
     updatedAt: syncTask.timestamp.toISOString(),
   });
 
-  // Update store
+  // Update store (use same ID as IndexedDB for consistent removal)
   useSyncStore.getState().addToQueue({
+    id: syncTask.id,
     type: syncTask.type,
     operation: syncTask.operation,
     data: syncTask.data,
@@ -351,7 +352,7 @@ export const processSyncQueue = async (): Promise<void> => {
         continue;
       }
       
-      // Skip if retry count exceeded - don't keep trying failed items
+      // Skip if waiting for exponential backoff delay
       if (currentRetryCount > 0 && item.updatedAt) {
         const lastAttempt = new Date(item.updatedAt).getTime();
         const delay = getRetryDelay(currentRetryCount);

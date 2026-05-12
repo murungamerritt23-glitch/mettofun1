@@ -807,9 +807,9 @@ export default function AdminDashboard() {
       setItems(shopItems);
       setItemsList(shopItems);
       
-      // Then sync in background (non-blocking)
+      // Then sync in background (non-blocking) - one-time pull, no recursion
       import('@/lib/sync-service').then(({ pullFromRTDB }) => {
-        pullFromRTDB(currentShop.id).then(() => loadItems());
+        pullFromRTDB(currentShop.id).catch(() => {});
       }).catch(() => {});
     }
   };
