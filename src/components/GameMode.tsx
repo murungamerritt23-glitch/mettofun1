@@ -627,6 +627,52 @@ export default function GameMode() {
             </div>
           )}
 
+          {/* Item of the Day Banner */}
+          {itemOfTheDay && (
+            <div className="card mb-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50">
+              <div className="flex items-center gap-3 p-3">
+                {itemOfTheDay.imageUrl ? (
+                  <img
+                    src={itemOfTheDay.imageUrl}
+                    alt={itemOfTheDay.name}
+                    className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-amber-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Gift className="w-6 h-6 text-amber-400" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-sm truncate">{itemOfTheDay.name}</p>
+                  <p className="text-amber-400 text-xs font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <Heart className={`w-3 h-3 ${hasLikedItemOfDay ? 'text-pink-400' : 'text-gray-500'}`} />
+                    <span className="text-[10px] text-gray-400">
+                      {itemOfTheDay.likes || 0} likes
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!hasLikedItemOfDay) {
+                      incrementItemOfDayLikes();
+                      setHasLikedItemOfDay(true);
+                    }
+                  }}
+                  disabled={hasLikedItemOfDay}
+                  className={`p-2 rounded-full transition-colors ${
+                    hasLikedItemOfDay
+                      ? 'bg-pink-900/30 text-pink-400 cursor-default'
+                      : 'bg-amber-900/50 text-amber-400 hover:bg-amber-800/50 hover:text-amber-300'
+                  }`}
+                  title={hasLikedItemOfDay ? 'Already liked' : 'Like item of the day'}
+                >
+                  <Heart className="w-5 h-5" fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Deactivated Shop Warning */}
           {currentShop && currentShop.isActive === false && (
             <div className="bg-red-900/50 border border-red-500 rounded-lg p-4 mb-6 text-center">
@@ -895,6 +941,42 @@ export default function GameMode() {
                   </div>
                 )}
 
+                {/* Item of the Day Banner */}
+                {itemOfTheDay && (
+                  <div className="my-4 p-3 bg-amber-900/30 border border-amber-700/50 rounded-lg flex items-center gap-3">
+                    {itemOfTheDay.imageUrl ? (
+                      <img src={itemOfTheDay.imageUrl} alt={itemOfTheDay.name} className="w-10 h-10 object-cover rounded" />
+                    ) : (
+                      <Gift className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                    )}
+                    <div className="flex-1 text-left">
+                      <p className="text-white font-semibold text-xs truncate">{itemOfTheDay.name}</p>
+                      <p className="text-[10px] text-amber-400">KSh {itemOfTheDay.value.toLocaleString()}</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Heart className={`w-3 h-3 ${hasLikedItemOfDay ? 'text-pink-400' : 'text-gray-500'}`} fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
+                        <span className="text-[9px] text-gray-400">{itemOfTheDay.likes || 0} likes</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!hasLikedItemOfDay) {
+                          incrementItemOfDayLikes();
+                          setHasLikedItemOfDay(true);
+                        }
+                      }}
+                      disabled={hasLikedItemOfDay}
+                      className={`p-2 rounded-full transition-colors ${
+                        hasLikedItemOfDay
+                          ? 'bg-pink-900/30 text-pink-400 cursor-default'
+                          : 'bg-amber-900/50 text-amber-400 hover:bg-amber-800/50 hover:text-amber-300'
+                      }`}
+                      title={hasLikedItemOfDay ? 'Already liked' : 'Like item of the day'}
+                    >
+                      <Heart className="w-4 h-4" fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
+                    </button>
+                  </div>
+                )}
+
                 <button onClick={handleNominate} className="btn-gold w-full mb-3 flex items-center justify-center gap-2">
                   <Heart className="w-5 h-5" />
                   {t.nominate}
@@ -967,11 +1049,27 @@ export default function GameMode() {
         <h2 className="gold-gradient-text text-2xl font-bold text-center mb-2">
           {t.selectBox}
         </h2>
-        <p className="text-gray-400 text-center text-sm">
+        <p className="text-gray-400 text-center text-sm mb-2">
           {language === 'sw'
             ? `Umemchochewa na ${config.boxCount} sanduku - Cheza bahati yako!`
             : `You've been presented with ${config.boxCount} boxes - Try your luck!`}
         </p>
+
+        {/* Item of the Day indicator in header */}
+        {itemOfTheDay && (
+          <div className="flex items-center justify-center gap-2 mb-3">
+            {itemOfTheDay.imageUrl ? (
+              <img src={itemOfTheDay.imageUrl} alt={itemOfTheDay.name} className="w-8 h-8 object-cover rounded-full" />
+            ) : (
+              <Gift className="w-5 h-5 text-amber-400" />
+            )}
+            <span className="text-xs text-amber-400 font-medium truncate max-w-[120px]">{itemOfTheDay.name}</span>
+            <div className="flex items-center gap-0.5">
+              <Heart className="w-3 h-3 text-pink-400" fill="currentColor" />
+              <span className="text-[10px] text-gray-400">{itemOfTheDay.likes || 0}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Box Grid */}
