@@ -62,7 +62,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
-let rtdb: Database;
+export let rtdb: Database;
 
 if (typeof window !== 'undefined') {
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
@@ -1400,3 +1400,5 @@ export const rtdbSettings = {
     return onValue(settingRef, handler);
   }
 };
+
+// Export rtdb instance for direct usage
