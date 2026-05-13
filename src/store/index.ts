@@ -194,7 +194,7 @@ export const useItemStore = create<ItemState>()(
 
 // Game Store
 interface GameState {
-  gameStatus: 'idle' | 'playing' | 'won' | 'lost' | 'nominating';
+  gameStatus: 'idle' | 'playing' | 'won' | 'lost' | 'nominating' | 'terms';
   selectedBox: number | null;
   correctNumber: number | null;
   thresholdNumber: number | null; // Winning threshold based on purchase amount
@@ -212,7 +212,9 @@ interface GameState {
   // Item of the Day - global marketing banner
   itemOfTheDay: ItemOfTheDay | null;
   hasLikedItemOfDay: boolean; // Track if customer has liked in this session
-  setGameStatus: (status: 'idle' | 'playing' | 'won' | 'lost' | 'nominating') => void;
+  // Terms & Conditions - super admin editable, syncs across all devices
+  termsContent: string;
+  setGameStatus: (status: 'idle' | 'playing' | 'won' | 'lost' | 'nominating' | 'terms') => void;
   setSelectedBox: (box: number | null) => void;
   setCorrectNumber: (number: number | null) => void;
   setThresholdNumber: (threshold: number | null) => void;
@@ -227,6 +229,7 @@ interface GameState {
   setItemOfTheDay: (item: ItemOfTheDay | null) => void;
   incrementItemOfDayLikes: () => void;
   setHasLikedItemOfDay: (hasLiked: boolean) => void;
+  setTermsContent: (content: string) => void;
   resetGame: () => void;
   clearTestData: () => void;
 }
@@ -252,6 +255,8 @@ export const useGameStore = create<GameState>()(
       // Item of the Day
       itemOfTheDay: null,
       hasLikedItemOfDay: false,
+      // Terms & Conditions
+      termsContent: '',
       setGameStatus: (gameStatus) => set({ gameStatus }),
       setSelectedBox: (selectedBox) => set({ selectedBox }),
       setCorrectNumber: (correctNumber) => set({ correctNumber }),
@@ -298,10 +303,11 @@ export const useGameStore = create<GameState>()(
         hasNominatedThisAttempt: false,
         hasLikedItemOfDay: false
       }),
+setTermsContent: (termsContent) => set({ termsContent }),
       clearTestData: () => set({
-        isTestMode: false,
-        testPhonePrefix: 'TEST'
-      })
+         isTestMode: false,
+         testPhonePrefix: 'TEST'
+       })
     }),
     {
       name: 'metofun-game'

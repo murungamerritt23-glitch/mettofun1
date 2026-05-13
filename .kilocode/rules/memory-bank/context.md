@@ -159,3 +159,5 @@ export async function GET() {
 | Today | Fix IOTD like race condition - use functional state update with captured value |
 | Today | Add error handling to NominationScreen item load useEffect |
 | Today | Standardize nomination screen image sizing - match GameMode picker grid |
+| Today | Fix longpress item selection hanging - add guards against rapid presses in GameMode and NominationScreen |
+| Today | Add Terms & Conditions button to customer entry screen - super admin editable, syncs via RTDB |

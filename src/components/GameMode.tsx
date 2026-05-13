@@ -56,7 +56,8 @@ export default function GameMode() {
     setHasLikedItemOfDay,
     incrementItemOfDayLikes,
     resetGame,
-    clearTestData
+    clearTestData,
+    termsContent
   } = useGameStore();
   
   const { currentShop, setCurrentShop } = useShopStore();
@@ -134,6 +135,47 @@ export default function GameMode() {
       }
     };
     loadItemOfDay();
+  }, []);
+
+  // Load Terms & Conditions from RTDB (super admin editable, syncs across all devices)
+  useEffect(() => {
+    const loadTerms = async () => {
+      try {
+        const { rtdbSettings } = await import('@/lib/firebase');
+        const terms = await rtdbSettings.get('termsContent');
+        if (terms) {
+          useGameStore.getState().setTermsContent(terms);
+          await localSettings.set('termsContent', terms);
+        }
+      } catch (e) {
+        // Try local fallback
+        try {
+          const localTerms = await localSettings.get('termsContent');
+          if (localTerms) {
+            useGameStore.getState().setTermsContent(localTerms);
+          }
+        } catch (localErr) {}
+      }
+    };
+    loadTerms();
+  }, []);
+
+  // Listen for terms updates from RTDB
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+    const setupListener = async () => {
+      try {
+        const { rtdbSettings } = await import('@/lib/firebase');
+        unsubscribe = rtdbSettings.onSettingChange('termsContent', async (newTerms: string) => {
+          if (newTerms !== undefined) {
+            useGameStore.getState().setTermsContent(newTerms);
+            await localSettings.set('termsContent', newTerms);
+          }
+        });
+      } catch (e) {}
+    };
+    setupListener();
+    return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
   // Load shop items - always fresh from DB to get latest updates (images, etc)
@@ -546,11 +588,12 @@ const handleItemSelect = async (item: Item) => {
       language: 'Language',
       box: 'Box',
       nominate: 'Give Feedback',
-      skipNominate: 'Skip'
-    },
-    sw: {
-      title: 'EtoFun',
-      subtitle: 'Shinda Ajira Za Kushangaza!',
+skipNominate: 'Skip',
+       terms: 'Terms & Conditions'
+     },
+     sw: {
+       title: 'EtoFun',
+       subtitle: 'Shinda Ajira Za Kushangaza!',
       qualifyingPurchase: 'Manunuzi Yanayokubali',
       enterPhone: 'Weka Nambari ya Simu',
       enterAmount: 'Kiwango cha Manunuzi (KSh)',
@@ -564,12 +607,44 @@ const handleItemSelect = async (item: Item) => {
       exit: 'Toka',
       language: 'Lugha',
       box: 'Sanduku',
-      nominate: 'Toa Maoni',
-      skipNominate: 'Ruka'
-    }
+nominate: 'Toa Maoni',
+       skipNominate: 'Ruka',
+       terms: 'Viwango na Masharti'
+     }
   };
 
   const t = translations[language];
+
+  // Show terms screen
+  if (gameStatus === 'terms') {
+    return (
+      <div className="min-h-screen p-4 flex items-center justify-center overflow-auto">
+        <div className="max-w-md w-full">
+          <button
+            onClick={() => setGameStatus('idle')}
+            className="flex items-center gap-2 text-gray-400 hover:text-gold-400 mb-4"
+          >
+            <ArrowLeft size={20} />
+            {language === 'sw' ? 'Rudi' : 'Back'}
+          </button>
+          <div className="card">
+            <h2 className="gold-gradient-text text-xl font-bold mb-4">
+              {t.terms}
+            </h2>
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 max-h-96 overflow-y-auto">
+              {termsContent ? (
+                <p className="text-gray-300 text-sm whitespace-pre-wrap">{termsContent}</p>
+              ) : (
+                <p className="text-gray-400 text-sm">
+                  {language === 'sw' ? 'Hakuna masharti yaliyowekwa.' : 'No terms and conditions set.'}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Show nomination screen when user chooses to nominate
   if (gameStatus === 'nominating') {
@@ -733,20 +808,32 @@ const handleItemSelect = async (item: Item) => {
             </div>
           </div>
 
-          {/* Language Toggle */}
-          <div className="flex justify-center mt-6">
-            <button
-              onClick={() => setLanguage(language === 'en' ? 'sw' : 'en')}
-              className="flex items-center gap-2 text-gray-400 hover:text-gold-400"
-            >
-              <Languages size={20} />
-              {t.language}: {language === 'en' ? 'English' : 'Swahili'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+{/* Language Toggle */}
+           <div className="flex justify-center mt-6">
+             <button
+               onClick={() => setLanguage(language === 'en' ? 'sw' : 'en')}
+               className="flex items-center gap-2 text-gray-400 hover:text-gold-400"
+             >
+               <Languages size={20} />
+               {t.language}: {language === 'en' ? 'English' : 'Swahili'}
+             </button>
+           </div>
+
+           {/* Terms & Conditions Button */}
+           {termsContent && (
+             <div className="flex justify-center mt-4">
+               <button
+                 onClick={() => setGameStatus('terms')}
+                 className="text-sm text-gold-400 hover:text-gold-300 underline"
+               >
+                 {t.terms}
+               </button>
+             </div>
+           )}
+         </div>
+       </div>
+     );
+   }
 
   // Number picker modal - shows numbers 1 to (18-threshold) based on odds percentage
   if (showNumberPicker && !showResult) {
