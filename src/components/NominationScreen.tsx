@@ -50,6 +50,9 @@ export default function NominationScreen() {
   const handleNominate = async (item: NominationItem) => {
     if (!currentGameAttemptId || !customerSession || isSaving) return;
     
+    // Guard: Prevent multiple rapid nominations
+    if (tappedItemId === item.id) return;
+    
     // Visual feedback - show tapped animation
     setTappedItemId(item.id);
     

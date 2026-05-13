@@ -346,23 +346,26 @@ export default function GameMode() {
     setShowNumberPicker(true);
   };
 
- const handleItemSelect = (item: Item) => {
-  if (!item || !item.isActive) return;
-  
-  setTappedItemId(item.id);
-  setTimeout(() => setTappedItemId(null), 400);
-  
-  setSelectedItem(item);
-  
-  // Generate RANDOM winning number from available range (1 to 18-threshold)
-  // This makes the game fair and unpredictable
-  const threshold = thresholdNumber || 1;
-  const winningNum = generateSecureRandomNumber(18 - threshold);
-  setCorrectNumber(winningNum);
-  
-  setShowItemPicker(false);
-  setShowNumberPicker(true);
-}; 
+const handleItemSelect = async (item: Item) => {
+   if (!item || !item.isActive) return;
+   
+   // Guard: Prevent multiple rapid selections
+   if (selectedItem?.id === item.id || showItemPicker === false) return;
+   
+   setTappedItemId(item.id);
+   setTimeout(() => setTappedItemId(null), 400);
+   
+   setSelectedItem(item);
+   // Disable further selection by hiding picker immediately
+   setShowItemPicker(false); 
+   
+   // Generate RANDOM winning number from available range (1 to 18-threshold)
+   // This makes the game fair and unpredictable
+   const threshold = thresholdNumber || 1;
+   const winningNum = generateSecureRandomNumber(18 - threshold);
+   setCorrectNumber(winningNum);
+   setShowNumberPicker(true);
+ };
 
   const handleNumberSelect = (number: number) => {
     if (selectedNumber !== null || !correctNumber) return;
@@ -869,19 +872,20 @@ export default function GameMode() {
               : 'Pick one of the prizes below'}
           </p>
           
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
-            {activeItems.map((item) => (
-              <motion.button
-                key={item.id}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleItemSelect(item)}
-                className={`game-box overflow-hidden p-0 flex flex-col justify-start ${
-                  selectedItem?.id === item.id 
-                    ? 'ring-2 ring-gold-500 bg-gold-900/50 selected' 
-                    : ''
-                } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
-              >
+<div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
+             {activeItems.map((item) => (
+               <motion.button
+                 key={item.id}
+                 whileHover={{ scale: 1.05 }}
+                 whileTap={{ scale: 0.95 }}
+                 onClick={() => handleItemSelect(item)}
+                 disabled={selectedItem?.id === item.id || tappedItemId === item.id}
+                 className={`game-box overflow-hidden p-0 flex flex-col justify-start ${
+                   selectedItem?.id === item.id 
+                     ? 'ring-2 ring-gold-500 bg-gold-900/50 selected' 
+                     : ''
+                 } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
+               >
                 <div className="w-full flex-1 min-h-0 relative">
                   {item.imageUrl ? (
                     <img 
