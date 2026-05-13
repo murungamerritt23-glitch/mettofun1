@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Store, Package, Users, BarChart3, 
   Settings, LogOut, Menu, X, Plus, Edit, Trash2,
   Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap, ShoppingCart,
-  Upload, RefreshCw, FlaskConical, Gift, Star, Heart, Lock
+  Upload, RefreshCw, FlaskConical, Gift, Star, Heart, Lock, LogIn
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
@@ -511,6 +511,21 @@ export default function AdminDashboard() {
         }
       } catch (e: any) {
         alert('Failed to delete admin: ' + (e.message || 'Network error'));
+      }
+    }
+  };
+
+  // Force logout an admin from all devices (super admin only)
+  const handleForceLogout = async (adminId: string) => {
+    if (confirm('Force logout this admin from all devices? They will need to log in again.')) {
+      try {
+        const { rtdb } = await import('@/lib/firebase');
+        const { ref, set } = await import('firebase/database');
+        // Set a force logout flag in RTDB
+        await set(ref(rtdb, `adminSessions/${adminId}/forceLogout`), Date.now());
+        alert('Admin has been logged out from all devices.');
+      } catch (e: any) {
+        alert('Failed to force logout: ' + (e.message || 'Network error'));
       }
     }
   };
