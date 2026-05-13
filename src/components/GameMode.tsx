@@ -137,15 +137,15 @@ export default function GameMode() {
     loadItemOfDay();
   }, []);
 
-  // Load Terms & Conditions from RTDB (super admin editable, syncs across all devices)
+  // Load Terms & Conditions from Firestore (super admin editable, syncs across all devices)
   useEffect(() => {
     const loadTerms = async () => {
       try {
-        const { rtdbSettings } = await import('@/lib/firebase');
-        const terms = await rtdbSettings.get('termsContent');
-        if (terms) {
-          useGameStore.getState().setTermsContent(terms);
-          await localSettings.set('termsContent', terms);
+        const { firebaseSettings } = await import('@/lib/firebase');
+        const settings = await firebaseSettings.getSettings();
+        if (settings.termsContent) {
+          useGameStore.getState().setTermsContent(settings.termsContent);
+          await localSettings.set('termsContent', settings.termsContent);
         }
       } catch (e) {
         // Try local fallback
@@ -160,12 +160,13 @@ export default function GameMode() {
     loadTerms();
   }, []);
 
-  // Listen for terms updates from RTDB
+  // Listen for terms updates from RTDB (for live updates)
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
     const setupListener = async () => {
       try {
         const { rtdbSettings } = await import('@/lib/firebase');
+        // Also set up RTDB listener for live updates when super admin saves
         unsubscribe = rtdbSettings.onSettingChange('termsContent', async (newTerms: string) => {
           if (newTerms !== undefined) {
             useGameStore.getState().setTermsContent(newTerms);

@@ -594,6 +594,13 @@ export default function AdminDashboard() {
   const handleSaveTerms = async () => {
     const result = await firebaseSettings.updateTerms(termsContent);
     if (result.success) {
+      // Also sync to RTDB for live updates across devices
+      try {
+        const { rtdbSettings } = await import('@/lib/firebase');
+        await rtdbSettings.set('termsContent', termsContent);
+      } catch (e) {
+        // RTDB sync failed - Firestore is the source of truth
+      }
       setTermsSaved(true);
       setIsEditingTerms(false);
       setTimeout(() => setTermsSaved(false), 3000);
