@@ -498,22 +498,38 @@ export default function AdminDashboard() {
      localAdmins.getAll().then(setAdmins);
    };
 
-  const handleDeleteAdmin = async (adminId: string) => {
-    if (confirm('Are you sure you want to delete this admin?')) {
-      try {
-        const result = await rtdbAdmins.delete(adminId);
-        if (result.success) {
-          await localAdmins.delete(adminId);
-          setAdmins(prev => prev.filter(a => a.id !== adminId));
-          alert('Admin deleted successfully.');
-        } else {
-          alert('Failed to delete admin from server: ' + (result.error || 'Unknown error'));
-        }
-      } catch (e: any) {
-        alert('Failed to delete admin: ' + (e.message || 'Network error'));
-      }
-    }
-  };
+   const handleDeleteAdmin = async (adminId: string) => {
+     if (confirm('Are you sure you want to delete this admin?')) {
+       // Prevent deleting yourself
+       if (adminId === admin?.id) {
+         alert('You cannot delete your own account.');
+         return;
+       }
+
+       // Prevent deleting the last super_admin
+       const targetAdmin = admins.find(a => a.id === adminId);
+       if (targetAdmin?.level === 'super_admin') {
+         const superAdminCount = admins.filter(a => a.level === 'super_admin').length;
+         if (superAdminCount <= 1) {
+           alert('Cannot delete the last super admin. At least one super admin must remain.');
+           return;
+         }
+       }
+
+       try {
+         const result = await rtdbAdmins.delete(adminId);
+         if (result.success) {
+           await localAdmins.delete(adminId);
+           setAdmins(prev => prev.filter(a => a.id !== adminId));
+           alert('Admin deleted successfully.');
+         } else {
+           alert('Failed to delete admin from server: ' + (result.error || 'Unknown error'));
+         }
+       } catch (e: any) {
+         alert('Failed to delete admin: ' + (e.message || 'Network error'));
+       }
+     }
+   };
 
   // Force logout an admin from all devices (super admin only)
   const handleForceLogout = async (adminId: string) => {
