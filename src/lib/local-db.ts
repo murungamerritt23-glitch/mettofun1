@@ -556,8 +556,8 @@ export const localNominationItems = {
   async getByShop(shopId: string): Promise<NominationItem[]> {
     const database = await initDB();
     const items = await database.getAllFromIndex('nominationItems', 'by-shop', shopId);
-    // Sort by nomination count descending
-    return items.sort((a, b) => b.nominationCount - a.nominationCount);
+    // Sort by nomination count descending, safely handling missing or invalid counts
+    return items.sort((a, b) => (b.nominationCount || 0) - (a.nominationCount || 0));
   },
 
   async get(id: string): Promise<NominationItem | undefined> {
@@ -567,7 +567,14 @@ export const localNominationItems = {
 
   async save(item: NominationItem): Promise<void> {
     const database = await initDB();
-    await database.put('nominationItems', item);
+    // Ensure nominationCount is always a valid number (default to 0 if missing)
+    const normalizedItem = {
+      ...item,
+      nominationCount: typeof item.nominationCount === 'number' && !isNaN(item.nominationCount)
+        ? item.nominationCount
+        : 0
+    };
+    await database.put('nominationItems', normalizedItem);
   },
 
   async incrementNominationCount(id: string): Promise<void> {
@@ -599,7 +606,7 @@ export const localNominationItems = {
   async ensureDefaultItems(shopId: string): Promise<NominationItem[]> {
     const database = await initDB();
     const existing = await database.getAllFromIndex('nominationItems', 'by-shop', shopId);
-    if (existing.length > 0) return existing.sort((a, b) => b.nominationCount - a.nominationCount);
+    if (existing.length > 0) return existing.sort((a, b) => (b.nominationCount || 0) - (a.nominationCount || 0));
 
     // Create 100 default items as required
     const defaultItems: NominationItem[] = Array.from({ length: 100 }, (_, i) => ({

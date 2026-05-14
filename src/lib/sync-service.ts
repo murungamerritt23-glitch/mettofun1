@@ -687,8 +687,13 @@ export const saveNominationWithSync = async (nomination: CustomerNomination): Pr
 
 // Save nomination item with offline support
 export const saveNominationItemWithSync = async (item: NominationItem, isNew: boolean = true): Promise<void> => {
-  // Always save to local first
-  await localNominationItems.save(item);
+  // Ensure nominationCount is set to 0 for new items (reset count)
+  const normalizedItem = isNew
+    ? { ...item, nominationCount: 0 }
+    : item;
+
+  // Always save to local first for immediate UI update
+  await localNominationItems.save(normalizedItem);
 
   if (isOnline()) {
     try {
