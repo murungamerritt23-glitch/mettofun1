@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SyncProvider } from "@/components/SyncProvider";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import "@/lib/error-handlers"; // Global error handlers
 
 export const metadata: Metadata = {
   title: "EtoFun - Win Amazing Rewards!",
@@ -32,8 +34,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <SyncProvider />
-        {children}
+        <ErrorBoundary>
+          <SyncProvider />
+          {children}
+        </ErrorBoundary>
       </body>
     </html>
   );

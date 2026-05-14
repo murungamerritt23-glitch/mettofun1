@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Gift, ArrowLeft, Volume2, VolumeX, RefreshCw,
@@ -39,6 +39,8 @@ export default function GameMode() {
   const [tappedBoxNum, setTappedBoxNum] = useState<number | null>(null); // Visual feedback for tapped box
   const [tappedNumber, setTappedNumber] = useState<number | null>(null); // Visual feedback for tapped number
 
+  const isMountedRef = useRef(true);
+
   const { 
     gameStatus, setGameStatus, 
     selectedBox, setSelectedBox,
@@ -65,119 +67,126 @@ export default function GameMode() {
   const { setCurrentView } = useUIStore();
   const { admin, logout } = useAuthStore();
 
-  // Test mode should only apply for super_admin in customer mode
-  // For shop_admin and agent_admin, always use real mode (test mode doesn't affect them)
-  const isSuperAdminTestMode = isTestMode && admin?.level === 'super_admin';
+   // Test mode should only apply for super_admin in customer mode
+   // For shop_admin and agent_admin, always use real mode (test mode doesn't affect them)
+   const isSuperAdminTestMode = isTestMode && admin?.level === 'super_admin';
 
-  // Load Item of the Day on mount with live RTDB sync
-  useEffect(() => {
-    const loadItemOfDay = async () => {
-      // Try local first
-      const savedItem = await localSettings.get('itemOfTheDay');
-      if (savedItem) {
-        useGameStore.getState().setItemOfTheDay(savedItem);
-      }
+   // Track mounted state to prevent state updates after unmount
+   useEffect(() => {
+     return () => {
+       isMountedRef.current = false;
+     };
+   }, []);
 
-      // Non-blocking RTDB fetch for new devices
-      try {
-        const { rtdbSettings } = await import('@/lib/firebase');
-        const rtdbItem = await rtdbSettings.get('itemOfTheDay');
-        if (rtdbItem) {
-          // Preserve local likes if RTDB has fewer (in case offline likes happened)
-          if (savedItem && rtdbItem.likes < savedItem.likes) {
-            rtdbItem.likes = savedItem.likes;
-            await rtdbSettings.set('itemOfTheDay', rtdbItem);
-          }
-          localSettings.set('itemOfTheDay', rtdbItem);
-          useGameStore.getState().setItemOfTheDay(rtdbItem);
+   // Load Item of the Day on mount with live RTDB sync
+   useEffect(() => {
+     const loadItemOfDay = async () => {
+       // Try local first
+       const savedItem = await localSettings.get('itemOfTheDay');
+       if (savedItem && isMountedRef.current) {
+         useGameStore.getState().setItemOfTheDay(savedItem);
+       }
+
+       // Non-blocking RTDB fetch for new devices
+       try {
+         const { rtdbSettings } = await import('@/lib/firebase');
+         const rtdbItem = await rtdbSettings.get('itemOfTheDay');
+         if (rtdbItem && isMountedRef.current) {
+           // Preserve local likes if RTDB has fewer (in case offline likes happened)
+           if (savedItem && rtdbItem.likes < savedItem.likes) {
+             rtdbItem.likes = savedItem.likes;
+             await rtdbSettings.set('itemOfTheDay', rtdbItem);
+           }
+           localSettings.set('itemOfTheDay', rtdbItem);
+           useGameStore.getState().setItemOfTheDay(rtdbItem);
+         }
+       } catch (e) {}
+
+       // Listen for real-time IOTD changes from RTDB (live likes across devices)
+       try {
+         const { rtdbSettings } = await import('@/lib/firebase');
+         const unsubscribe = rtdbSettings.onSettingChange('itemOfTheDay', async (rtdbItem: any) => {
+           if (rtdbItem && isMountedRef.current) {
+             // Preserve local likes if we have more (offline likes happened)
+             const localItem = await localSettings.get('itemOfTheDay');
+             if (localItem && rtdbItem.likes < localItem.likes) {
+               rtdbItem.likes = localItem.likes;
+             } else {
+               // Server is authoritative - update local
+               localSettings.set('itemOfTheDay', rtdbItem);
+             }
+             useGameStore.getState().setItemOfTheDay(rtdbItem);
+           }
+         });
+         return () => {
+           unsubscribe();
+         };
+       } catch (e) {
+         // If RTDB listener fails, fall back to polling
+         const fallbackSync = async () => {
+           try {
+             const { rtdbSettings } = await import('@/lib/firebase');
+             const rtdbItem = await rtdbSettings.get('itemOfTheDay');
+             if (rtdbItem && isMountedRef.current) {
+               const localItem = await localSettings.get('itemOfTheDay');
+               if (localItem && rtdbItem.likes < localItem.likes) {
+                 rtdbItem.likes = localItem.likes;
+                 await rtdbSettings.set('itemOfTheDay', rtdbItem);
+               }
+               localSettings.set('itemOfTheDay', rtdbItem);
+               useGameStore.getState().setItemOfTheDay(rtdbItem);
+             }
+           } catch (e) {}
+         };
+         fallbackSync();
+         const syncInterval = setInterval(fallbackSync, 30000);
+         return () => clearInterval(syncInterval);
         }
-      } catch (e) {}
+      };
+      loadItemOfDay();
+    }, []);
 
-      // Listen for real-time IOTD changes from RTDB (live likes across devices)
-      try {
-        const { rtdbSettings } = await import('@/lib/firebase');
-        const unsubscribe = rtdbSettings.onSettingChange('itemOfTheDay', async (rtdbItem: any) => {
-          if (rtdbItem) {
-            // Preserve local likes if we have more (offline likes happened)
-            const localItem = await localSettings.get('itemOfTheDay');
-            if (localItem && rtdbItem.likes < localItem.likes) {
-              rtdbItem.likes = localItem.likes;
-            } else {
-              // Server is authoritative - update local
-              localSettings.set('itemOfTheDay', rtdbItem);
-            }
-            useGameStore.getState().setItemOfTheDay(rtdbItem);
-          }
-        });
-        return () => {
-          unsubscribe();
-        };
-      } catch (e) {
-        // If RTDB listener fails, fall back to polling
-        const fallbackSync = async () => {
-          try {
-            const { rtdbSettings } = await import('@/lib/firebase');
-            const rtdbItem = await rtdbSettings.get('itemOfTheDay');
-            if (rtdbItem) {
-              const localItem = await localSettings.get('itemOfTheDay');
-              if (localItem && rtdbItem.likes < localItem.likes) {
-                rtdbItem.likes = localItem.likes;
-                await rtdbSettings.set('itemOfTheDay', rtdbItem);
-              }
-              localSettings.set('itemOfTheDay', rtdbItem);
-              useGameStore.getState().setItemOfTheDay(rtdbItem);
-            }
-          } catch (e) {}
-        };
-        fallbackSync();
-        const syncInterval = setInterval(fallbackSync, 30000);
-        return () => clearInterval(syncInterval);
-      }
-    };
-    loadItemOfDay();
-  }, []);
+   // Load Terms & Conditions from Firestore (super admin editable, syncs across all devices)
+   useEffect(() => {
+     const loadTerms = async () => {
+       try {
+         const { firebaseSettings } = await import('@/lib/firebase');
+         const settings = await firebaseSettings.getSettings();
+         if (settings.termsContent && isMountedRef.current) {
+           useGameStore.getState().setTermsContent(settings.termsContent);
+           await localSettings.set('termsContent', settings.termsContent);
+         }
+       } catch (e) {
+         // Try local fallback
+         try {
+           const localTerms = await localSettings.get('termsContent');
+           if (localTerms && isMountedRef.current) {
+             useGameStore.getState().setTermsContent(localTerms);
+           }
+         } catch (localErr) {}
+       }
+     };
+     loadTerms();
+   }, []);
 
-  // Load Terms & Conditions from Firestore (super admin editable, syncs across all devices)
-  useEffect(() => {
-    const loadTerms = async () => {
-      try {
-        const { firebaseSettings } = await import('@/lib/firebase');
-        const settings = await firebaseSettings.getSettings();
-        if (settings.termsContent) {
-          useGameStore.getState().setTermsContent(settings.termsContent);
-          await localSettings.set('termsContent', settings.termsContent);
-        }
-      } catch (e) {
-        // Try local fallback
-        try {
-          const localTerms = await localSettings.get('termsContent');
-          if (localTerms) {
-            useGameStore.getState().setTermsContent(localTerms);
-          }
-        } catch (localErr) {}
-      }
-    };
-    loadTerms();
-  }, []);
-
-  // Listen for terms updates from RTDB (for live updates)
-  useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
-    const setupListener = async () => {
-      try {
-        const { rtdbSettings } = await import('@/lib/firebase');
-        // Also set up RTDB listener for live updates when super admin saves
-        unsubscribe = rtdbSettings.onSettingChange('termsContent', async (newTerms: string) => {
-          if (newTerms !== undefined) {
-            useGameStore.getState().setTermsContent(newTerms);
-            await localSettings.set('termsContent', newTerms);
-          }
-        });
-      } catch (e) {}
-    };
-    setupListener();
-    return () => { if (unsubscribe) unsubscribe(); };
-  }, []);
+   // Listen for terms updates from RTDB (for live updates)
+   useEffect(() => {
+     let unsubscribe: (() => void) | null = null;
+     const setupListener = async () => {
+       try {
+         const { rtdbSettings } = await import('@/lib/firebase');
+         // Also set up RTDB listener for live updates when super admin saves
+         unsubscribe = rtdbSettings.onSettingChange('termsContent', async (newTerms: string) => {
+           if (newTerms !== undefined && isMountedRef.current) {
+             useGameStore.getState().setTermsContent(newTerms);
+             await localSettings.set('termsContent', newTerms);
+           }
+         });
+       } catch (e) {}
+     };
+     setupListener();
+     return () => { if (unsubscribe) unsubscribe(); };
+   }, []);
 
   // Load shop items - always fresh from DB to get latest updates (images, etc)
   // Also refresh when component becomes visible (via currentView changes to customer)

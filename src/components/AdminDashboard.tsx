@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Store, Package, Users, BarChart3, 
@@ -22,11 +22,16 @@ type TabType = 'dashboard' | 'shops' | 'items' | 'qualifyingPurchase' | 'attempt
 export default function AdminDashboard() {
   // Safety timeout - ensure loading stops after 15 seconds to prevent hang
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const isMountedRef = useRef(true);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 15000);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      isMountedRef.current = false;
+    };
   }, []);
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -151,13 +156,23 @@ export default function AdminDashboard() {
     }
   };
 
-  // Load customers data when shop changes
-  useEffect(() => {
-    if (activeTab === 'customers' && currentShop) {
-      localPendingCustomers.getByShop(currentShop.id).then(setPendingCustomers);
-      localItems.getByShop(currentShop.id).then(setItemsList);
-    }
-  }, [activeTab, currentShop]);
+   // Load customers data when shop changes
+   useEffect(() => {
+     if (activeTab === 'customers' && currentShop) {
+       let isMounted = true;
+       localPendingCustomers.getByShop(currentShop.id).then(data => {
+         if (isMounted) setPendingCustomers(data);
+       }).catch(err => {
+         if (isMounted) console.error('Failed to load pending customers:', err);
+       });
+       localItems.getByShop(currentShop.id).then(data => {
+         if (isMounted) setItemsList(data);
+       }).catch(err => {
+         if (isMounted) console.error('Failed to load items:', err);
+       });
+       return () => { isMounted = false; };
+     }
+   }, [activeTab, currentShop]);
 
   // Load items when switching to items tab
   useEffect(() => {
@@ -166,18 +181,22 @@ export default function AdminDashboard() {
     }
   }, [activeTab, currentShop]);
 
-  // Initialize qualifying purchase input when currentShop changes (shop switched)
-  useEffect(() => {
-    if (currentShop) {
-      setQpInput(String(currentShop.qualifyingPurchase || 0));
-      loadTopNominations();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentShop?.id]);
+   // Initialize qualifying purchase input when currentShop changes (shop switched)
+   useEffect(() => {
+     if (currentShop) {
+       setQpInput(String(currentShop.qualifyingPurchase || 0));
+       let isMounted = true;
+       loadTopNominations().finally(() => {
+         if (isMounted) {} // cleanup handled by flag
+       });
+       return () => { isMounted = false; };
+     }
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [currentShop?.id]);
 
    // Load top nominations for the current shop
    const loadTopNominations = async () => {
-     if (!currentShop) return;
+     if (!currentShop || !isMountedRef.current) return;
      setNominationsLoading(true);
      try {
        const nominations = await localNominationItems.getByShop(currentShop.id);
@@ -186,25 +205,33 @@ export default function AdminDashboard() {
          .filter(item => item.nominationCount > 0)
          .sort((a, b) => b.nominationCount - a.nominationCount)
          .slice(0, 10);
-       setTopNominations(top10);
+       if (isMountedRef.current) {
+         setTopNominations(top10);
+       }
      } catch (error) {
        console.error('Error loading nominations:', error);
      } finally {
-       setNominationsLoading(false);
+       if (isMountedRef.current) {
+         setNominationsLoading(false);
+       }
      }
    };
 
    // Load all nomination items for editing
    const loadNominationItems = async () => {
-     if (!currentShop) return;
+     if (!currentShop || !isMountedRef.current) return;
      setNominationItemsLoading(true);
      try {
        const items = await localNominationItems.getByShop(currentShop.id);
-       setNominationItems(items);
+       if (isMountedRef.current) {
+         setNominationItems(items);
+       }
      } catch (error) {
        console.error('Error loading nomination items:', error);
      } finally {
-       setNominationItemsLoading(false);
+       if (isMountedRef.current) {
+         setNominationItemsLoading(false);
+       }
      }
    };
 
@@ -343,183 +370,184 @@ export default function AdminDashboard() {
   // Override canEditQualifyingPurchase for shop_admin
   const canEditQualifyingPurchase = isShopAdmin || permissions?.canEditQualifyingPurchase;
 
-  // Load shops on mount
-  useEffect(() => {
-    const loadShops = async () => {
-      try {
-        // Get current shop from store first
-        const storedCurrentShop = useShopStore.getState().currentShop;
-        
-        // Check if this is a shop_admin with assigned shops
-        const isShopAdmin = admin?.level === 'shop_admin';
-        const assignedShopIds = admin?.assignedShops || [];
-        
-        // Function to filter shops by assigned shops for shop_admin
-        const filterByAssignedShops = (shopList: Shop[]): Shop[] => {
-          if (isShopAdmin && assignedShopIds.length > 0) {
-            return shopList.filter(s => assignedShopIds.includes(s.id));
-          }
-          return shopList;
-        };
-        
-        // Function to auto-select first shop if none selected
-        const autoSelectShop = async (shopList: Shop[]) => {
-          // For super_admin and agent_admin, load all attempts (grouped by shop)
-          if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
-            if (!storedCurrentShop && shopList.length > 0) {
-              setCurrentShop(shopList[0]);
-            } else if (storedCurrentShop) {
-              const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
-              if (updatedShop) {
-                setCurrentShop(updatedShop);
-              }
-            }
-            // Load ALL attempts for super admin/agent admin
-            try {
-              const allAttempts = await localAttempts.getAll();
-              setAttempts(allAttempts);
-            } catch (error) {
-              console.error('Error loading attempts:', error);
-            }
-          } else {
-            // shop_admin: load attempts for selected shop only
-            if (!storedCurrentShop && shopList.length > 0) {
-              setCurrentShop(shopList[0]);
-              // Load attempts for the selected shop
-              try {
-                const shopAttempts = await localAttempts.getByShop(shopList[0].id);
-                setAttempts(shopAttempts);
-              } catch (error) {
-                console.error('Error loading shop attempts:', error);
-              }
-            } else if (storedCurrentShop) {
-              // Always update currentShop with fresh data from Firebase/local storage
-              // This ensures qualifying purchase and other fields are up-to-date
-              const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
-              if (updatedShop) {
-                setCurrentShop(updatedShop);
-                // Load attempts for the current shop
-                try {
-                  const shopAttempts = await localAttempts.getByShop(updatedShop.id);
-                  setAttempts(shopAttempts);
-                } catch (error) {
-                  console.error('Error loading shop attempts:', error);
-                }
-              }
-            }
-          }
-        };
+   // Load shops on mount
+   useEffect(() => {
+     const loadShops = async () => {
+       try {
+         // Get current shop from store first
+         const storedCurrentShop = useShopStore.getState().currentShop;
 
-        // Load from local first (always works), then try RTDB in background
-        const loadShopsFromLocal = async () => {
-          const shopLoadTimeout = new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Shop load timeout')), 15000)
-          );
-          
-          let localShopList: Shop[];
-          try {
-            localShopList = await Promise.race([localShops.getAll(), shopLoadTimeout]) as Shop[];
-          } catch (e) {
-            console.error('Failed to load shops:', e);
-            localShopList = [];
-          }
-          
-          if (admin?.level === 'super_admin') {
-            setShops(localShopList);
-            autoSelectShop(localShopList);
-          } else {
-            const activeLocalShops = localShopList.filter((s: Shop) => s.isActive);
-            const filteredLocalShops = filterByAssignedShops(activeLocalShops);
-            setShops(filteredLocalShops);
-            autoSelectShop(filteredLocalShops);
-          }
-        };
+         // Check if this is a shop_admin with assigned shops
+         const isShopAdmin = admin?.level === 'shop_admin';
+         const assignedShopIds = admin?.assignedShops || [];
 
-        // Always load local first for offline support
-        await loadShopsFromLocal();
+         // Function to filter shops by assigned shops for shop_admin
+         const filterByAssignedShops = (shopList: Shop[]): Shop[] => {
+           if (isShopAdmin && assignedShopIds.length > 0) {
+             return shopList.filter(s => assignedShopIds.includes(s.id));
+           }
+           return shopList;
+         };
 
-        // Then try to sync from RTDB if online (non-blocking with timeout)
-        const trySyncFromRTDB = async () => {
-          const syncTimeout = setTimeout(() => {
-            console.warn('[Admin] RTDB sync timed out - using local data');
-          }, 8000); // 8 second timeout
-          
-          try {
-            let fbShops;
-            if (admin?.level === 'super_admin') {
-              fbShops = await rtdbShops.getAll();
-            } else {
-              fbShops = await rtdbShops.getAllActive();
-            }
-            if (fbShops && fbShops.length > 0) {
-              // Save to local for offline access
-              for (const shop of fbShops) {
-                await localShops.save(shop);
-              }
-              if (admin?.level === 'super_admin') {
-                setShops(fbShops);
-                autoSelectShop(fbShops);
-              } else {
-                const filteredFbShops = filterByAssignedShops(fbShops);
-                setShops(filteredFbShops);
-                autoSelectShop(filteredFbShops);
-              }
-            }
+         // Function to auto-select first shop if none selected
+         const autoSelectShop = async (shopList: Shop[]) => {
+           // For super_admin and agent_admin, load all attempts (grouped by shop)
+           if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
+             if (!storedCurrentShop && shopList.length > 0) {
+               setCurrentShop(shopList[0]);
+             } else if (storedCurrentShop) {
+               const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
+               if (updatedShop && isMountedRef.current) {
+                 setCurrentShop(updatedShop);
+               }
+             }
+             // Load ALL attempts for super admin/agent admin
+             try {
+               const allAttempts = await localAttempts.getAll();
+               if (isMountedRef.current) {
+                 setAttempts(allAttempts);
+               }
+             } catch (error) {
+               console.error('Error loading attempts:', error);
+             }
+           } else {
+             // shop_admin: load attempts for selected shop only
+             if (!storedCurrentShop && shopList.length > 0) {
+               setCurrentShop(shopList[0]);
+               // Load attempts for the selected shop
+               try {
+                 const shopAttempts = await localAttempts.getByShop(shopList[0].id);
+                 if (isMountedRef.current) {
+                   setAttempts(shopAttempts);
+                 }
+               } catch (error) {
+                 console.error('Error loading shop attempts:', error);
+               }
+             } else if (storedCurrentShop) {
+               // Always update currentShop with fresh data from Firebase/local storage
+               // This ensures qualifying purchase and other fields are up-to-date
+               const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
+               if (updatedShop) {
+                 if (isMountedRef.current) {
+                   setCurrentShop(updatedShop);
+                 }
+                 // Load attempts for the current shop
+                 try {
+                   const shopAttempts = await localAttempts.getByShop(updatedShop.id);
+                   if (isMountedRef.current) {
+                     setAttempts(shopAttempts);
+                   }
+                 } catch (error) {
+                   console.error('Error loading shop attempts:', error);
+                 }
+               }
+             }
+           }
+         };
 
-// For super_admin/agent_admin, pull all data from RTDB to ensure
-              // attempts, items, nominations from all devices are visible (non-blocking)
-              if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
-                import('@/lib/sync-service').then(({ pullFromRTDB }) => {
-                  pullFromRTDB().then(() => {
-                    localAttempts.getAll().then(setAttempts).catch(() => {});
-                  }).catch(() => {});
-                }).catch(() => {});
-              }
-              clearTimeout(syncTimeout);
-            } catch (err) {
-              clearTimeout(syncTimeout);
-              // RTDB unavailable - already loaded from local above
-            }
-        };
+         // Load from local first (fast)
+         let localShopsList: Shop[] = [];
+         try {
+           localShopsList = await localShops.getAll();
+         } catch (error) {
+           console.error('Error loading local shops:', error);
+         }
 
-        // Try RTDB sync in background (don't block UI)
-        trySyncFromRTDB();
-      } catch (error) {
-        console.error('Error in loadShops:', error);
-      }
-    };
-    loadShops();
-    localAdmins.getAll().then(setAdmins).catch(console.error);
-    setIsLoading(false);
-  }, [admin]);
+         // Filter by assigned shops if needed
+         const filteredLocalShops = filterByAssignedShops(localShopsList);
+         if (isMountedRef.current && filteredLocalShops.length > 0) {
+           setShops(filteredLocalShops);
+           autoSelectShop(filteredLocalShops);
+         }
 
-  // Load terms content for admin
-  useEffect(() => {
-    if (admin?.level === 'super_admin') {
-      firebaseSettings.getSettings().then(settings => {
-        setTermsContent(settings.termsContent);
-      });
-    }
-  }, [admin]);
+         // Try RTDB sync in background (don't block UI)
+         const trySyncFromRTDB = async () => {
+           const syncTimeout = setTimeout(() => {
+             console.warn('[Admin] RTDB sync timed out - using local data');
+           }, 8000); // 8 second timeout
+
+           try {
+             const { rtdbShops } = await import('@/lib/firebase');
+             let fbShops: Shop[];
+             if (admin?.level === 'super_admin') {
+               fbShops = await rtdbShops.getAll();
+             } else {
+               fbShops = await rtdbShops.getAllActive();
+             }
+
+             if (fbShops && fbShops.length > 0 && isMountedRef.current) {
+               // Save to local for offline access
+               for (const shop of fbShops) {
+                 await localShops.save(shop);
+               }
+               if (admin?.level === 'super_admin') {
+                 setShops(fbShops);
+                 autoSelectShop(fbShops);
+               } else {
+                 const filteredFbShops = filterByAssignedShops(fbShops);
+                 setShops(filteredFbShops);
+                 autoSelectShop(filteredFbShops);
+               }
+             }
+
+             // For super_admin/agent_admin, pull all data from RTDB to ensure
+             // attempts, items, nominations from all devices are visible (non-blocking)
+             if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
+               import('@/lib/sync-service').then(({ pullFromRTDB }) => {
+                 pullFromRTDB().then(() => {
+                   localAttempts.getAll().then(setAttempts).catch(() => {});
+                 }).catch(() => {});
+               }).catch(() => {});
+             }
+             clearTimeout(syncTimeout);
+           } catch (err) {
+             clearTimeout(syncTimeout);
+             // RTDB unavailable - already loaded from local above
+           }
+         };
+
+         // Try RTDB sync in background (don't block UI)
+         trySyncFromRTDB();
+       } catch (error) {
+         console.error('Error in loadShops:', error);
+       }
+     };
+     loadShops();
+     localAdmins.getAll().then(setAdmins).catch(console.error);
+     setIsLoading(false);
+   }, [admin]);
+
+   // Load terms content for admin
+   useEffect(() => {
+     if (admin?.level === 'super_admin') {
+       let isMounted = true;
+       firebaseSettings.getSettings().then(settings => {
+         if (isMounted && settings.termsContent) {
+           setTermsContent(settings.termsContent);
+         }
+       }).catch(() => {});
+       return () => { isMounted = false; };
+     }
+   }, [admin]);
 
   // Load Item of the Day on mount
   useEffect(() => {
     const loadItemOfDay = async () => {
       // Try local first for immediate display
       const savedItem = await localSettings.get('itemOfTheDay');
-      if (savedItem) {
-        setItemOfTheDay(savedItem);
-      }
+       if (savedItem && isMountedRef.current) {
+         setItemOfTheDay(savedItem);
+       }
       // Always try to fetch latest from RTDB
       try {
         const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
         const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
-        if (rtdbItem) {
-          await localSettings.set('itemOfTheDay', rtdbItem);
-          setItemOfTheDay(rtdbItem);
-        } else if (!savedItem) {
-          setItemOfTheDay(null);
-        }
+         if (rtdbItem && isMountedRef.current) {
+           await localSettings.set('itemOfTheDay', rtdbItem);
+           setItemOfTheDay(rtdbItem);
+         } else if (!savedItem && isMountedRef.current) {
+           setItemOfTheDay(null);
+         }
       } catch (e) {
         // RTDB fetch failed, use local
       }
