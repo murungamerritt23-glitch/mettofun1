@@ -573,20 +573,42 @@ export default function AdminDashboard() {
      }
    };
 
-  // Force logout an admin from all devices (super admin only)
-  const handleForceLogout = async (adminId: string) => {
-    if (confirm('Force logout this admin from all devices? They will need to log in again.')) {
-      try {
-        const { rtdb } = await import('@/lib/firebase');
-        const { ref, set } = await import('firebase/database');
-        // Set a force logout flag in RTDB
-        await set(ref(rtdb, `adminSessions/${adminId}/forceLogout`), Date.now());
-        alert('Admin has been logged out from all devices.');
-      } catch (e: any) {
-        alert('Failed to force logout: ' + (e.message || 'Network error'));
-      }
-    }
-  };
+   // Force logout an admin from all devices (super admin only)
+   const handleForceLogout = async (adminId: string) => {
+     // Super admin-only guard
+     if (admin?.level !== 'super_admin') {
+       alert('Only super administrators can force logout other admins.');
+       return;
+     }
+
+     // Prevent force-logging out yourself
+     if (adminId === admin?.id) {
+       alert('You cannot force logout yourself.');
+       return;
+     }
+
+     // Prevent force-logging out the last super admin (system lockout protection)
+     const targetAdmin = admins.find(a => a.id === adminId);
+     if (targetAdmin?.level === 'super_admin') {
+       const superAdminCount = admins.filter(a => a.level === 'super_admin').length;
+       if (superAdminCount <= 1) {
+         alert('Cannot force logout the last super admin. At least one super admin must remain.');
+         return;
+       }
+     }
+
+     if (confirm('Force logout this admin from all devices? They will need to log in again.')) {
+       try {
+         const { rtdb } = await import('@/lib/firebase');
+         const { ref, set } = await import('firebase/database');
+         // Set a force logout flag in RTDB
+         await set(ref(rtdb, `adminSessions/${adminId}/forceLogout`), Date.now());
+         alert('Admin has been logged out from all devices.');
+       } catch (e: any) {
+         alert('Failed to force logout: ' + (e.message || 'Network error'));
+       }
+     }
+   };
 
   // Define available tabs based on permissions
   const allTabs = [
