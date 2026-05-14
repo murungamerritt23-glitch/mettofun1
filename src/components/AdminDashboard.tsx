@@ -194,19 +194,60 @@ export default function AdminDashboard() {
      }
    };
 
-  // Load all nomination items for editing
-  const loadNominationItems = async () => {
-    if (!currentShop) return;
-    setNominationItemsLoading(true);
-    try {
-      const items = await localNominationItems.getByShop(currentShop.id);
-      setNominationItems(items);
-    } catch (error) {
-      console.error('Error loading nomination items:', error);
-    } finally {
-      setNominationItemsLoading(false);
-    }
-  };
+   // Load all nomination items for editing
+   const loadNominationItems = async () => {
+     if (!currentShop) return;
+     setNominationItemsLoading(true);
+     try {
+       const items = await localNominationItems.getByShop(currentShop.id);
+       setNominationItems(items);
+     } catch (error) {
+       console.error('Error loading nomination items:', error);
+     } finally {
+       setNominationItemsLoading(false);
+     }
+   };
+
+   // Real-time force logout listener for super admin kicks
+   useEffect(() => {
+     if (!admin?.id) return;
+
+     let unsubscribe: (() => void) | null = null;
+
+     const setupListener = async () => {
+       try {
+         const { rtdb } = await import('@/lib/firebase');
+         const { ref, onValue } = await import('firebase/database');
+
+         const forceLogoutRef = ref(rtdb, `adminSessions/${admin.id}/forceLogout`);
+         unsubscribe = onValue(forceLogoutRef, (snapshot) => {
+           if (snapshot.exists()) {
+             console.warn('[AdminDashboard] Force logout detected - terminating session');
+             // Clear local auth
+             localStorage.removeItem('metofun-auth');
+             localStorage.removeItem('metofun-auth-pw');
+             // Redirect to login
+             setCurrentView('login');
+             // Force logout from auth store
+             logout();
+             alert('You have been logged out by a super administrator.');
+           }
+         });
+       } catch (error) {
+         console.error('[AdminDashboard] Failed to subscribe to force logout:', error);
+       }
+     };
+
+     setupListener();
+
+     return () => {
+       if (unsubscribe) {
+         try {
+           unsubscribe();
+         } catch (e) {}
+       }
+     };
+   }, [admin?.id, logout, setCurrentView]);
 
   // Open nomination items editor
   const handleOpenNominationItemsEditor = async () => {
@@ -2865,31 +2906,42 @@ export default function AdminDashboard() {
                         <p className="text-gray-400 text-sm">{staff.email}</p>
                         <p className="text-gray-500 text-xs">{staff.phone}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded text-sm ${
-                          staff.level === 'super_admin' 
-                            ? 'bg-gold-900/50 text-gold-400' 
-                            : 'bg-green-900/50 text-green-400'
-                        }`}>
-                          {staff.level === 'super_admin' ? 'Admin' : 'Shop Admin'}
-                        </span>
-                        {staff.id !== admin?.id && (
-                          <>
-                            <button
-                              onClick={() => setEditingAdmin(staff)}
-                              className="p-2 text-blue-500 hover:bg-blue-900/30 rounded"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteAdmin(staff.id)}
-                              className="p-2 text-red-500 hover:bg-red-900/30 rounded"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </>
-                        )}
-                      </div>
+                       <div className="flex items-center gap-2">
+                         <span className={`px-3 py-1 rounded text-sm ${
+                           staff.level === 'super_admin'
+                             ? 'bg-gold-900/50 text-gold-400'
+                             : 'bg-green-900/50 text-green-400'
+                         }`}>
+                           {staff.level === 'super_admin' ? 'Admin' : 'Shop Admin'}
+                         </span>
+                         {staff.id !== admin?.id && (
+                           <>
+                             <button
+                               onClick={() => setEditingAdmin(staff)}
+                               className="p-2 text-blue-500 hover:bg-blue-900/30 rounded"
+                               title="Edit Admin"
+                             >
+                               <Edit size={16} />
+                             </button>
+                             <button
+                               onClick={() => handleDeleteAdmin(staff.id)}
+                               className="p-2 text-red-500 hover:bg-red-900/30 rounded"
+                               title="Delete Admin"
+                             >
+                               <Trash2 size={16} />
+                             </button>
+                             {admin?.level === 'super_admin' && (
+                               <button
+                                 onClick={() => handleForceLogout(staff.id)}
+                                 className="p-2 text-amber-500 hover:bg-amber-900/30 rounded"
+                                 title="Force Logout (Kick from all devices)"
+                               >
+                                 <LogOut size={16} />
+                               </button>
+                             )}
+                           </>
+                         )}
+                       </div>
                     </div>
                   ))
                 )}
