@@ -256,12 +256,13 @@ export default function AdminDashboard() {
     loadNominationItems();
   };
 
-  // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
-  const isShopAdmin = admin?.level === 'shop_admin';
-  const isSuperAdmin = admin?.level === 'super_admin';
-  const isAgentAdmin = admin?.level === 'agent_admin';
-  const isAdmin = admin?.level === 'super_admin' || admin?.level === 'agent_admin';
-  const needsPassword = true;
+   // Get permissions based on admin level - use direct check for shop_admin to ensure reliability
+   const isShopAdmin = admin?.level === 'shop_admin';
+   const isSuperAdmin = admin?.level === 'super_admin';
+   const isAgentAdmin = admin?.level === 'agent_admin';
+   const isAdmin = admin?.level === 'super_admin' || admin?.level === 'agent_admin';
+   // Password protection only for sensitive tabs (staff, settings), not entire dashboard
+   const needsPassword = activeTab === 'staff' || activeTab === 'settings';
 
   const defaultPermissions: AdminPermissions = {
     canManageAllShops: false,
