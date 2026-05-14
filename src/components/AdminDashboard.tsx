@@ -716,41 +716,51 @@ export default function AdminDashboard() {
     }
   };
 
-  // Save Item of the Day
-  const handleSaveItemOfDay = async () => {
-    if (!itemOfDayForm.name || !itemOfDayForm.value) {
-      alert('Please enter item name and value');
-      return;
-    }
-    
-    const newItem: ItemOfTheDay = {
-      id: 'item-of-the-day',
-      name: itemOfDayForm.name,
-      value: parseFloat(itemOfDayForm.value) || 0,
-      imageUrl: itemOfDayForm.imageUrl || undefined,
-      isActive: true,
-      likes: itemOfTheDay?.likes || 0,
-      createdAt: itemOfTheDay?.createdAt || new Date(),
-      updatedAt: new Date()
-    };
-    
-    // Save to local for offline support
-    await localSettings.set('itemOfTheDay', newItem);
-    setItemOfTheDay(newItem);
-    
-    // Also sync to RTDB for other devices
-    try {
-      await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
-      const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-      await rtdbSettingsApi.set('itemOfTheDay', newItem);
-    } catch (e) {
-      // RTDB sync failed, but local save succeeded
-    }
-    
-    setIsEditingItemOfDay(false);
-    setItemOfDaySaved(true);
-    setTimeout(() => setItemOfDaySaved(false), 3000);
-  };
+   // Save Item of the Day
+   const handleSaveItemOfDay = async () => {
+     if (!itemOfDayForm.name || !itemOfDayForm.value) {
+       alert('Please enter item name and value');
+       return;
+     }
+
+     const newValue = parseFloat(itemOfDayForm.value) || 0;
+     const newImageUrl = itemOfDayForm.imageUrl || undefined;
+
+     // Determine if the item content changed (name, value, or image)
+     const hasChanged = !itemOfTheDay ||
+       itemOfTheDay.name !== itemOfDayForm.name ||
+       itemOfTheDay.value !== newValue ||
+       itemOfTheDay.imageUrl !== newImageUrl;
+
+     const newItem: ItemOfTheDay = {
+       id: 'item-of-the-day',
+       name: itemOfDayForm.name,
+       value: newValue,
+       imageUrl: newImageUrl,
+       isActive: true,
+       // Reset likes to 0 only when the actual item changes; otherwise preserve
+       likes: hasChanged ? 0 : (itemOfTheDay?.likes || 0),
+       createdAt: itemOfTheDay?.createdAt || new Date(),
+       updatedAt: new Date()
+     };
+
+     // Save to local for offline support
+     await localSettings.set('itemOfTheDay', newItem);
+     setItemOfTheDay(newItem);
+
+     // Also sync to RTDB for other devices
+     try {
+       await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
+       const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+       await rtdbSettingsApi.set('itemOfTheDay', newItem);
+     } catch (e) {
+       // RTDB sync failed, but local save succeeded
+     }
+
+     setIsEditingItemOfDay(false);
+     setItemOfDaySaved(true);
+     setTimeout(() => setItemOfDaySaved(false), 3000);
+   };
 
   // Clear Item of the Day
   const handleClearItemOfDay = async () => {
