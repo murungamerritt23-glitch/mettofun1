@@ -75,12 +75,19 @@ export default function NominationScreen() {
       
       // Increment the item's nomination count ONLY if NOT in super admin test mode
       if (!isSuperAdminTestMode) {
-        await localNominationItems.incrementNominationCount(item.id);
-        // Get the fresh item from DB to get the updated nomination count
-        const freshItem = await localNominationItems.get(item.id);
-        if (freshItem) {
-          // Sync the updated item to Firebase if online
-          await saveNominationItemWithSync(freshItem, false);
+        try {
+          await localNominationItems.incrementNominationCount(item.id);
+          // Get the fresh item from DB to get the updated nomination count
+          const freshItem = await localNominationItems.get(item.id);
+          if (freshItem) {
+            // Sync the updated item to Firebase if online (fire and forget)
+            saveNominationItemWithSync(freshItem, false).catch(err => {
+              console.error('[Background sync] nomination count update failed:', err);
+            });
+          }
+        } catch (err) {
+          console.error('Failed to increment nomination count:', err);
+          // Continue anyway - nomination record was saved
         }
       }
       
@@ -223,7 +230,7 @@ export default function NominationScreen() {
       searchQuery.trim() === '' || 
       item.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .sort((a, b) => b.nominationCount - a.nominationCount);
+    .sort((a, b) => (b.nominationCount || 0) - (a.nominationCount || 0));
 
   return (
     <div className="min-h-screen p-4">

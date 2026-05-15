@@ -579,12 +579,15 @@ export const localNominationItems = {
 
   async incrementNominationCount(id: string): Promise<void> {
     const database = await initDB();
-    const item = await database.get('nominationItems', id);
-    if (item) {
-      item.nominationCount = (item.nominationCount || 0) + 1;
-      item.updatedAt = new Date();
-      await database.put('nominationItems', item);
+    // Use transaction for atomic read-increment-write to prevent race conditions
+    const tx = database.transaction('nominationItems', 'readwrite');
+    const existing = await tx.store.get(id);
+    if (existing) {
+      existing.nominationCount = (existing.nominationCount || 0) + 1;
+      existing.updatedAt = new Date();
+      await tx.store.put(existing);
     }
+    await tx.done;
   },
 
   async delete(id: string): Promise<void> {

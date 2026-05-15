@@ -194,20 +194,20 @@ export default function AdminDashboard() {
      // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [currentShop?.id]);
 
-   // Load top nominations for the current shop
-   const loadTopNominations = async () => {
-     if (!currentShop || !isMountedRef.current) return;
-     setNominationsLoading(true);
-     try {
-       const nominations = await localNominationItems.getByShop(currentShop.id);
-       // Get top 10 with nominations > 0, sorted by count descending
-       const top10 = nominations
-         .filter(item => item.nominationCount > 0)
-         .sort((a, b) => b.nominationCount - a.nominationCount)
-         .slice(0, 10);
-       if (isMountedRef.current) {
-         setTopNominations(top10);
-       }
+    // Load top nominations for the current shop
+    const loadTopNominations = async () => {
+      if (!currentShop || !isMountedRef.current) return;
+      setNominationsLoading(true);
+      try {
+        const nominations = await localNominationItems.getByShop(currentShop.id);
+        // Get top 10 with nominations > 0, sorted by count descending
+        const top10 = nominations
+          .filter(item => (item.nominationCount || 0) > 0)
+          .sort((a, b) => (b.nominationCount || 0) - (a.nominationCount || 0))
+          .slice(0, 10);
+        if (isMountedRef.current) {
+          setTopNominations(top10);
+        }
      } catch (error) {
        console.error('Error loading nominations:', error);
      } finally {
