@@ -538,19 +538,23 @@ export default function AdminDashboard() {
        if (savedItem && isMountedRef.current) {
          setItemOfTheDay(savedItem);
        }
-      // Always try to fetch latest from RTDB
-      try {
-        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-        const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
-         if (rtdbItem && isMountedRef.current) {
-           await localSettings.set('itemOfTheDay', rtdbItem);
-           setItemOfTheDay(rtdbItem);
-         } else if (!savedItem && isMountedRef.current) {
-           setItemOfTheDay(null);
-         }
-      } catch (e) {
-        // RTDB fetch failed, use local
-      }
+     // Always try to fetch latest from RTDB
+       try {
+         const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+         const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
+          if (rtdbItem && isMountedRef.current) {
+            // Preserve local likes if we have more (offline likes happened)
+            if (savedItem && (rtdbItem.likes || 0) < (savedItem.likes || 0)) {
+              rtdbItem.likes = savedItem.likes;
+            }
+            await localSettings.set('itemOfTheDay', rtdbItem);
+            setItemOfTheDay(rtdbItem);
+          } else if (!rtdbItem && !savedItem && isMountedRef.current) {
+            setItemOfTheDay(null);
+          }
+       } catch (e) {
+         // RTDB fetch failed, use local
+       }
     };
     loadItemOfDay();
   }, []);

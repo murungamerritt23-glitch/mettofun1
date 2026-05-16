@@ -426,6 +426,24 @@ export const localSettings = {
   async set(key: string, value: any): Promise<void> {
     const database = await initDB();
     await database.put('settings', { key, value });
+  },
+
+  // Atomically increment item of the day likes (avoids lost updates from concurrent writes)
+  async incrementIOTDLikes(currentLikes: number): Promise<number> {
+    const database = await initDB();
+    // Use transaction to prevent two concurrent writes from reading the same value
+    const tx = database.transaction('settings', 'readwrite');
+    const item = await tx.store.get('itemOfTheDay');
+    if (!item) {
+      await tx.done;
+      return currentLikes + 1; // fallback
+    }
+    const current = (item.value as any)?.likes || 0;
+    const newLikes = current + 1;
+    (item.value as any).likes = newLikes;
+    await tx.store.put(item);
+    await tx.done;
+    return newLikes;
   }
 };
 
