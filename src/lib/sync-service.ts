@@ -687,13 +687,11 @@ export const saveNominationWithSync = async (nomination: CustomerNomination): Pr
 
 // Save nomination item with offline support
 export const saveNominationItemWithSync = async (item: NominationItem, isNew: boolean = true): Promise<void> => {
-  // Ensure nominationCount is set to 0 for new items (reset count)
-  const normalizedItem = isNew
-    ? { ...item, nominationCount: 0 }
-    : item;
+  // Always save nominee that was passed; count reset is the caller's responsibility (e.g. AdminDashboard reset on edit)
+  // Do NOT blindly zero nominationCount here — it destroys counter increments
 
   // Always save to local first for immediate UI update
-  await localNominationItems.save(normalizedItem);
+  await localNominationItems.save(item);
 
   if (isOnline()) {
     try {
@@ -844,12 +842,20 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
         }
       }
 
-      // Pull nomination items for specific shop
+      // Pull nomination items for specific shop with conflict resolution
+      // Use max-intent merge: keep the higher of local vs remote nominationCount
       const fbNominationItems = await rtdbNominationItems.getAll();
       const shopNominationItems = fbNominationItems.filter(item => item.shopId === shopId);
       if (shopNominationItems.length > 0) {
-        for (const item of shopNominationItems) {
-          await localNominationItems.save(item);
+        for (const remoteItem of shopNominationItems) {
+          const localItem = await localNominationItems.get(remoteItem.id);
+          const localCount = localItem?.nominationCount ?? 0;
+          const remoteCount = remoteItem.nominationCount ?? 0;
+          // Only write back if remote has a higher count; never overwrite local increments
+          const merged = remoteCount > localCount
+            ? remoteItem
+            : { ...remoteItem, nominationCount: localCount };
+          await localNominationItems.save(merged);
         }
       }
 
@@ -887,11 +893,17 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
         }
       }
 
-      // Pull all nomination items (not shop-specific in RTDB structure)
+      // Pull all nomination items — keep higher count if local has it
       const fbNominationItems = await rtdbNominationItems.getAll();
       if (fbNominationItems && fbNominationItems.length > 0) {
-        for (const item of fbNominationItems) {
-          await localNominationItems.save(item);
+        for (const remoteItem of fbNominationItems) {
+          const localItem = await localNominationItems.get(remoteItem.id);
+          const localCount = localItem?.nominationCount ?? 0;
+          const remoteCount = remoteItem.nominationCount ?? 0;
+          const merged = remoteCount > localCount
+            ? remoteItem
+            : { ...remoteItem, nominationCount: localCount };
+          await localNominationItems.save(merged);
         }
       }
     }
