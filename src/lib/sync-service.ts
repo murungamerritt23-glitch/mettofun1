@@ -1,5 +1,5 @@
 import { useUIStore, useSyncStore } from '@/store';
-import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations, localSettings } from './local-db';
+import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations } from './local-db';
 import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations, rtdbAdmins } from './firebase';
 import type { GameAttempt, Item, Shop, NominationItem, CustomerNomination } from '@/types';
 

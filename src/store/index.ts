@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Admin, Shop, Item, GameAttempt, CustomerSession, AppSettings, NominationItem, ItemOfTheDay, SyncQueue, SyncItemType, SyncOperation } from '@/types';
-import { localShops, localItems, localAttempts, localSessions, localSettings, getDeviceId } from '@/lib/local-db';
+import { localShops, localItems, localAttempts, localSettings, getDeviceId } from '@/lib/local-db';
 
 // Auth Store with Security Features
 interface AuthState {
