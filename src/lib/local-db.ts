@@ -585,23 +585,25 @@ export const localNominationItems = {
 
   async save(item: NominationItem): Promise<void> {
     const database = await initDB();
-    // Ensure nominationCount is always a valid number (default to 0 if missing)
+    // Ensure nominationCount is always a valid number (default to 0 if missing/invalid)
+    // Number('0') === 0; Number('') === NaN → || 0 → 0; Number(undefined) === NaN → || 0 → 0
     const normalizedItem = {
       ...item,
-      nominationCount: typeof item.nominationCount === 'number' && !isNaN(item.nominationCount)
-        ? item.nominationCount
-        : 0
+      nominationCount: Number(item.nominationCount) || 0
     };
     await database.put('nominationItems', normalizedItem);
   },
 
   async incrementNominationCount(id: string): Promise<void> {
     const database = await initDB();
-    // Use transaction for atomic read-increment-write to prevent race conditions
+    // Use transaction for atomic read-increment-write to prevent lost counts
     const tx = database.transaction('nominationItems', 'readwrite');
     const existing = await tx.store.get(id);
     if (existing) {
-      existing.nominationCount = (existing.nominationCount || 0) + 1;
+      // Force numeric coercion — nominationCount may arrive as a string "0" from legacy
+      // IndexedDB writes; Number("0") === 0 avoids string concat bug ("0" + 1 = "01")
+      const count = Number(existing.nominationCount) || 0;
+      existing.nominationCount = count + 1;
       existing.updatedAt = new Date();
       await tx.store.put(existing);
     }
