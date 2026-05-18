@@ -295,7 +295,7 @@ export default function GameMode() {
     checkAttempts();
   }, [isDemoMode, phoneNumber]);
 
-  const handleAuthorize = async () => {
+   const handleAuthorize = async () => {
     // Check if shop is active - block game if deactivated by super admin
     if (currentShop && currentShop.isActive === false) {
       alert(language === 'sw' 
@@ -340,51 +340,57 @@ export default function GameMode() {
     setIsAuthorizing(true);
     setLocationError(null);
     
-    // Check if user is at the shop location (non-blocking - allow play if it fails)
     try {
-      const locationResult = await verifyShopLocation(currentShop?.location);
-      
-      if (!locationResult.isValid) {
-        // Show warning but allow play (location is advisory only)
-        setLocationError(
-          language === 'sw' 
-            ? `Maonyo: ${locationResult.error || 'Hauko karibu na duka.'}`
-            : `Warning: ${locationResult.error || 'Not near shop (playing anyway).'}`
-        );
+      // Check if user is at the shop location (non-blocking - allow play if it fails)
+      try {
+        const locationResult = await verifyShopLocation(currentShop?.location);
+        
+        if (!locationResult.isValid) {
+          // Show warning but allow play (location is advisory only)
+          setLocationError(
+            language === 'sw' 
+              ? `Maonyo: ${locationResult.error || 'Hauko karibu na duka.'}`
+              : `Warning: ${locationResult.error || 'Not near shop (playing anyway).'}`
+          );
+        }
+      } catch (error) {
+        // Location check failed - allow play anyway (non-blocking)
+        console.log('Location verification skipped:', error);
       }
+      
+      // Simulate authorization
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Use test phone prefix only if super admin has test mode enabled
+      const formattedPhone = isSuperAdminTestMode 
+        ? `TEST-${formatPhoneNumber(phoneNumber)}` 
+        : formatPhoneNumber(phoneNumber);
+      
+      const config = calculateBoxConfiguration(amount, qualifyingPurchase);
+      
+      setCustomerSession({
+        phoneNumber: formattedPhone,
+        attemptsToday: 0,
+        lastAttemptDate: getCurrentDateString(),
+        authorized: true,
+        purchaseAmount: amount
+      });
+      
+      // Update state with parsed amount
+      setPurchaseAmount(String(amount));
+      
+      // Store the threshold for display purposes
+      const threshold = config.threshold;
+      setThresholdNumber(threshold);
+      
+      setGameStatus('playing');
+      setShowItemPicker(true); // Show item selection first
     } catch (error) {
-      // Location check failed - allow play anyway (non-blocking)
-      console.log('Location verification skipped:', error);
+      console.error('Error during authorization:', error);
+      alert(language === 'sw' ? 'Hitilafu wakati wa kuanza mchezo. Tafadhali jaribu tena.' : 'Failed to start game. Please try again.');
+    } finally {
+      setIsAuthorizing(false); // Always re-enable the button
     }
-    
-    // Simulate authorization
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Use test phone prefix only if super admin has test mode enabled
-    const formattedPhone = isSuperAdminTestMode 
-      ? `${testPhonePrefix}-${formatPhoneNumber(phoneNumber)}` 
-      : formatPhoneNumber(phoneNumber);
-    
-    const config = calculateBoxConfiguration(amount, qualifyingPurchase);
-    
-    setCustomerSession({
-      phoneNumber: formattedPhone,
-      attemptsToday: 0,
-      lastAttemptDate: getCurrentDateString(),
-      authorized: true,
-      purchaseAmount: amount
-    });
-    
-    // Update state with parsed amount
-    setPurchaseAmount(String(amount));
-    
-    // Store the threshold for display purposes
-    const threshold = config.threshold;
-    setThresholdNumber(threshold);
-    
-    setGameStatus('playing');
-    setShowItemPicker(true); // Show item selection first
-    setIsAuthorizing(false);
   };
 
   const handleBoxSelect = (boxIndex: number) => {
@@ -399,86 +405,99 @@ export default function GameMode() {
   };
 
 const handleItemSelect = async (item: Item) => {
-   if (!item || !item.isActive) return;
-   
-   // Guard: Prevent multiple rapid selections
-   if (selectedItem?.id === item.id || showItemPicker === false) return;
-   
-   setTappedItemId(item.id);
-   setTimeout(() => setTappedItemId(null), 400);
-   
-   setSelectedItem(item);
-   // Disable further selection by hiding picker immediately
-   setShowItemPicker(false); 
-   
-   // Generate RANDOM winning number from available range (1 to 18-threshold)
-   // This makes the game fair and unpredictable
-   const threshold = thresholdNumber || 1;
-   const winningNum = generateSecureRandomNumber(18 - threshold);
-   setCorrectNumber(winningNum);
-   setShowNumberPicker(true);
- };
+   try {
+    if (!item || !item.isActive) return;
+    
+    // Guard: Prevent multiple rapid selections
+    if (selectedItem?.id === item.id || showItemPicker === false) return;
+    
+    setTappedItemId(item.id);
+    setTimeout(() => setTappedItemId(null), 400);
+    
+    setSelectedItem(item);
+    // Disable further selection by hiding picker immediately
+    setShowItemPicker(false); 
+    
+    // Generate RANDOM winning number from available range (1 to 18-threshold)
+    // This makes the game fair and unpredictable
+    const threshold = thresholdNumber || 1;
+    const winningNum = generateSecureRandomNumber(18 - threshold);
+    setCorrectNumber(winningNum);
+    setShowNumberPicker(true);
+   } catch (error) {
+     console.error('Error selecting item:', error);
+     alert(language === 'sw' ? 'Hitilafu wakati wa kuchagua kipengele. Tafadhali jaribu tena.' : 'Error selecting item. Please try again.');
+     // Reset visual state so user can try again
+     setTappedItemId(null);
+     setShowItemPicker(true);
+   }
+  };
 
   const handleNumberSelect = (number: number) => {
-    if (selectedNumber !== null || !correctNumber) return;
-    
-    setSelectedNumber(number);
-    
-    // Check if won - player wins only if selected number === correctNumber (exact match)
-    const won = number === correctNumber;
-    setGameWon(won);
-    
-    if (won) {
-      // Show the exact item customer selected - not a different one
-      setWinningItem(selectedItem);
-      setSelectedItem(selectedItem);
-    }
-    
-    // Save attempt in background - don't await to avoid blocking
     try {
-      // Validate attempt before saving
-      const validation = validateGameAttempt(
-        currentShop?.id || 'demo',
-        customerSession?.phoneNumber || phoneNumber,
-        parseFloat(purchaseAmount),
-        currentShop?.qualifyingPurchase || 0,
-        selectedBox || 0,
-        correctNumber,
-        won,
-        thresholdNumber ?? undefined
-      );
+      if (selectedNumber !== null || !correctNumber) return;
       
-      if (!validation.valid) {
-        console.error('Invalid game attempt:', validation.error);
-        // Still show result to user but don't save invalid attempt
-        setShowResult(true);
-        setGameStatus(won ? 'won' : 'lost');
-        return;
+      setSelectedNumber(number);
+      
+      // Check if won - player wins only if selected number === correctNumber (exact match)
+      const won = number === correctNumber;
+      setGameWon(won);
+      
+      if (won) {
+        // Show the exact item customer selected - not a different one
+        setWinningItem(selectedItem);
+        setSelectedItem(selectedItem);
       }
       
-      const attempt = createGameAttempt(
-        currentShop?.id || 'demo',
-        customerSession?.phoneNumber || phoneNumber,
-        parseFloat(purchaseAmount),
-        currentShop?.qualifyingPurchase || 0,
-        selectedBox || 0,
-        correctNumber,
-        won,
-        selectedItem || undefined,
-        isSuperAdminTestMode
-      );
+      // Save attempt in background - don't await to avoid blocking
+      try {
+        // Validate attempt before saving
+        const validation = validateGameAttempt(
+          currentShop?.id || 'demo',
+          customerSession?.phoneNumber || phoneNumber,
+          parseFloat(purchaseAmount),
+          currentShop?.qualifyingPurchase || 0,
+          selectedBox || 0,
+          correctNumber,
+          won,
+          thresholdNumber ?? undefined
+        );
+        
+        if (!validation.valid) {
+          console.error('Invalid game attempt:', validation.error);
+          // Still show result to user but don't save invalid attempt
+          setShowResult(true);
+          setGameStatus(won ? 'won' : 'lost');
+          return;
+        }
+        
+        const attempt = createGameAttempt(
+          currentShop?.id || 'demo',
+          customerSession?.phoneNumber || phoneNumber,
+          parseFloat(purchaseAmount),
+          currentShop?.qualifyingPurchase || 0,
+          selectedBox || 0,
+          correctNumber,
+          won,
+          selectedItem || undefined,
+          isSuperAdminTestMode
+        );
+        
+        // Fire and forget - don't await
+        saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
+        
+        // Store the attempt ID for nomination tracking
+        setCurrentGameAttemptId(attempt.id);
+      } catch (error) {
+        console.error('Error saving game attempt:', error);
+      }
       
-      // Fire and forget - don't await
-      saveAttemptWithSync(attempt).catch(err => console.error('Sync error:', err));
-      
-      // Store the attempt ID for nomination tracking
-      setCurrentGameAttemptId(attempt.id);
+      setShowResult(true);
+      setGameStatus(won ? 'won' : 'lost');
     } catch (error) {
-      console.error('Error saving game attempt:', error);
+      console.error('Error in number selection:', error);
+      alert(language === 'sw' ? 'Hitilafu wakati wa kuchagua nambari. Tafadhali jaribu tena.' : 'Error selecting number. Please try again.');
     }
-    
-    setShowResult(true);
-    setGameStatus(won ? 'won' : 'lost');
   };
 
   const handlePlayAgain = async () => {
