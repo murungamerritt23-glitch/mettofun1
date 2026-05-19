@@ -1,6 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import type { Shop, Item, GameAttempt, Admin, SyncQueue, CustomerSession, PendingCustomer, AdminLevel, NominationItem, CustomerNomination } from '@/types';
-import { verifyGameAttemptIntegrity } from './game-utils';
+import { verifyGameAttemptIntegrity, randomUUID } from './game-utils';
 
 interface MetoFunDB extends DBSchema {
   shops: {
@@ -168,12 +168,12 @@ export const localShops = {
     const existing = await this.getByCode('METOFUN');
     if (existing) return existing;
     
-    // Create default shop
-    const defaultShop: Shop = {
-      id: crypto.randomUUID(),
-      shopName: 'Metofun Demo Shop',
-      shopCode: 'METOFUN',
-      deviceId: crypto.randomUUID(),
+     // Create default shop
+     const defaultShop: Shop = {
+       id: randomUUID(),
+       shopName: 'Metofun Demo Shop',
+       shopCode: 'METOFUN',
+       deviceId: randomUUID(),
       deviceLocked: false,
       qualifyingPurchase: 0,
       promoMessage: 'Play & Win Amazing Rewards!',
@@ -512,7 +512,7 @@ export const localSync = {
   async addToQueue(type: SyncQueue['type'], data: any): Promise<void> {
     const database = await initDB();
     const queueItem: SyncQueue = {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       type,
       operation: 'create',
       data: JSON.stringify(data),
@@ -554,7 +554,7 @@ export const localSync = {
 export const getDeviceId = async (): Promise<string> => {
   let deviceId = await localSettings.get('deviceId');
   if (!deviceId) {
-    deviceId = crypto.randomUUID();
+    deviceId = randomUUID();
     await localSettings.set('deviceId', deviceId);
   }
   return deviceId;

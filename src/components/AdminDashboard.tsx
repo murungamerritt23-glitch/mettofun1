@@ -12,7 +12,7 @@ import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } fr
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
 import { rtdbShops, rtdbAdmins, firebaseSettings } from '@/lib/firebase';
 import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive } from '@/lib/sync-service';
-import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber } from '@/lib/game-utils';
+import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber, randomUUID } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, ItemOfTheDay, NominationItem } from '@/types';
 import { ADMIN_PERMISSIONS } from '@/types';
@@ -1840,7 +1840,7 @@ export default function AdminDashboard() {
       }
       const selectedItem = itemsList.find(i => i.id === newCustomer.itemId);
       const customer: PendingCustomer = {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         phoneNumber: newCustomer.phoneNumber,
         shopId: currentShop!.id,
         purchaseAmount: amount,
@@ -2907,7 +2907,7 @@ export default function AdminDashboard() {
   if (activeTab === 'staff') {
     const handleAddStaff = () => {
       setEditingAdmin({
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         email: '',
         phone: '',
         name: '',
@@ -3580,9 +3580,9 @@ function ShopForm({
       : {};
     
     onSave({
-      id: shop?.id || crypto.randomUUID(),
+      id: shop?.id || randomUUID(),
       ...formData,
-      deviceId: formData.deviceId || crypto.randomUUID(),
+      deviceId: formData.deviceId || randomUUID(),
       deviceLocked: formData.deviceLocked || false,
       createdAt: shop?.createdAt || new Date(),
       updatedAt: new Date(),

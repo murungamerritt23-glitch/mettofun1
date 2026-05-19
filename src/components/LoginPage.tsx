@@ -13,9 +13,16 @@ import type { Admin, Shop } from '@/types';
 const hashPassword = async (password: string): Promise<string> => {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  // Use globalThis.crypto.subtle so this works in web workers / iframes / non-standard contexts
+  const cryptoObj = (globalThis as any).crypto;
+  if (cryptoObj?.subtle) {
+    const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  // Fallback: use CryptoJS (already in project) when Web Crypto is unavailable
+  const CryptoJS = (await import('crypto-js')).default;
+  return CryptoJS.SHA256(password).toString();
 };
 
 export default function LoginPage() {

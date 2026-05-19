@@ -1,6 +1,40 @@
 import CryptoJS from 'crypto-js';
 import type { Item, GameAttempt, BoxConfiguration } from '@/types';
 
+// --- Safe crypto wrapper (avoids ReferenceError when `crypto` is not globally defined) ---
+// Some environments (web workers, iframes, strict CSP) expose it only via `globalThis.crypto`.
+const getCrypto = (): Crypto | null => {
+  const c = globalThis as any;
+  return (c.crypto as Crypto | undefined) || null;
+};
+
+export const randomUUID = (): string => {
+  const cryptoObj = getCrypto();
+  if (cryptoObj?.randomUUID) {
+    return cryptoObj.randomUUID();
+  }
+  // RFC 4122 version 4 fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+export const randomBytes = (length: number): Uint8Array => {
+  const cryptoObj = getCrypto();
+  if (cryptoObj?.getRandomValues) {
+    const array = new Uint8Array(length);
+    cryptoObj.getRandomValues(array);
+    return array;
+  }
+  const array = new Uint8Array(length);
+  for (let i = 0; i < length; i++) {
+    array[i] = Math.floor(Math.random() * 256);
+  }
+  return array;
+};
+
 // Dynamic Odds Calculator - Fair Boost System
 // Always 17 boxes, but winning threshold changes based on purchase
 // Higher purchase = lower threshold = easier to win
@@ -40,14 +74,23 @@ export const calculateBoxConfiguration = (purchaseAmount: number, qualifyingAmou
 // Secure random number generation using Web Crypto API (CSPRNG)
 export const generateSecureRandomNumber = (max: number): number => {
   if (max <= 0) return 1;
-  
+
+  // Use globalThis.crypto to be safe in all environments (web workers, iframes, etc.)
+  // In some environments `crypto` is undefined but `globalThis.crypto` is always defined
+  const cryptoObj = globalThis.crypto;
+  if (!cryptoObj?.getRandomValues) {
+    // Fallback: crypto API not available — use Math.random()
+    // This is a safe fallback; non-crypto random is fine for game entertainment purposes
+    return Math.floor(Math.random() * max) + 1;
+  }
+
   // Use Web Crypto API for proper CSPRNG
   const array = new Uint32Array(1);
-  crypto.getRandomValues(array);
-  
+  cryptoObj.getRandomValues(array);
+
   // Convert to number in range 1 to max
   const result = (array[0] % max) + 1;
-  
+
   return Math.min(Math.max(result, 1), max);
 };
 
@@ -183,8 +226,8 @@ export const createGameAttempt = (
     seed
   );
   
-  return {
-    id: crypto.randomUUID(),
+   return {
+    id: randomUUID(),
     shopId,
     phoneNumber,
     purchaseAmount,

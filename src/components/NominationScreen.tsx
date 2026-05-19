@@ -6,6 +6,7 @@ import { ArrowLeft, Gift, Heart, Search } from 'lucide-react';
 import { useGameStore, useShopStore, useAuthStore } from '@/store';
 import { localNominationItems, localCustomerNominations } from '@/lib/local-db';
 import { saveNominationWithSync, saveNominationItemWithSync } from '@/lib/sync-service';
+import { randomUUID } from '@/lib/game-utils';
 import type { NominationItem } from '@/types';
 
 export default function NominationScreen() {
@@ -59,9 +60,9 @@ export default function NominationScreen() {
     setIsSaving(true);
     
     try {
-      // Create customer nomination record
-      const nomination = {
-        id: crypto.randomUUID(),
+       // Create customer nomination record
+       const nomination = {
+         id: randomUUID(),
         phoneNumber: customerSession.phoneNumber,
         shopId: currentShop?.id || 'demo',
         itemId: item.id,

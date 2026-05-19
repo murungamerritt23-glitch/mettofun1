@@ -2,6 +2,7 @@ import { useUIStore, useSyncStore } from '@/store';
 import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations } from './local-db';
 import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations, rtdbAdmins } from './firebase';
 import type { GameAttempt, Item, Shop, NominationItem, CustomerNomination } from '@/types';
+import { randomUUID } from '@/lib/game-utils';
 
 // Ensure admin record exists in RTDB before any write operation
 // This is critical because RTDB security rules check root.child('admins').child(auth.uid).exists()
@@ -266,7 +267,7 @@ export const queueForSync = async (task: Omit<SyncTask, 'id' | 'timestamp' | 're
 
   const syncTask: SyncTask = {
     ...task,
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     timestamp: new Date(),
     retryCount: 0,
   };
