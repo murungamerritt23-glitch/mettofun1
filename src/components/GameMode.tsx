@@ -78,72 +78,79 @@ export default function GameMode() {
      };
    }, []);
 
-   // Load Item of the Day on mount with live RTDB sync
-   useEffect(() => {
-     const loadItemOfDay = async () => {
-       // Try local first
-       const savedItem = await localSettings.get('itemOfTheDay');
-       if (savedItem && isMountedRef.current) {
-         useGameStore.getState().setItemOfTheDay(savedItem);
-       }
+    // Load Item of the Day on mount with live RTDB sync
+    useEffect(() => {
+      let isCancelled = false;
+      let unsubscribeIOTD: (() => void) | null = null;
 
-       // Non-blocking RTDB fetch for new devices
-       try {
-         const { rtdbSettings } = await import('@/lib/firebase');
-         const rtdbItem = await rtdbSettings.get('itemOfTheDay');
-         if (rtdbItem && isMountedRef.current) {
-           // Preserve local likes if RTDB has fewer (in case offline likes happened)
-           if (savedItem && rtdbItem.likes < savedItem.likes) {
-             rtdbItem.likes = savedItem.likes;
-             await rtdbSettings.set('itemOfTheDay', rtdbItem);
-           }
-           localSettings.set('itemOfTheDay', rtdbItem);
-           useGameStore.getState().setItemOfTheDay(rtdbItem);
-         }
-       } catch (e) {}
+      const loadItemOfDay = async () => {
+        if (isCancelled) return;
 
-       // Listen for real-time IOTD changes from RTDB (live likes across devices)
-       try {
-         const { rtdbSettings } = await import('@/lib/firebase');
-         const unsubscribe = rtdbSettings.onSettingChange('itemOfTheDay', async (rtdbItem: any) => {
-           if (rtdbItem && isMountedRef.current) {
-             // Preserve local likes if we have more (offline likes happened)
-             const localItem = await localSettings.get('itemOfTheDay');
-             if (localItem && rtdbItem.likes < localItem.likes) {
-               rtdbItem.likes = localItem.likes;
-             } else {
-               // Server is authoritative - update local
-               localSettings.set('itemOfTheDay', rtdbItem);
-             }
-             useGameStore.getState().setItemOfTheDay(rtdbItem);
-           }
-         });
-         return () => {
-           unsubscribe();
-         };
-       } catch (e) {
-         // If RTDB listener fails, fall back to polling
-         const fallbackSync = async () => {
-           try {
-             const { rtdbSettings } = await import('@/lib/firebase');
-             const rtdbItem = await rtdbSettings.get('itemOfTheDay');
-             if (rtdbItem && isMountedRef.current) {
-               const localItem = await localSettings.get('itemOfTheDay');
-               if (localItem && rtdbItem.likes < localItem.likes) {
-                 rtdbItem.likes = localItem.likes;
-                 await rtdbSettings.set('itemOfTheDay', rtdbItem);
-               }
-               localSettings.set('itemOfTheDay', rtdbItem);
-               useGameStore.getState().setItemOfTheDay(rtdbItem);
-             }
-           } catch (e) {}
-         };
-         fallbackSync();
-         const syncInterval = setInterval(fallbackSync, 30000);
-         return () => clearInterval(syncInterval);
+        // Try local first
+        const savedItem = await localSettings.get('itemOfTheDay');
+        if (savedItem && isMountedRef.current) {
+          useGameStore.getState().setItemOfTheDay(savedItem);
         }
+
+        // Non-blocking RTDB fetch for new devices
+        if (isCancelled) return;
+        try {
+          const { rtdbSettings } = await import('@/lib/firebase');
+          const rtdbItem = await rtdbSettings.get('itemOfTheDay');
+          if (rtdbItem && isMountedRef.current) {
+            const localItem = await localSettings.get('itemOfTheDay');
+            if (savedItem && rtdbItem.likes < savedItem.likes) {
+              rtdbItem.likes = savedItem.likes;
+              await rtdbSettings.set('itemOfTheDay', rtdbItem);
+            }
+            await localSettings.set('itemOfTheDay', rtdbItem);
+            useGameStore.getState().setItemOfTheDay(rtdbItem);
+          }
+
+          // Subscribe for live IOTD updates — single subscription per mount, cleaned up on unmount
+          try {
+            unsubscribeIOTD = rtdbSettings.onSettingChange('itemOfTheDay', async (rtdbItem: any) => {
+              if (rtdbItem && isMountedRef.current) {
+                // Preserve local likes if offline additions happened
+                const localItem = await localSettings.get('itemOfTheDay');
+                if (localItem && rtdbItem.likes < localItem.likes) {
+                  rtdbItem.likes = localItem.likes;
+                  await rtdbSettings.set('itemOfTheDay', rtdbItem);
+                }
+                await localSettings.set('itemOfTheDay', rtdbItem);
+                useGameStore.getState().setItemOfTheDay(rtdbItem);
+              }
+            });
+          } catch (e) {
+            // If RTDB listener fails, fall back to periodic polling
+            const fallbackSync = async () => {
+              try {
+                const { rtdbSettings } = await import('@/lib/firebase');
+                const rtdbItem = await rtdbSettings.get('itemOfTheDay');
+                if (rtdbItem && isMountedRef.current) {
+                  const localItem = await localSettings.get('itemOfTheDay');
+                  if (localItem && rtdbItem.likes < localItem.likes) {
+                    rtdbItem.likes = localItem.likes;
+                    await rtdbSettings.set('itemOfTheDay', rtdbItem);
+                  }
+                  await localSettings.set('itemOfTheDay', rtdbItem);
+                  useGameStore.getState().setItemOfTheDay(rtdbItem);
+                }
+              } catch (e) {}
+            };
+            fallbackSync();
+            const syncInterval = setInterval(fallbackSync, 30000);
+            unsubscribeIOTD = () => clearInterval(syncInterval);
+          }
+        } catch (e) {}
       };
+
       loadItemOfDay();
+
+      return () => {
+        if (unsubscribeIOTD) unsubscribeIOTD();
+        isCancelled = true;
+      };
     }, []);
 
    // Load Terms & Conditions from Firestore (super admin editable, syncs across all devices)

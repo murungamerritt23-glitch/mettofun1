@@ -73,7 +73,7 @@ export const calculateBoxConfiguration = (purchaseAmount: number, qualifyingAmou
 
 // Secure random number generation using Web Crypto API (CSPRNG)
 export const generateSecureRandomNumber = (max: number): number => {
-  if (max <= 0) return 1;
+  if (!Number.isFinite(max) || max <= 0) return 1;
 
   // Use globalThis.crypto to be safe in all environments (web workers, iframes, etc.)
   // In some environments `crypto` is undefined but `globalThis.crypto` is always defined
