@@ -413,32 +413,33 @@ export default function GameMode() {
 
 const handleItemSelect = async (item: Item) => {
    try {
-    if (!item || !item.isActive) return;
-    
-    // Guard: Prevent multiple rapid selections
-    if (selectedItem?.id === item.id || showItemPicker === false) return;
-    
-    setTappedItemId(item.id);
-    setTimeout(() => setTappedItemId(null), 400);
-    
-    setSelectedItem(item);
-    // Disable further selection by hiding picker immediately
-    setShowItemPicker(false); 
-    
-    // Generate RANDOM winning number from available range (1 to 18-threshold)
-    // This makes the game fair and unpredictable
-    const threshold = thresholdNumber || 1;
-    const winningNum = generateSecureRandomNumber(18 - threshold);
-    setCorrectNumber(winningNum);
-    setShowNumberPicker(true);
-   } catch (error) {
-     console.error('Error selecting item:', error);
-     alert(language === 'sw' ? 'Hitilafu wakati wa kuchagua kipengele. Tafadhali jaribu tena.' : 'Error selecting item. Please try again.');
-     // Reset visual state so user can try again
-     setTappedItemId(null);
-     setShowItemPicker(true);
-   }
-  };
+     if (!item || !item.isActive) return;
+     
+     // Guard: Prevent multiple rapid selections
+     if (selectedItem?.id === item.id || showItemPicker === false) return;
+     
+     setTappedItemId(item.id);
+     setTimeout(() => setTappedItemId(null), 400);
+     
+     setSelectedItem(item);
+     // Disable further selection by hiding picker immediately
+     setShowItemPicker(false); 
+     
+     // Generate RANDOM winning number from available range (1 to 18-threshold)
+     // This makes the game fair and unpredictable
+     const threshold = thresholdNumber || 1;
+     const maxNumber = Math.max(1, 18 - threshold);
+     const winningNum = generateSecureRandomNumber(maxNumber);
+     setCorrectNumber(winningNum);
+     setShowNumberPicker(true);
+    } catch (error) {
+      console.error('Error selecting item:', error);
+      alert(language === 'sw' ? 'Hitilafu wakati wa kuchagua kipengele. Tafadhali jaribu tena.' : 'Error selecting item. Please try again.');
+      // Reset visual state so user can try again
+      setTappedItemId(null);
+      setShowItemPicker(true);
+    }
+   };
 
   const handleNumberSelect = (number: number) => {
     try {
@@ -940,17 +941,20 @@ nominate: 'Toa Maoni',
             <div className="card mb-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50 overflow-hidden">
               {/* Image takes top ~75% of card */}
               <div className="w-full h-32 relative">
-                {itemOfTheDay.imageUrl ? (
-                  <img
-                    src={itemOfTheDay.imageUrl}
-                    alt={itemOfTheDay.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-amber-900/30 flex items-center justify-center">
-                    <Gift className="w-16 h-16 text-amber-400" />
-                  </div>
-                )}
+{itemOfTheDay.imageUrl ? (
+                   <img
+                     src={itemOfTheDay.imageUrl}
+                     alt={itemOfTheDay.name}
+                     className="absolute inset-0 w-full h-full object-cover"
+                     onError={(e) => {
+                       (e.target as HTMLImageElement).style.display = 'none';
+                     }}
+                   />
+                 ) : (
+                   <div className="absolute inset-0 bg-amber-900/30 flex items-center justify-center">
+                     <Gift className="w-16 h-16 text-amber-400" />
+                   </div>
+                 )}
                 {/* Like button overlaid on top-right of image */}
                 <button
                   onClick={() => {
@@ -1009,19 +1013,23 @@ nominate: 'Toa Maoni',
                      : ''
                  } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
                >
-                <div className="w-full flex-1 min-h-0 relative">
-                  {item.imageUrl ? (
-                    <img 
-                      src={item.imageUrl} 
-                      alt={item.name}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Gift className="w-8 h-8 text-gold-400" />
-                    </div>
-                  )}
-                </div>
+<div className="w-full flex-1 min-h-0 relative">
+                   {item.imageUrl ? (
+                     <img 
+                       src={item.imageUrl} 
+                       alt={item.name}
+                       className="absolute inset-0 w-full h-full object-cover"
+                       onError={(e) => {
+                         // Hide broken image, fallback to icon
+                         (e.target as HTMLImageElement).style.display = 'none';
+                       }}
+                     />
+                   ) : (
+                     <div className="absolute inset-0 flex items-center justify-center">
+                       <Gift className="w-8 h-8 text-gold-400" />
+                     </div>
+                   )}
+                 </div>
                 <div className="w-full px-1 py-1 bg-black/60 text-center shrink-0">
                   <p className="text-xs font-semibold truncate leading-tight text-white">
                     {item.name}
@@ -1174,17 +1182,20 @@ nominate: 'Toa Maoni',
               >
                 {/* Item Image or Placeholder */}
                 <div className="w-full flex flex-col items-center justify-center gap-1 px-1 flex-1 min-h-0">
-                  {item?.imageUrl ? (
-                    <div className="w-full flex-1 min-h-0 relative">
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.name}
-                        className="absolute inset-0 w-full h-full object-cover rounded"
-                      />
-                    </div>
-                  ) : (
-                    <Gift className={`w-8 h-8 ${tappedBoxNum === boxNum ? 'text-white' : ''}`} />
-                  )}
+{item?.imageUrl ? (
+                     <div className="w-full flex-1 min-h-0 relative">
+                       <img 
+                         src={item.imageUrl} 
+                         alt={item.name}
+                         className="absolute inset-0 w-full h-full object-cover rounded"
+                         onError={(e) => {
+                           (e.target as HTMLImageElement).parentElement!.innerHTML = '';
+                         }}
+                       />
+                     </div>
+                   ) : (
+                     <Gift className={`w-8 h-8 ${tappedBoxNum === boxNum ? 'text-white' : ''}`} />
+                   )}
                   {/* Item Name */}
                   <span className="text-xs font-semibold text-center leading-tight line-clamp-2">
                     {item?.name || `${t.box} ${boxNum}`}

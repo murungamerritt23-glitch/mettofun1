@@ -319,17 +319,20 @@ export default function NominationScreen() {
 
                  {/* Full-width image */}
                  <div className="w-full flex-1 min-h-0 relative">
-                   {item.imageUrl ? (
-                     <img
-                       src={item.imageUrl}
-                       alt={item.name}
-                       className="absolute inset-0 w-full h-full object-cover"
-                     />
-                   ) : (
-                     <div className="absolute inset-0 flex items-center justify-center">
-                       <Gift className="w-8 h-8 text-gold-400" />
-                     </div>
-                   )}
+{item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Gift className="w-8 h-8 text-gold-400" />
+                      </div>
+                    )}
                  </div>
 
                  {/* Details at bottom */}

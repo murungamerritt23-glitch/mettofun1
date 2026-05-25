@@ -57,8 +57,17 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
    - Prevents lost likes when rapid multi-tap
 
 - [x] Improve error handling in NominationScreen
-   - Added try-catch around item loading useEffect
-   - Maintains existing error handling for nomination submission
+    - Added try-catch around item loading useEffect
+    - Maintains existing error handling for nomination submission
+
+- [x] Fix item selection error on item select screen
+    - Issue: Error "Error selecting item. Please try again." when customer taps an item
+    - Root causes:
+      1. `generateSecureRandomNumber(18 - threshold)` could receive NaN if thresholdNumber was undefined
+      2. Broken/invalid image URLs in items caused display issues
+    - Solution:
+      1. Added `Math.max(1, 18 - threshold)` guard to prevent NaN in GameMode.tsx handleItemSelect
+      2. Added onError handlers to all `<img>` tags in GameMode and NominationScreen to gracefully handle broken images
 
 ## Current Structure
 
@@ -160,4 +169,5 @@ export async function GET() {
 | Today | Add error handling to NominationScreen item load useEffect |
 | Today | Standardize nomination screen image sizing - match GameMode picker grid |
 | Today | Fix longpress item selection hanging - add guards against rapid presses in GameMode and NominationScreen |
+| Today | Fix item selection error on item select screen - NaN guard for threshold, image error handlers |
 | Today | Add Terms & Conditions button to customer entry screen - super admin editable, syncs via RTDB |
