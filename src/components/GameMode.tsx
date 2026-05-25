@@ -1173,15 +1173,17 @@ nominate: 'Toa Maoni',
                 onClick={() => handleBoxSelect(boxNum)}
               >
                 {/* Item Image or Placeholder */}
-                <div className="w-full flex flex-col items-center justify-center gap-1 px-1">
+                <div className="w-full flex flex-col items-center justify-center gap-1 px-1 flex-1 min-h-0">
                   {item?.imageUrl ? (
-                    <img 
-                      src={item.imageUrl} 
-                      alt={item.name}
-                      className="w-8 h-8 object-cover rounded"
-                    />
+                    <div className="w-full flex-1 min-h-0 relative">
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.name}
+                        className="absolute inset-0 w-full h-full object-cover rounded"
+                      />
+                    </div>
                   ) : (
-                    <Gift className={`w-6 h-6 ${tappedBoxNum === boxNum ? 'text-white' : ''}`} />
+                    <Gift className={`w-8 h-8 ${tappedBoxNum === boxNum ? 'text-white' : ''}`} />
                   )}
                   {/* Item Name */}
                   <span className="text-xs font-semibold text-center leading-tight line-clamp-2">

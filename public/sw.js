@@ -1,7 +1,7 @@
 // Service Worker for ETO FUN PWA - Enhanced Offline Support
-const CACHE_NAME = 'etofun-v3';
-const STATIC_CACHE = 'metofun-static-v3';
-const DYNAMIC_CACHE = 'metofun-dynamic-v3';
+const CACHE_NAME = 'etofun-v4';
+const STATIC_CACHE = 'metofun-static-v4';
+const DYNAMIC_CACHE = 'metofun-dynamic-v4';
 
 // Assets to cache immediately on install
 const STATIC_ASSETS = [
