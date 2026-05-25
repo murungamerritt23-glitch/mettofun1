@@ -75,9 +75,8 @@ export const calculateBoxConfiguration = (purchaseAmount: number, qualifyingAmou
 export const generateSecureRandomNumber = (max: number): number => {
   if (!Number.isFinite(max) || max <= 0) return 1;
 
-  // Use globalThis.crypto to be safe in all environments (web workers, iframes, etc.)
-  // In some environments `crypto` is undefined but `globalThis.crypto` is always defined
-  const cryptoObj = globalThis.crypto;
+  // Use getCrypto() to safely access crypto in all environments (web workers, iframes, etc.)
+  const cryptoObj = getCrypto();
   if (!cryptoObj?.getRandomValues) {
     // Fallback: crypto API not available — use Math.random()
     // This is a safe fallback; non-crypto random is fine for game entertainment purposes
