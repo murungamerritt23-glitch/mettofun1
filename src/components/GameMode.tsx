@@ -412,34 +412,61 @@ export default function GameMode() {
   };
 
 const handleItemSelect = async (item: Item) => {
-   try {
-     if (!item || !item.isActive) return;
-     
-     // Guard: Prevent multiple rapid selections
-     if (selectedItem?.id === item.id || showItemPicker === false) return;
-     
-     setTappedItemId(item.id);
-     setTimeout(() => setTappedItemId(null), 400);
-     
-     setSelectedItem(item);
-     // Disable further selection by hiding picker immediately
-     setShowItemPicker(false); 
-     
-     // Generate RANDOM winning number from available range (1 to 18-threshold)
-     // This makes the game fair and unpredictable
-     const threshold = thresholdNumber || 1;
-     const maxNumber = Math.max(1, 18 - threshold);
-     const winningNum = generateSecureRandomNumber(maxNumber);
-     setCorrectNumber(winningNum);
-     setShowNumberPicker(true);
+    try {
+      console.log('[handleItemSelect] Starting with item:', item?.id, item?.name);
+      
+      // Validate item has required properties
+      if (!item) {
+        console.error('[handleItemSelect] Item is null/undefined');
+        alert(language === 'sw' ? 'Kipengele kimatolewa. Tafadhali jaribu tena.' : 'Item not found. Please try again.');
+        return;
+      }
+      
+      if (!item.id) {
+        console.error('[handleItemSelect] Item missing id:', item);
+        alert(language === 'sw' ? 'Kipengele kipo na tatizo. Tafadhali jaribu tena.' : 'Item has error. Please try again.');
+        return;
+      }
+      
+      if (!item.isActive) {
+        console.log('[handleItemSelect] Item not active');
+        alert(language === 'sw' ? 'Kipengele hiki kimezimwa. Chagua lingine.' : 'This item is disabled. Choose another.');
+        return;
+      }
+      
+      // Guard: Prevent multiple rapid selections
+      if (selectedItem?.id === item.id || showItemPicker === false) {
+        console.log('[handleItemSelect] Duplicate selection or picker closed');
+        return;
+      }
+      
+      setTappedItemId(item.id);
+      setTimeout(() => setTappedItemId(null), 400);
+      
+      setSelectedItem(item);
+      // Disable further selection by hiding picker immediately
+      setShowItemPicker(false); 
+      
+      // Generate RANDOM winning number from available range (1 to 18-threshold)
+      // This makes the game fair and unpredictable
+      const threshold = thresholdNumber || 1;
+      console.log('[handleItemSelect] threshold:', threshold);
+      const maxNumber = Math.max(1, 18 - threshold);
+      console.log('[handleItemSelect] maxNumber:', maxNumber);
+      const winningNum = generateSecureRandomNumber(maxNumber);
+      console.log('[handleItemSelect] winningNum:', winningNum);
+      setCorrectNumber(winningNum);
+      setShowNumberPicker(true);
+      console.log('[handleItemSelect] Completed successfully');
     } catch (error) {
-      console.error('Error selecting item:', error);
+      console.error('[handleItemSelect] Error selecting item:', error);
+      console.error('[handleItemSelect] Error stack:', error instanceof Error ? error.stack : 'no stack');
       alert(language === 'sw' ? 'Hitilafu wakati wa kuchagua kipengele. Tafadhali jaribu tena.' : 'Error selecting item. Please try again.');
       // Reset visual state so user can try again
       setTappedItemId(null);
       setShowItemPicker(true);
     }
-   };
+  };
 
   const handleNumberSelect = (number: number) => {
     try {

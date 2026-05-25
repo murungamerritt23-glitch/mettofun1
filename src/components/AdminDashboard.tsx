@@ -1882,7 +1882,8 @@ export default function AdminDashboard() {
       const config = calculateBoxConfiguration(customer.purchaseAmount, qualifyingPurchase);
       
       // Generate winning number from the displayed range (1 to 18-threshold)
-      const winningNum = generateSecureRandomNumber(18 - config.threshold);
+      const maxNumber = Math.max(1, 18 - config.threshold);
+      const winningNum = generateSecureRandomNumber(maxNumber);
       const threshold = config.threshold;
       
       // Set up the customer session
@@ -1894,15 +1895,16 @@ export default function AdminDashboard() {
         purchaseAmount: customer.purchaseAmount
       });
       
-       // Set the selected item and game parameters
-       if (item) {
-         setSelectedItem(item);
-         setCorrectNumber(winningNum);
-       } else {
-         console.error('Item not found for customer:', customer.itemId);
-         alert('Error: Selected item not found. Please try again.');
-         return;
-       }
+// Set the selected item and game parameters
+        if (item) {
+          setSelectedItem(item);
+          setCorrectNumber(winningNum);
+        } else {
+          console.error('Item not found for customer:', customer.itemId);
+          console.error('Available items:', itemsList.map(i => ({id: i.id, name: i.name})));
+          alert('Error: Selected item not found. Please try again.');
+          return;
+        }
        setThresholdNumber(threshold);
       
       // Set game to playing state
