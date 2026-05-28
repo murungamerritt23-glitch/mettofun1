@@ -84,13 +84,19 @@ export const generateSecureRandomNumber = (max: number): number => {
   }
 
   // Use Web Crypto API for proper CSPRNG
-  const array = new Uint32Array(1);
-  cryptoObj.getRandomValues(array);
+  try {
+    const array = new Uint32Array(1);
+    cryptoObj.getRandomValues(array);
 
-  // Convert to number in range 1 to max
-  const result = (array[0] % max) + 1;
+    // Convert to number in range 1 to max
+    const result = (array[0] % max) + 1;
 
-  return Math.min(Math.max(result, 1), max);
+    return Math.min(Math.max(result, 1), max);
+  } catch (cryptoError) {
+    console.warn('Web Crypto API failed, falling back to Math.random', cryptoError);
+    // Fallback: use Math.random()
+    return Math.floor(Math.random() * max) + 1;
+  }
 };
 
 // Hash a number for anti-cheat
