@@ -1,6 +1,6 @@
 import { useUIStore, useSyncStore } from '@/store';
-import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations } from './local-db';
-import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations, rtdbAdmins } from './firebase';
+import { localAttempts, localItems, localShops, localNominationItems, localCustomerNominations, localSettings } from './local-db';
+import { rtdbAttempts, rtdbItems, rtdbShops, rtdbNominationItems, rtdbCustomerNominations, rtdbAdmins, rtdbSettings } from './firebase';
 import type { GameAttempt, Item, Shop, NominationItem, CustomerNomination } from '@/types';
 import { randomUUID } from '@/lib/game-utils';
 
@@ -919,6 +919,29 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
       }
     } catch (adminErr) {
       console.log('[Sync] Admin pull skipped (auth may not be active)');
+    }
+
+    // Pull settings (e.g. itemOfTheDay) with conflict resolution
+    try {
+      const fbSettings = await rtdbSettings.get('itemOfTheDay');
+      if (fbSettings) {
+        const localSetting = await localSettings.get('itemOfTheDay');
+        if (!localSetting) {
+          await localSettings.set('itemOfTheDay', fbSettings);
+        } else {
+          const localTime = localSetting.updatedAt instanceof Date
+            ? localSetting.updatedAt.getTime()
+            : new Date(localSetting.updatedAt || 0).getTime();
+          const remoteTime = fbSettings.updatedAt instanceof Date
+            ? fbSettings.updatedAt.getTime()
+            : new Date(fbSettings.updatedAt || 0).getTime();
+          if (remoteTime > localTime) {
+            await localSettings.set('itemOfTheDay', fbSettings);
+          }
+        }
+      }
+    } catch (settingsErr) {
+      console.log('[Sync] Settings pull skipped:', settingsErr);
     }
     
     console.log('[Sync] Pull from RTDB completed');

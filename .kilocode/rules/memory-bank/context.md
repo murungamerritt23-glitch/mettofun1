@@ -60,16 +60,28 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
     - Added try-catch around item loading useEffect
     - Maintains existing error handling for nomination submission
 
-- [x] Fix item selection error on item select screen
-     - Issue: Error "Error selecting item. Please try again." when customer taps an item
-     - Root causes:
-       1. `generateSecureRandomNumber(18 - threshold)` could receive NaN if thresholdNumber was undefined
-       2. Broken/invalid image URLs in items caused display issues
-       3. `globalThis.crypto` access could throw ReferenceError in web workers/iframes with strict CSP
-     - Solution:
-       1. Added `Math.max(1, 18 - threshold)` guard to prevent NaN in GameMode.tsx handleItemSelect
-       2. Added onError handlers to all `<img>` tags in GameMode and NominationScreen to gracefully handle broken images
-       3. Updated `generateSecureRandomNumber` to use `getCrypto()` helper instead of direct `globalThis.crypto` access
+ - [x] Fix item selection error on item select screen
+      - Issue: Error "Error selecting item. Please try again." when customer taps an item
+      - Root causes:
+        1. `generateSecureRandomNumber(18 - threshold)` could receive NaN if thresholdNumber was undefined
+        2. Broken/invalid image URLs in items caused display issues
+        3. `globalThis.crypto` access could throw ReferenceError in web workers/iframes with strict CSP
+      - Solution:
+        1. Added `Math.max(1, 18 - threshold)` guard to prevent NaN in GameMode.tsx handleItemSelect
+        2. Added onError handlers to all `<img>` tags in GameMode and NominationScreen to gracefully handle broken images
+        3. Updated `generateSecureRandomNumber` to use `getCrypto()` helper instead of direct `globalThis.crypto` access
+
+ - [x] Fix Item of the Day sync and like propagation across devices
+   - Issue: IOTD edits were not updating on other devices; likes were not syncing correctly
+   - Root causes:
+     1. `pullFromRTDB()` did not pull `settings/itemOfTheDay` from RTDB
+     2. `AdminDashboard` IOTD save/clear did not queue for sync on RTDB failure
+     3. `GameMode` RTDB listener wrote back to RTDB with local likes, causing race conditions and overwriting admin updates
+   - Solution:
+     1. Added `rtdbSettings` and `localSettings` imports to `sync-service.ts`
+     2. Added settings pull to `pullFromRTDB()` with `updatedAt` conflict resolution
+     3. Updated `AdminDashboard.tsx` `handleSaveItemOfDay` and `handleClearItemOfDay` to use `queueForSync` on RTDB failure
+     4. Removed write-back logic from `GameMode.tsx` RTDB listener and fallback poller; RTDB is now source of truth
 
 ## Current Structure
 

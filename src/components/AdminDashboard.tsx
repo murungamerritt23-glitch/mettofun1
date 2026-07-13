@@ -11,7 +11,7 @@ import {
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
 import { rtdbShops, rtdbAdmins, firebaseSettings } from '@/lib/firebase';
-import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive } from '@/lib/sync-service';
+import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive, queueForSync } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber, randomUUID } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, ItemOfTheDay, NominationItem } from '@/types';
@@ -784,9 +784,22 @@ export default function AdminDashboard() {
      try {
        await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-       await rtdbSettingsApi.set('itemOfTheDay', newItem);
+       const result = await rtdbSettingsApi.set('itemOfTheDay', newItem);
+       if (!result.success) {
+         throw new Error(result.error || 'RTDB sync failed');
+       }
      } catch (e) {
-       // RTDB sync failed, but local save succeeded
+       // RTDB sync failed, queue for retry
+       console.error('[IOTD] RTDB sync failed, queuing for retry:', e);
+       try {
+         await queueForSync({
+           type: 'setting',
+           operation: 'update',
+           data: { key: 'itemOfTheDay', value: newItem }
+         });
+       } catch (queueError) {
+         console.error('[IOTD] Failed to queue sync:', queueError);
+       }
      }
 
      setIsEditingItemOfDay(false);
@@ -794,23 +807,35 @@ export default function AdminDashboard() {
      setTimeout(() => setItemOfDaySaved(false), 3000);
    };
 
-  // Clear Item of the Day
-  const handleClearItemOfDay = async () => {
-    if (confirm('Are you sure you want to remove the Item of the Day?')) {
-      await localSettings.set('itemOfTheDay', null);
-      
-      // Also clear from RTDB
-      try {
-        await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
-        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-        await rtdbSettingsApi.set('itemOfTheDay', null);
-      } catch (e) {
-        // RTDB sync failed
-      }
-      setItemOfTheDay(null);
-      setItemOfDayForm({ name: '', value: '', imageUrl: '' });
-    }
-  };
+   // Clear Item of the Day
+   const handleClearItemOfDay = async () => {
+     if (confirm('Are you sure you want to remove the Item of the Day?')) {
+       await localSettings.set('itemOfTheDay', null);
+       setItemOfTheDay(null);
+       
+       // Also clear from RTDB
+       try {
+         await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
+         const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+         const result = await rtdbSettingsApi.set('itemOfTheDay', null);
+         if (!result.success) {
+           throw new Error(result.error || 'RTDB clear failed');
+         }
+       } catch (e) {
+         // RTDB clear failed, queue for retry
+         console.error('[IOTD] RTDB clear failed, queuing for retry:', e);
+         try {
+           await queueForSync({
+             type: 'setting',
+             operation: 'delete',
+             data: { key: 'itemOfTheDay', value: null }
+           });
+         } catch (queueError) {
+           console.error('[IOTD] Failed to queue clear sync:', queueError);
+         }
+       }
+     }
+   };
 
   // Start editing Item of the Day
   const handleEditItemOfDay = () => {
