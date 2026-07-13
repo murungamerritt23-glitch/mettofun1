@@ -202,18 +202,15 @@ export default function GameMode() {
 
     const loadItems = async () => {
       if (!currentShop) {
-        // No shop selected yet - still need to clear loading
         setIsLoading(false);
         return;
       }
 
       try {
-        // Create a timeout promise
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('Items loading timeout')), 15000)
         );
 
-        // Always load fresh from DB - this ensures updated images are seen
         const shopItems = await Promise.race([
           localItems.getByShop(currentShop.id),
           timeoutPromise
@@ -221,10 +218,8 @@ export default function GameMode() {
 
         if (isCancelled) return;
 
-        // Use whatever is in DB - no overwriting, just load and display
         let finalItems = shopItems;
 
-        // Only create missing items if less than 17 exist (preserve DB data)
         if (finalItems.length < 17) {
           const missingCount = 17 - finalItems.length;
           const newItems = Array.from({ length: missingCount }, (_, i) => ({
@@ -237,18 +232,16 @@ export default function GameMode() {
             order: finalItems.length + i
           }));
           finalItems = [...finalItems, ...newItems];
-          // Only save the NEW items, never overwrite existing
           if (newItems.length > 0) {
             await localItems.saveMultiple(newItems);
           }
         }
 
+        console.log('[GameMode] Loaded items:', finalItems.length, finalItems.map(i => ({ id: i.id, name: i.name, hasImage: !!i.imageUrl, imageLength: i.imageUrl?.length })));
         setItems(finalItems);
       } catch (error) {
         console.error('Failed to load items:', error);
-        // Set flag to prevent auto-login loop on restart
         localStorage.setItem('metofun-load-timeout', Date.now().toString());
-        // Set default items on error
         if (currentShop && !isCancelled) {
           const defaultItems = Array.from({ length: 17 }, (_, i) => ({
             id: `${currentShop.id}-item-${i + 1}`,
@@ -259,6 +252,7 @@ export default function GameMode() {
             shopId: currentShop.id,
             order: i
           }));
+          console.log('[GameMode] Loaded default items:', defaultItems.length);
           setItems(defaultItems);
         }
       } finally {
@@ -413,7 +407,7 @@ export default function GameMode() {
 
 const handleItemSelect = async (item: Item) => {
     try {
-      console.log('[handleItemSelect] Starting with item:', item?.id, item?.name);
+      console.log('[handleItemSelect] Starting with item:', item?.id, item?.name, 'hasImage:', !!item?.imageUrl, 'imageLength:', item?.imageUrl?.length);
       
       // Validate item has required properties
       if (!item) {
@@ -952,6 +946,7 @@ nominate: 'Toa Maoni',
   // Item picker - customer selects an item before picking number
   if (showItemPicker && !showResult && gameStatus === 'playing') {
     const activeItems = items.filter(i => i.isActive);
+    console.log('[GameMode] Item picker rendered. Total items:', items.length, 'Active:', activeItems.length, 'showItemPicker:', showItemPicker, 'gameStatus:', gameStatus);
 
     // If no active items, skip to number picker
     if (activeItems.length === 0) {
@@ -1027,19 +1022,21 @@ nominate: 'Toa Maoni',
           </p>
           
 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
-             {activeItems.map((item) => (
-               <motion.button
-                 key={item.id}
-                 whileHover={{ scale: 1.05 }}
-                 whileTap={{ scale: 0.95 }}
-                 onClick={() => handleItemSelect(item)}
-                 disabled={selectedItem?.id === item.id || tappedItemId === item.id}
-                 className={`game-box overflow-hidden p-0 flex flex-col justify-start ${
-                   selectedItem?.id === item.id 
-                     ? 'ring-2 ring-gold-500 bg-gold-900/50 selected' 
-                     : ''
-                 } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
-               >
+             {activeItems.map((item) => {
+               console.log('[GameMode] Rendering item:', item.id, item.name, 'hasImage:', !!item.imageUrl, 'imageLength:', item.imageUrl?.length);
+               return (
+                <motion.button
+                  key={item.id}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleItemSelect(item)}
+                  disabled={selectedItem?.id === item.id || tappedItemId === item.id}
+                  className={`game-box overflow-hidden p-0 flex flex-col justify-start ${
+                    selectedItem?.id === item.id 
+                      ? 'ring-2 ring-gold-500 bg-gold-900/50 selected' 
+                      : ''
+                  } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
+                >
 <div className="w-full flex-1 min-h-0 relative">
                    {item.imageUrl ? (
                      <img 
@@ -1047,6 +1044,7 @@ nominate: 'Toa Maoni',
                        alt={item.name}
                        className="absolute inset-0 w-full h-full object-cover"
                        onError={(e) => {
+                         console.warn('[GameMode] Image load error for item:', item.id, item.name, 'src length:', item.imageUrl?.length);
                          // Hide broken image, fallback to icon
                          (e.target as HTMLImageElement).style.display = 'none';
                        }}
@@ -1057,17 +1055,18 @@ nominate: 'Toa Maoni',
                      </div>
                    )}
                  </div>
-                <div className="w-full px-1 py-1 bg-black/60 text-center shrink-0">
-                  <p className="text-xs font-semibold truncate leading-tight text-white">
-                    {item.name}
-                  </p>
-                  <p className="text-xs leading-tight font-bold text-gold-400">
-                    KSh {(item.value || 0).toLocaleString()}
-                  </p>
-                </div>
-              </motion.button>
-            ))}
-          </div>
+                 <div className="w-full px-1 py-1 bg-black/60 text-center shrink-0">
+                   <p className="text-xs font-semibold truncate leading-tight text-white">
+                     {item.name}
+                   </p>
+                   <p className="text-xs leading-tight font-bold text-gold-400">
+                     KSh {(item.value || 0).toLocaleString()}
+                   </p>
+                 </div>
+               </motion.button>
+             );
+             })}
+           </div>
         </div>
       </div>
     );

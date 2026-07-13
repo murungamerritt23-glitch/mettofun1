@@ -1071,6 +1071,7 @@ export default function AdminDashboard() {
   };
 
   const handleSaveItem = async (item: Item) => {
+    console.log('[AdminDashboard] Saving item:', { id: item.id, name: item.name, hasImage: !!item.imageUrl, imageLength: item.imageUrl?.length });
     // Save locally first (fast)
     await localItems.save(item);
     setEditingItem(null);
@@ -1086,6 +1087,7 @@ export default function AdminDashboard() {
           localItems.getByShop(currentShop.id),
           itemLoadTimeout
         ]) as Item[];
+        console.log('[AdminDashboard] Reloaded items after save:', updatedItems.length, updatedItems.map(i => ({ id: i.id, name: i.name, hasImage: !!i.imageUrl, imageLength: i.imageUrl?.length })));
         // Update shared item store so GameMode sees changes immediately
         setItems(updatedItems);
         setItemsList(updatedItems);
@@ -3982,6 +3984,8 @@ function ItemForm({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log('[AdminDashboard] Image upload started:', { name: file.name, size: file.size, type: file.type });
+
     // Validate file type
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file');
@@ -4029,6 +4033,7 @@ function ItemForm({
       img.onload = () => {
         clearTimeout(timeout);
         const compressed = compressImage(img);
+        console.log('[AdminDashboard] Image compressed:', { originalSize: file.size, compressedLength: compressed.length });
         setImagePreview(compressed);
         setFormData({ ...formData, imageUrl: compressed });
         setIsUploading(false);
