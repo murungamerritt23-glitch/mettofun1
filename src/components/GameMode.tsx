@@ -537,6 +537,7 @@ const handleItemSelect = async (item: Item) => {
     setShowResult(false);
     setShowNumberPicker(false);
     setShowItemPicker(true); // Show item picker first so customer selects item before winning number is generated
+    setShowIOTDScreen(false);
     setGameStatus('playing');
     setWinningItem(null);
     setSelectedItem(null);
@@ -546,6 +547,7 @@ const handleItemSelect = async (item: Item) => {
   const handleExit = () => {
     resetGame();
     setShowItemPicker(false);
+    setShowIOTDScreen(false);
     setSelectedItem(null);
     setCurrentView('shop-select');
   };
@@ -562,6 +564,7 @@ const handleItemSelect = async (item: Item) => {
     setShowItemPicker(false);
     setShowNumberPicker(false);
     setShowResult(false);
+    setShowIOTDScreen(false);
     setSelectedNumber(null);
     setWinningItem(null);
     setGameStatus('idle');
@@ -578,6 +581,7 @@ const handleItemSelect = async (item: Item) => {
     setShowItemPicker(false);
     setShowNumberPicker(false);
     setShowResult(false);
+    setShowIOTDScreen(false);
     setSelectedNumber(null);
     setSelectedBox(null);
     setWinningItem(null);

@@ -433,17 +433,23 @@ export const localSettings = {
     const database = await initDB();
     // Use transaction to prevent two concurrent writes from reading the same value
     const tx = database.transaction('settings', 'readwrite');
-    const item = await tx.store.get('itemOfTheDay');
-    if (!item) {
+    try {
+      const item = await tx.store.get('itemOfTheDay');
+      if (!item) {
+        await tx.done;
+        return currentLikes + 1; // fallback
+      }
+      const current = (item.value as any)?.likes || 0;
+      const newLikes = current + 1;
+      (item.value as any).likes = newLikes;
+      await tx.store.put(item);
       await tx.done;
-      return currentLikes + 1; // fallback
+      return newLikes;
+    } catch (txError) {
+      try { await tx.done; } catch (e) { /* ignore abort errors */ }
+      console.error('[LocalDB] incrementIOTDLikes transaction failed:', txError);
+      return currentLikes + 1;
     }
-    const current = (item.value as any)?.likes || 0;
-    const newLikes = current + 1;
-    (item.value as any).likes = newLikes;
-    await tx.store.put(item);
-    await tx.done;
-    return newLikes;
   }
 };
 

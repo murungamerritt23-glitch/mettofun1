@@ -322,9 +322,9 @@ export const processSyncQueue = async (): Promise<void> => {
     // Ensure admin exists in RTDB before any writes (security rule requirement)
     const adminReady = await ensureAdminInRTDB();
     if (!adminReady) {
-      console.warn('[Sync] Admin not ready in RTDB, aborting sync cycle');
-      syncInProgress = false;
-      return;
+      console.warn('[Sync] Admin not ready in RTDB - will attempt sync anyway; items needing auth will fail individually');
+      // Do NOT abort the whole sync cycle here. Continue processing so that
+      // non-auth-dependent pulls still happen and failed writes are recorded properly.
     }
 
     // Get pending items from IndexedDB
@@ -829,11 +829,27 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
     
     // Pull items, attempts, nominations for specific shop or all shops
     if (shopId) {
-      // Pull items for specific shop
+      // Pull items for specific shop with conflict resolution
       const fbItems = await rtdbItems.getByShop(shopId);
       if (fbItems && fbItems.length > 0) {
-        for (const item of fbItems) {
-          await localItems.save(item);
+        const existingLocalItems = await localItems.getByShop(shopId);
+        const localItemMap = new Map(existingLocalItems.map(i => [i.id, i]));
+        for (const remoteItem of fbItems) {
+          const localItem = localItemMap.get(remoteItem.id);
+          if (!localItem) {
+            await localItems.save(remoteItem);
+          } else {
+            const localTime = localItem.updatedAt instanceof Date
+              ? localItem.updatedAt.getTime()
+              : new Date(localItem.updatedAt || 0).getTime();
+            const remoteTime = remoteItem.updatedAt instanceof Date
+              ? remoteItem.updatedAt.getTime()
+              : new Date(remoteItem.updatedAt || 0).getTime();
+            if (remoteTime >= localTime) {
+              await localItems.save(remoteItem);
+            }
+            // else keep local item (newer)
+          }
         }
       }
       
@@ -872,10 +888,27 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
     } else {
       // Pull items, attempts, nominations for all shops
       for (const shop of fbShops || []) {
+        // Pull items for this shop with conflict resolution
         const fbItems = await rtdbItems.getByShop(shop.id);
         if (fbItems && fbItems.length > 0) {
-          for (const item of fbItems) {
-            await localItems.save(item);
+          const existingLocalItems = await localItems.getByShop(shop.id);
+          const localItemMap = new Map(existingLocalItems.map(i => [i.id, i]));
+          for (const remoteItem of fbItems) {
+            const localItem = localItemMap.get(remoteItem.id);
+            if (!localItem) {
+              await localItems.save(remoteItem);
+            } else {
+              const localTime = localItem.updatedAt instanceof Date
+                ? localItem.updatedAt.getTime()
+                : new Date(localItem.updatedAt || 0).getTime();
+              const remoteTime = remoteItem.updatedAt instanceof Date
+                ? remoteItem.updatedAt.getTime()
+                : new Date(remoteItem.updatedAt || 0).getTime();
+              if (remoteTime >= localTime) {
+                await localItems.save(remoteItem);
+              }
+              // else keep local item (newer)
+            }
           }
         }
         
