@@ -8,7 +8,7 @@ import {
   Save, Smartphone, Power, PowerOff, Copy, UserCheck, UserPlus, Zap, ShoppingCart,
   Upload, RefreshCw, FlaskConical, Gift, Star, Heart, Lock, LogIn
 } from 'lucide-react';
-import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore } from '@/store';
+import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore, useSyncStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
 import { rtdbShops, rtdbAdmins, firebaseSettings } from '@/lib/firebase';
 import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive, queueForSync } from '@/lib/sync-service';
@@ -179,6 +179,36 @@ export default function AdminDashboard() {
     if (activeTab === 'items' && currentShop) {
       loadItems();
     }
+  }, [activeTab, currentShop]);
+
+  // Reload items when a sync completes so remote changes appear in the admin UI
+  useEffect(() => {
+    const lastSync = useSyncStore.getState().lastSyncTime;
+    if (!lastSync) return;
+
+    let timeoutId: NodeJS.Timeout;
+    const handler = () => {
+      const currentSync = useSyncStore.getState().lastSyncTime;
+      if (currentSync && currentSync !== lastSync && currentShop) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          if (activeTab === 'items') {
+            loadItems();
+          }
+          if (activeTab === 'customers') {
+            localItems.getByShop(currentShop.id).then(data => {
+              if (data) setItemsList(data);
+            }).catch(err => console.error('Failed to reload items after sync:', err));
+          }
+        }, 500);
+      }
+    };
+
+    const unsubscribe = useSyncStore.subscribe(handler);
+    return () => {
+      unsubscribe();
+      clearTimeout(timeoutId);
+    };
   }, [activeTab, currentShop]);
 
    // Initialize qualifying purchase input when currentShop changes (shop switched)
