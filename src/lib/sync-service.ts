@@ -543,12 +543,12 @@ const syncCustomerNomination = async (operation: SyncOperation, data: CustomerNo
 
 // Sync setting (key-value)
 export const syncSetting = async (operation: SyncOperation, data: { key: string; value?: any; increment?: number }): Promise<void> => {
-  const { rtdbSettings } = await import('./firebase');
-
   let result: { success: boolean; error?: string };
   if (operation === 'create' || operation === 'update') {
-    if (data.increment !== undefined) {
+    if (data.increment !== undefined && typeof rtdbSettings.incrementLikes === 'function') {
       result = await rtdbSettings.incrementLikes(data.key, data.increment);
+    } else if (data.increment !== undefined && typeof rtdbSettings.update === 'function') {
+      result = await rtdbSettings.update(data.key, { likes: data.increment });
     } else {
       result = await rtdbSettings.update(data.key, data.value);
     }
