@@ -542,12 +542,16 @@ const syncCustomerNomination = async (operation: SyncOperation, data: CustomerNo
 };
 
 // Sync setting (key-value)
-export const syncSetting = async (operation: SyncOperation, data: { key: string; value: any }): Promise<void> => {
+export const syncSetting = async (operation: SyncOperation, data: { key: string; value?: any; increment?: number }): Promise<void> => {
   const { rtdbSettings } = await import('./firebase');
 
   let result: { success: boolean; error?: string };
   if (operation === 'create' || operation === 'update') {
-    result = await rtdbSettings.update(data.key, data.value);
+    if (data.increment !== undefined) {
+      result = await rtdbSettings.incrementLikes(data.key, data.increment);
+    } else {
+      result = await rtdbSettings.update(data.key, data.value);
+    }
   } else if (operation === 'delete') {
     result = await rtdbSettings.set(data.key, null);
   } else {

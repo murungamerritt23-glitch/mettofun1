@@ -295,12 +295,26 @@ export const useGameStore = create<GameState>()(
           }
         }
 
+        const { isOnline } = await import('@/lib/sync-service');
+        const { rtdbSettings } = await import('@/lib/firebase');
+
+        if (isOnline()) {
+          try {
+            const result = await rtdbSettings.incrementLikes('itemOfTheDay', 1);
+            if (result.success) {
+              return;
+            }
+          } catch (e) {
+            console.error('[IOTD] Immediate RTDB increment failed:', e);
+          }
+        }
+
         try {
           const { queueForSync } = await import('@/lib/sync-service');
           await queueForSync({
             type: 'setting',
             operation: 'update',
-            data: { key: 'itemOfTheDay', value: { likes: confirmedLikes } }
+            data: { key: 'itemOfTheDay', increment: 1 }
           });
         } catch (error) {
           console.error('[Sync] Failed to queue IOTD update:', error);

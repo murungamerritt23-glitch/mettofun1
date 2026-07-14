@@ -42,7 +42,8 @@ import {
   limitToFirst,
   limitToLast,
   Database,
-  connectDatabaseEmulator
+  connectDatabaseEmulator,
+  increment
 } from 'firebase/database';
 import type { Shop, Subscription, SubscriptionTier, Admin, GameAttempt, Item, NominationItem, CustomerNomination } from '@/types';
 import { localSettings } from './local-db';
@@ -1383,6 +1384,15 @@ export const rtdbSettings = {
   async update(key: string, value: any): Promise<{ success: boolean; error?: string }> {
     try {
       await update(ref(rtdb, `settings/${key}`), convertToSerializable(value));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async incrementLikes(key: string, amount: number = 1): Promise<{ success: boolean; error?: string }> {
+    try {
+      await update(ref(rtdb, `settings/${key}`), { likes: increment(amount) });
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
