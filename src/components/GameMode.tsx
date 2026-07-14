@@ -950,10 +950,10 @@ nominate: 'Toa Maoni',
       return null;
     }
 
-    return (
-      <div className="min-h-screen p-4 flex flex-col overflow-auto">
-        <div className="max-w-md mx-auto w-full">
-          {/* Item of the Day Banner */}
+     return (
+       <div className="min-h-screen p-4 flex flex-col overflow-auto">
+         <div className="max-w-7xl mx-auto w-full">
+           {/* Item of the Day Banner */}
           {itemOfTheDay && (
             <div className="card mb-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50 overflow-hidden">
               {/* Image takes top ~75% of card */}
@@ -1016,7 +1016,7 @@ nominate: 'Toa Maoni',
               : 'Pick one of the prizes below'}
           </p>
           
-<div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
+<div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
              {activeItems.map((item) => {
                console.log('[GameMode] Rendering item:', item.id, item.name, 'hasImage:', !!item.imageUrl, 'imageLength:', item.imageUrl?.length);
                return (
