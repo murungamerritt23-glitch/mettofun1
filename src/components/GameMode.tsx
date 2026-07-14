@@ -381,13 +381,7 @@ export default function GameMode() {
       setThresholdNumber(threshold);
       
       setGameStatus('playing');
-      
-      // Show Item of the Day screen if available, otherwise go straight to item picker
-      if (itemOfTheDay) {
-        setShowIOTDScreen(true);
-      } else {
-        setShowItemPicker(true);
-      }
+      setShowIOTDScreen(true);
     } catch (error) {
       console.error('Error during authorization:', error);
       alert(language === 'sw' ? 'Hitilafu wakati wa kuanza mchezo. Tafadhali jaribu tena.' : 'Failed to start game. Please try again.');
@@ -951,100 +945,115 @@ const handleItemSelect = async (item: Item) => {
     );
    }
    
-   // Item of the Day screen - shown immediately after authorization
-   if (showIOTDScreen) {
-     return (
-       <div className="min-h-screen p-4 flex flex-col items-center justify-center overflow-auto">
-         <div className="max-w-md w-full">
-           <h2 className="gold-gradient-text text-2xl font-bold text-center mb-4">
-             {t.itemOfTheDay}
-           </h2>
-           
-           {itemOfTheDay && (
-             <motion.div
-               initial={{ scale: 0.8, opacity: 0 }}
-               animate={{ scale: 1, opacity: 1 }}
-               className="card bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50 overflow-hidden mb-6"
-             >
-               {/* Image takes top ~60% of card */}
-               <div className="w-full h-48 relative">
-                 {itemOfTheDay.imageUrl ? (
-                   <img
-                     src={itemOfTheDay.imageUrl}
-                     alt={itemOfTheDay.name}
-                     className="absolute inset-0 w-full h-full object-cover"
-                     onError={(e) => {
-                       (e.target as HTMLImageElement).style.display = 'none';
-                     }}
-                   />
-                 ) : (
-                   <div className="absolute inset-0 bg-amber-900/30 flex items-center justify-center">
-                     <Gift className="w-16 h-16 text-amber-400" />
-                   </div>
-                 )}
-                 
-                 {/* Like button overlaid on top-right of image */}
-                 <button
-                   onClick={() => {
-                     if (!hasLikedItemOfDay) {
-                       incrementItemOfDayLikes();
-                       setHasLikedItemOfDay(true);
-                     }
-                   }}
-                   disabled={hasLikedItemOfDay}
-                   className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors flex-shrink-0 ${
-                     hasLikedItemOfDay
-                       ? 'bg-pink-900/60 text-pink-400 cursor-default'
-                       : 'bg-black/40 text-amber-400 hover:bg-black/60 hover:text-amber-300'
-                   }`}
-                   title={hasLikedItemOfDay ? 'Already liked' : 'Like item of the day'}
-                 >
-                   <Heart className="w-5 h-5" fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
-                 </button>
-               </div>
-               
-               {/* Details at bottom ~40% */}
-               <div className="p-4">
-                 <p className="text-white font-semibold text-lg truncate">{itemOfTheDay.name}</p>
-                 <div className="flex items-center justify-between mt-1">
-                   <p className="text-amber-400 text-sm font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
-                   <div className="flex items-center gap-1">
-                     <Heart className={`w-4 h-4 ${hasLikedItemOfDay ? 'text-pink-400 fill-pink-400' : 'text-gray-500'}`} />
-                     <span className="text-xs text-gray-400">
-                       {itemOfTheDay.likes || 0} likes
-                     </span>
-                   </div>
-                 </div>
-               </div>
-             </motion.div>
-           )}
-           
-           <div className="flex gap-3">
-             <button
-               onClick={() => {
-                 setShowIOTDScreen(false);
-                 setShowItemPicker(true);
-               }}
-               className="btn-outline flex-1 flex items-center justify-center gap-2"
-             >
-               <ArrowLeft size={20} />
-               {t.skip}
-             </button>
-             
-             <button
-               onClick={() => {
-                 setShowIOTDScreen(false);
-                 setShowItemPicker(true);
-               }}
-               className="btn-gold flex-1 flex items-center justify-center gap-2"
-             >
-               {t.continue}
-             </button>
-           </div>
-         </div>
-       </div>
-     );
-   }
+    // Item of the Day screen - always shown immediately after authorization
+    if (showIOTDScreen) {
+      return (
+        <div className="min-h-screen p-4 flex flex-col items-center justify-center overflow-auto">
+          <div className="max-w-md w-full">
+            <h2 className="gold-gradient-text text-2xl font-bold text-center mb-4">
+              {t.itemOfTheDay}
+            </h2>
+            
+            {itemOfTheDay ? (
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="card bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50 overflow-hidden mb-6"
+              >
+                {/* Image takes top ~60% of card */}
+                <div className="w-full h-48 relative">
+                  {itemOfTheDay.imageUrl ? (
+                    <img
+                      src={itemOfTheDay.imageUrl}
+                      alt={itemOfTheDay.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-amber-900/30 flex items-center justify-center">
+                      <Gift className="w-16 h-16 text-amber-400" />
+                    </div>
+                  )}
+                  
+                  {/* Like button overlaid on top-right of image */}
+                  <button
+                    onClick={() => {
+                      if (!hasLikedItemOfDay) {
+                        incrementItemOfDayLikes();
+                        setHasLikedItemOfDay(true);
+                      }
+                    }}
+                    disabled={hasLikedItemOfDay}
+                    className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors flex-shrink-0 ${
+                      hasLikedItemOfDay
+                        ? 'bg-pink-900/60 text-pink-400 cursor-default'
+                        : 'bg-black/40 text-amber-400 hover:bg-black/60 hover:text-amber-300'
+                    }`}
+                    title={hasLikedItemOfDay ? 'Already liked' : 'Like item of the day'}
+                  >
+                    <Heart className="w-5 h-5" fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
+                
+                {/* Details at bottom ~40% */}
+                <div className="p-4">
+                  <p className="text-white font-semibold text-lg truncate">{itemOfTheDay.name}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-amber-400 text-sm font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
+                    <div className="flex items-center gap-1">
+                      <Heart className={`w-4 h-4 ${hasLikedItemOfDay ? 'text-pink-400 fill-pink-400' : 'text-gray-500'}`} />
+                      <span className="text-xs text-gray-400">
+                        {itemOfTheDay.likes || 0} likes
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="card bg-gray-900/50 border border-gray-700/50 overflow-hidden mb-6"
+              >
+                <div className="p-8 text-center">
+                  <Gift className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400 text-lg">
+                    {language === 'sw' ? 'Hakuna Bidhaa ya Siku kwa siku hii' : 'No Item of the Day available today'}
+                  </p>
+                  <p className="text-gray-500 text-sm mt-2">
+                    {language === 'sw' ? 'Nenda moja kwa moja kuchagua zawadi' : 'Skip ahead to select your prize'}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowIOTDScreen(false);
+                  setShowItemPicker(true);
+                }}
+                className="btn-gold flex-1 flex items-center justify-center gap-2"
+              >
+                {language === 'sw' ? 'Ruka' : 'Skip'}
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowIOTDScreen(false);
+                  setShowItemPicker(true);
+                }}
+                className="btn-outline flex-1 flex items-center justify-center gap-2"
+              >
+                {language === 'sw' ? 'Endelea' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
    
    // Item picker - customer selects an item before picking number
    if (showItemPicker && !showResult && gameStatus === 'playing') {
@@ -1058,71 +1067,17 @@ const handleItemSelect = async (item: Item) => {
        return null;
      }
 
-      return (
-        <div className="min-h-screen p-4 flex flex-col overflow-auto">
-          <div className="max-w-7xl mx-auto w-full">
-            {/* Item of the Day Banner */}
-          {itemOfTheDay && (
-            <div className="card mb-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50 overflow-hidden">
-              {/* Image takes top ~75% of card */}
-              <div className="w-full h-32 relative">
-{itemOfTheDay.imageUrl ? (
-                   <img
-                     src={itemOfTheDay.imageUrl}
-                     alt={itemOfTheDay.name}
-                     className="absolute inset-0 w-full h-full object-cover"
-                     onError={(e) => {
-                       (e.target as HTMLImageElement).style.display = 'none';
-                     }}
-                   />
-                 ) : (
-                   <div className="absolute inset-0 bg-amber-900/30 flex items-center justify-center">
-                     <Gift className="w-16 h-16 text-amber-400" />
-                   </div>
-                 )}
-                {/* Like button overlaid on top-right of image */}
-                <button
-                  onClick={() => {
-                    if (!hasLikedItemOfDay) {
-                      incrementItemOfDayLikes();
-                      setHasLikedItemOfDay(true);
-                    }
-                  }}
-                  disabled={hasLikedItemOfDay}
-                  className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors flex-shrink-0 ${
-                    hasLikedItemOfDay
-                      ? 'bg-pink-900/60 text-pink-400 cursor-default'
-                      : 'bg-black/40 text-amber-400 hover:bg-black/60 hover:text-amber-300'
-                  }`}
-                  title={hasLikedItemOfDay ? 'Already liked' : 'Like item of the day'}
-                >
-                  <Heart className="w-5 h-5" fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
-                </button>
-              </div>
-              {/* Details at bottom ~25% */}
-              <div className="px-3 py-2">
-                <p className="text-white font-semibold text-sm truncate">{itemOfTheDay.name}</p>
-                <div className="flex items-center justify-between mt-0.5">
-                  <p className="text-amber-400 text-xs font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
-                  <div className="flex items-center gap-1">
-                    <Heart className={`w-3 h-3 ${hasLikedItemOfDay ? 'text-pink-400 fill-pink-400' : 'text-gray-500'}`} />
-                    <span className="text-[10px] text-gray-400">
-                      {itemOfTheDay.likes || 0} likes
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <h2 className="gold-gradient-text text-2xl font-bold text-center mb-2">
-            {language === 'sw' ? 'Chagua Ombi lako' : 'Select Your Prize'}
-          </h2>
-          <p className="text-gray-400 text-center mb-4">
-            {language === 'sw' 
-              ? 'Chagua moja kati ya vilivyopo chini' 
-              : 'Pick one of the prizes below'}
-          </p>
+       return (
+         <div className="min-h-screen p-4 flex flex-col overflow-auto">
+           <div className="max-w-7xl mx-auto w-full">
+             <h2 className="gold-gradient-text text-2xl font-bold text-center mb-2">
+               {language === 'sw' ? 'Chagua Ombi lako' : 'Select Your Prize'}
+             </h2>
+             <p className="text-gray-400 text-center mb-4">
+               {language === 'sw' 
+                 ? 'Chagua moja kati ya vilivyopo chini' 
+                 : 'Pick one of the prizes below'}
+             </p>
           
 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
              {activeItems.map((item) => {

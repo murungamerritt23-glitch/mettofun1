@@ -74,10 +74,12 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
  - [x] Add independent Item of the Day screen after customer entry
     - Issue: IOTD was only visible as a banner inside item selection screen
     - Solution: Added dedicated full-screen IOTD view after phone/purchase authorization
-      - Shows IOTD with image, name, value, likes, and like button
-      - Skip button returns to entry screen
+      - Always shows after authorization, even if no IOTD is set
+      - If IOTD exists: shows image, name, value, likes, and like button
+      - If no IOTD exists: shows placeholder with "No Item of the Day available today" message
+      - Skip button proceeds to item selection
       - Continue button proceeds to item selection
-      - If no IOTD exists, goes straight to item picker
+      - Removed IOTD banner from item selection screen to free up space for the 17-item grid
 
  - [x] Make item selection screen responsive across devices
     - Issue: 17-item grid was cramped on desktop and required scrolling
