@@ -377,6 +377,15 @@ export const processSyncQueue = async (): Promise<void> => {
       } catch (error) {
         console.error(`[Sync] Error syncing ${item.type}:`, error);
         
+        // PERMISSION_DENIED is permanent - don't retry, just drop the item
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('PERMISSION_DENIED')) {
+          console.warn(`[Sync] Permission denied for ${item.type} ${item.operation} - device may not be linked to shop. Dropping from queue.`);
+          await localDB.updateSyncItemStatus(item.id, 'failed', currentRetryCount);
+          failed++;
+          continue;
+        }
+        
         // Increment retry count - just update IndexedDB, don't trigger UI updates
         const newRetryCount = currentRetryCount + 1;
         await localDB.updateSyncItemStatus(item.id, 'pending', newRetryCount);
