@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore, useSyncStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
-import { rtdbShops, rtdbAdmins, firebaseSettings } from '@/lib/firebase';
+import { rtdbShops, rtdbAdmins, rtdbItems, firebaseSettings } from '@/lib/firebase';
 import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive, queueForSync } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber, randomUUID } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
@@ -183,13 +183,10 @@ export default function AdminDashboard() {
 
   // Reload items when a sync completes so remote changes appear in the admin UI
   useEffect(() => {
-    const lastSync = useSyncStore.getState().lastSyncTime;
-    if (!lastSync) return;
-
     let timeoutId: NodeJS.Timeout;
     const handler = () => {
       const currentSync = useSyncStore.getState().lastSyncTime;
-      if (currentSync && currentSync !== lastSync && currentShop) {
+      if (currentSync && currentShop) {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
           if (activeTab === 'items') {
@@ -210,6 +207,75 @@ export default function AdminDashboard() {
       clearTimeout(timeoutId);
     };
   }, [activeTab, currentShop]);
+
+  // Live RTDB listener for items - updates local immediately when any device changes items
+  useEffect(() => {
+    if (!currentShop || !isOnline()) return;
+
+    let unsubscribe: (() => void) | null = null;
+    let isMounted = true;
+
+    const setupListener = async () => {
+      try {
+        const { ref, onValue } = await import('firebase/database');
+        const { rtdb } = await import('@/lib/firebase');
+        const itemsRef = ref(rtdb, `shops/${currentShop.id}/items`);
+        
+        unsubscribe = onValue(itemsRef, async (snapshot) => {
+          if (!isMounted) return;
+          
+          if (snapshot.exists()) {
+            const itemsData = snapshot.val();
+            const remoteItems: Item[] = Object.entries(itemsData).map(([id, item]: [string, any]) => ({
+              ...item,
+              id,
+              shopId: currentShop.id
+            }));
+            
+            // Get local items for conflict resolution
+            const localItemsData = await localItems.getByShop(currentShop.id);
+            const localItemMap = new Map(localItemsData.map(i => [i.id, i]));
+            
+            for (const remoteItem of remoteItems) {
+              const localItem = localItemMap.get(remoteItem.id);
+              if (!localItem) {
+                await localItems.save(remoteItem);
+              } else {
+                const localTime = localItem.updatedAt instanceof Date
+                  ? localItem.updatedAt.getTime()
+                  : new Date(localItem.updatedAt || 0).getTime();
+                const remoteTime = remoteItem.updatedAt instanceof Date
+                  ? remoteItem.updatedAt.getTime()
+                  : new Date(remoteItem.updatedAt || 0).getTime();
+                if (remoteTime >= localTime) {
+                  await localItems.save(remoteItem);
+                }
+              }
+            }
+            
+            // Reload UI if on relevant tabs
+            if (activeTab === 'items') {
+              loadItems();
+            } else if (activeTab === 'customers') {
+              const updated = await localItems.getByShop(currentShop.id);
+              if (updated) setItemsList(updated);
+            }
+          }
+        });
+      } catch (error) {
+        console.error('[Admin] Failed to setup items listener:', error);
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [currentShop?.id, activeTab]);
 
    // Initialize qualifying purchase input when currentShop changes (shop switched)
    useEffect(() => {
