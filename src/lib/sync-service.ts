@@ -931,8 +931,6 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
         if (!localSetting) {
           await localSettings.set('itemOfTheDay', fbSettings);
         } else {
-          const localLikes = (localSetting.value as any)?.likes || 0;
-          const remoteLikes = (fbSettings.value as any)?.likes || 0;
           const localTime = localSetting.updatedAt instanceof Date
             ? localSetting.updatedAt.getTime()
             : new Date(localSetting.updatedAt || 0).getTime();
@@ -940,12 +938,10 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
             ? fbSettings.updatedAt.getTime()
             : new Date(fbSettings.updatedAt || 0).getTime();
           
-          if (remoteTime > localTime) {
-            const merged = { ...fbSettings, value: { ...(fbSettings.value || {}), likes: Math.max(localLikes, remoteLikes) } };
-            await localSettings.set('itemOfTheDay', merged);
-          } else if (localTime > remoteTime && localLikes < remoteLikes) {
-            const merged = { ...localSetting, value: { ...(localSetting.value || {}), likes: remoteLikes } };
-            await localSettings.set('itemOfTheDay', merged);
+          if (remoteTime >= localTime) {
+            await localSettings.set('itemOfTheDay', fbSettings);
+          } else if (localTime > remoteTime) {
+            await localSettings.set('itemOfTheDay', localSetting);
           }
         }
       }
