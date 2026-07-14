@@ -71,6 +71,21 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
         2. Added onError handlers to all `<img>` tags in GameMode and NominationScreen to gracefully handle broken images
         3. Updated `generateSecureRandomNumber` to use `getCrypto()` helper instead of direct `globalThis.crypto` access
 
+ - [x] Add independent Item of the Day screen after customer entry
+    - Issue: IOTD was only visible as a banner inside item selection screen
+    - Solution: Added dedicated full-screen IOTD view after phone/purchase authorization
+      - Shows IOTD with image, name, value, likes, and like button
+      - Skip button returns to entry screen
+      - Continue button proceeds to item selection
+      - If no IOTD exists, goes straight to item picker
+
+ - [x] Make item selection screen responsive across devices
+    - Issue: 17-item grid was cramped on desktop and required scrolling
+    - Solution: Responsive grid layout in GameMode.tsx item picker
+      - Phone: 3 columns
+      - Tablet: 4-6 columns
+      - Desktop: 8 columns (all 17 items fit without scrolling)
+
  - [x] Fix Item of the Day sync and like propagation across devices
    - Issue: IOTD edits were not updating on other devices; likes were not syncing correctly; likes appeared to disappear across game sessions
    - Root causes:
@@ -187,5 +202,7 @@ export async function GET() {
 | Today | Standardize nomination screen image sizing - match GameMode picker grid |
 | Today | Fix longpress item selection hanging - add guards against rapid presses in GameMode and NominationScreen |
 | Today | Fix item selection error on item select screen - NaN guard for threshold, image error handlers |
-| Today | Add Terms & Conditions button to customer entry screen - super admin editable, syncs via RTDB |
-| Today | Fix generateSecureRandomNumber crypto access - use getCrypto() helper to prevent ReferenceError in web workers/iframes |
+ | Today | Add Terms & Conditions button to customer entry screen - super admin editable, syncs via RTDB |
+ | Today | Fix generateSecureRandomNumber crypto access - use getCrypto() helper to prevent ReferenceError in web workers/iframes |
+ | Today | Add independent Item of the Day screen after customer entry - shows IOTD with skip option before item selection |
+ | Today | Make item selection screen responsive - desktop shows all 17 items without scrolling |

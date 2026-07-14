@@ -38,6 +38,7 @@ export default function GameMode() {
   const [tappedItemId, setTappedItemId] = useState<string | null>(null); // Visual feedback for tapped item
   const [tappedBoxNum, setTappedBoxNum] = useState<number | null>(null); // Visual feedback for tapped box
   const [tappedNumber, setTappedNumber] = useState<number | null>(null); // Visual feedback for tapped number
+  const [showIOTDScreen, setShowIOTDScreen] = useState(false);
 
   const isMountedRef = useRef(true);
 
@@ -380,7 +381,13 @@ export default function GameMode() {
       setThresholdNumber(threshold);
       
       setGameStatus('playing');
-      setShowItemPicker(true); // Show item selection first
+      
+      // Show Item of the Day screen if available, otherwise go straight to item picker
+      if (itemOfTheDay) {
+        setShowIOTDScreen(true);
+      } else {
+        setShowItemPicker(true);
+      }
     } catch (error) {
       console.error('Error during authorization:', error);
       alert(language === 'sw' ? 'Hitilafu wakati wa kuanza mchezo. Tafadhali jaribu tena.' : 'Failed to start game. Please try again.');
@@ -641,12 +648,15 @@ const handleItemSelect = async (item: Item) => {
       language: 'Language',
       box: 'Box',
       nominate: 'Give Feedback',
-skipNominate: 'Skip',
-       terms: 'Terms & Conditions'
-     },
-     sw: {
-       title: 'EtoFun',
-       subtitle: 'Shinda Ajira Za Kushangaza!',
+      skipNominate: 'Skip',
+      terms: 'Terms & Conditions',
+      itemOfTheDay: 'Item of the Day',
+      skip: 'Skip',
+      continue: 'Continue'
+    },
+    sw: {
+      title: 'EtoFun',
+      subtitle: 'Shinda Ajira Za Kushangaza!',
       qualifyingPurchase: 'Manunuzi Yanayokubali',
       enterPhone: 'Weka Nambari ya Simu',
       enterAmount: 'Kiwango cha Manunuzi (KSh)',
@@ -660,10 +670,13 @@ skipNominate: 'Skip',
       exit: 'Toka',
       language: 'Lugha',
       box: 'Sanduku',
-nominate: 'Toa Maoni',
-       skipNominate: 'Ruka',
-       terms: 'Viwango na Masharti'
-     }
+      nominate: 'Toa Maoni',
+      skipNominate: 'Ruka',
+      terms: 'Viwango na Masharti',
+      itemOfTheDay: 'Bidhaa ya Siku',
+      skip: 'Ruka',
+      continue: 'Endelea'
+    }
   };
 
   const t = translations[language];
@@ -936,24 +949,119 @@ nominate: 'Toa Maoni',
         </div>
       </div>
     );
-  }
-
-  // Item picker - customer selects an item before picking number
-  if (showItemPicker && !showResult && gameStatus === 'playing') {
-    const activeItems = items.filter(i => i.isActive);
-    console.log('[GameMode] Item picker rendered. Total items:', items.length, 'Active:', activeItems.length, 'showItemPicker:', showItemPicker, 'gameStatus:', gameStatus);
-
-    // If no active items, skip to number picker
-    if (activeItems.length === 0) {
-      setShowItemPicker(false);
-      setShowNumberPicker(true);
-      return null;
-    }
-
+   }
+   
+   // Item of the Day screen - shown immediately after authorization
+   if (showIOTDScreen) {
      return (
-       <div className="min-h-screen p-4 flex flex-col overflow-auto">
-         <div className="max-w-7xl mx-auto w-full">
-           {/* Item of the Day Banner */}
+       <div className="min-h-screen p-4 flex flex-col items-center justify-center overflow-auto">
+         <div className="max-w-md w-full">
+           <h2 className="gold-gradient-text text-2xl font-bold text-center mb-4">
+             {t.itemOfTheDay}
+           </h2>
+           
+           {itemOfTheDay && (
+             <motion.div
+               initial={{ scale: 0.8, opacity: 0 }}
+               animate={{ scale: 1, opacity: 1 }}
+               className="card bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50 overflow-hidden mb-6"
+             >
+               {/* Image takes top ~60% of card */}
+               <div className="w-full h-48 relative">
+                 {itemOfTheDay.imageUrl ? (
+                   <img
+                     src={itemOfTheDay.imageUrl}
+                     alt={itemOfTheDay.name}
+                     className="absolute inset-0 w-full h-full object-cover"
+                     onError={(e) => {
+                       (e.target as HTMLImageElement).style.display = 'none';
+                     }}
+                   />
+                 ) : (
+                   <div className="absolute inset-0 bg-amber-900/30 flex items-center justify-center">
+                     <Gift className="w-16 h-16 text-amber-400" />
+                   </div>
+                 )}
+                 
+                 {/* Like button overlaid on top-right of image */}
+                 <button
+                   onClick={() => {
+                     if (!hasLikedItemOfDay) {
+                       incrementItemOfDayLikes();
+                       setHasLikedItemOfDay(true);
+                     }
+                   }}
+                   disabled={hasLikedItemOfDay}
+                   className={`absolute top-2 right-2 p-1.5 rounded-full transition-colors flex-shrink-0 ${
+                     hasLikedItemOfDay
+                       ? 'bg-pink-900/60 text-pink-400 cursor-default'
+                       : 'bg-black/40 text-amber-400 hover:bg-black/60 hover:text-amber-300'
+                   }`}
+                   title={hasLikedItemOfDay ? 'Already liked' : 'Like item of the day'}
+                 >
+                   <Heart className="w-5 h-5" fill={hasLikedItemOfDay ? 'currentColor' : 'none'} />
+                 </button>
+               </div>
+               
+               {/* Details at bottom ~40% */}
+               <div className="p-4">
+                 <p className="text-white font-semibold text-lg truncate">{itemOfTheDay.name}</p>
+                 <div className="flex items-center justify-between mt-1">
+                   <p className="text-amber-400 text-sm font-bold">KSh {(itemOfTheDay.value || 0).toLocaleString()}</p>
+                   <div className="flex items-center gap-1">
+                     <Heart className={`w-4 h-4 ${hasLikedItemOfDay ? 'text-pink-400 fill-pink-400' : 'text-gray-500'}`} />
+                     <span className="text-xs text-gray-400">
+                       {itemOfTheDay.likes || 0} likes
+                     </span>
+                   </div>
+                 </div>
+               </div>
+             </motion.div>
+           )}
+           
+           <div className="flex gap-3">
+             <button
+               onClick={() => {
+                 setShowIOTDScreen(false);
+                 setShowItemPicker(true);
+               }}
+               className="btn-outline flex-1 flex items-center justify-center gap-2"
+             >
+               <ArrowLeft size={20} />
+               {t.skip}
+             </button>
+             
+             <button
+               onClick={() => {
+                 setShowIOTDScreen(false);
+                 setShowItemPicker(true);
+               }}
+               className="btn-gold flex-1 flex items-center justify-center gap-2"
+             >
+               {t.continue}
+             </button>
+           </div>
+         </div>
+       </div>
+     );
+   }
+   
+   // Item picker - customer selects an item before picking number
+   if (showItemPicker && !showResult && gameStatus === 'playing') {
+     const activeItems = items.filter(i => i.isActive);
+     console.log('[GameMode] Item picker rendered. Total items:', items.length, 'Active:', activeItems.length, 'showItemPicker:', showItemPicker, 'gameStatus:', gameStatus);
+
+     // If no active items, skip to number picker
+     if (activeItems.length === 0) {
+       setShowItemPicker(false);
+       setShowNumberPicker(true);
+       return null;
+     }
+
+      return (
+        <div className="min-h-screen p-4 flex flex-col overflow-auto">
+          <div className="max-w-7xl mx-auto w-full">
+            {/* Item of the Day Banner */}
           {itemOfTheDay && (
             <div className="card mb-4 bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-700/50 overflow-hidden">
               {/* Image takes top ~75% of card */}
@@ -1064,10 +1172,10 @@ nominate: 'Toa Maoni',
            </div>
         </div>
       </div>
-    );
-  }
-
-  // Result screen
+      );
+     }
+     
+     // Result screen
   if (showResult) {
     return (
       <div className="min-h-screen p-4 flex items-center justify-center overflow-auto">
