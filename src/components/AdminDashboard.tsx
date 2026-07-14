@@ -764,14 +764,17 @@ export default function AdminDashboard() {
         itemOfTheDay.value !== newValue ||
         itemOfTheDay.imageUrl !== newImageUrl;
 
+      // Read current likes from local storage to avoid stale state
+      const localIOTD = await localSettings.get('itemOfTheDay');
+      const currentLikes = hasChanged ? 0 : ((localIOTD as any)?.likes || (itemOfTheDay?.likes || 0));
+
       const newItem: ItemOfTheDay = {
         id: 'item-of-the-day',
         name: itemOfDayForm.name,
         value: newValue,
         imageUrl: newImageUrl,
         isActive: true,
-        // Reset likes to 0 only when the actual item changes; otherwise preserve
-        likes: hasChanged ? 0 : (itemOfTheDay?.likes || 0),
+        likes: currentLikes,
         createdAt: itemOfTheDay?.createdAt || new Date(),
         updatedAt: new Date()
       };
@@ -802,10 +805,17 @@ export default function AdminDashboard() {
       setTimeout(() => setItemOfDaySaved(false), 3000);
 
       // Sync to RTDB in background (non-blocking)
+      // Use update() to avoid overwriting concurrent likes from other devices.
+      // Only include likes when the item actually changed, so unchanged saves preserve live counts.
       queueForSync({
         type: 'setting',
         operation: 'update',
-        data: { key: 'itemOfTheDay', value: newItem }
+        data: {
+          key: 'itemOfTheDay',
+          value: hasChanged
+            ? { ...newItem, likes: 0 }
+            : { name: newItem.name, value: newItem.value, imageUrl: newItem.imageUrl, isActive: newItem.isActive, createdAt: newItem.createdAt, updatedAt: newItem.updatedAt }
+        }
       }).catch(() => {});
     };
 
