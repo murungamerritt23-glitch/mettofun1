@@ -277,6 +277,91 @@ export default function AdminDashboard() {
     };
   }, [currentShop?.id, activeTab]);
 
+  // Live RTDB listener for shops - updates local immediately when shop config changes
+  useEffect(() => {
+    if (!isOnline()) return;
+
+    let unsubscribe: (() => void) | null = null;
+    let isMounted = true;
+
+    const setupListener = async () => {
+      try {
+        const { ref, onValue } = await import('firebase/database');
+        const { rtdb } = await import('@/lib/firebase');
+        const shopsRef = ref(rtdb, 'shops');
+        
+        unsubscribe = onValue(shopsRef, async (snapshot) => {
+          if (!isMounted) return;
+          
+          if (snapshot.exists()) {
+            const shopsData = snapshot.val();
+            const remoteShops: Shop[] = Object.entries(shopsData).map(([id, shop]: [string, any]) => ({
+              ...shop,
+              id
+            }));
+            
+            // Get local shops for conflict resolution
+            const localShopsData = await localShops.getAll();
+            const localShopMap = new Map(localShopsData.map(s => [s.id, s]));
+            
+            for (const remoteShop of remoteShops) {
+              const localShop = localShopMap.get(remoteShop.id);
+              if (!localShop) {
+                await localShops.save(remoteShop);
+              } else {
+                const localTime = localShop.updatedAt instanceof Date
+                  ? localShop.updatedAt.getTime()
+                  : new Date(localShop.updatedAt || 0).getTime();
+                const remoteTime = remoteShop.updatedAt instanceof Date
+                  ? remoteShop.updatedAt.getTime()
+                  : new Date(remoteShop.updatedAt || 0).getTime();
+                if (remoteTime > localTime) {
+                  await localShops.save(remoteShop);
+                }
+              }
+            }
+            
+            // Update currentShop if it changed remotely
+            if (currentShop) {
+              const updatedCurrent = remoteShops.find(s => s.id === currentShop.id);
+              if (updatedCurrent) {
+                const localTime = currentShop.updatedAt instanceof Date
+                  ? currentShop.updatedAt.getTime()
+                  : new Date(currentShop.updatedAt || 0).getTime();
+                const remoteTime = updatedCurrent.updatedAt instanceof Date
+                  ? updatedCurrent.updatedAt.getTime()
+                  : new Date(updatedCurrent.updatedAt || 0).getTime();
+                if (remoteTime >= localTime) {
+                  setCurrentShop(updatedCurrent);
+                }
+              }
+            }
+            
+            // Reload shops list if on dashboard or shops tab
+            if (activeTab === 'dashboard' || activeTab === 'shops' || activeTab === 'myShop') {
+              const filtered = remoteShops.filter(s => {
+                if (admin?.level === 'super_admin') return true;
+                return admin?.assignedShops?.includes(s.id);
+              });
+              setShops(filtered);
+            }
+          }
+        });
+      } catch (error) {
+        console.error('[Admin] Failed to setup shops listener:', error);
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [currentShop?.id, activeTab, admin?.level]);
+
    // Initialize qualifying purchase input when currentShop changes (shop switched)
    useEffect(() => {
      if (currentShop) {
