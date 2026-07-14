@@ -98,16 +98,23 @@ export default function GameMode() {
            const { rtdbSettings } = await import('@/lib/firebase');
            const rtdbItem = await rtdbSettings.get('itemOfTheDay');
            if (rtdbItem && isMountedRef.current) {
-             await localSettings.set('itemOfTheDay', rtdbItem);
-             useGameStore.getState().setItemOfTheDay(rtdbItem);
+             const localLikes = (savedItem?.value as any)?.likes || 0;
+             const remoteLikes = (rtdbItem as any)?.likes || 0;
+             const merged = { ...rtdbItem, likes: Math.max(localLikes, remoteLikes) };
+             await localSettings.set('itemOfTheDay', merged);
+             useGameStore.getState().setItemOfTheDay(merged);
            }
 
            // Subscribe for live IOTD updates — single subscription per mount, cleaned up on unmount
            try {
              unsubscribeIOTD = rtdbSettings.onSettingChange('itemOfTheDay', async (rtdbItem: any) => {
                if (rtdbItem && isMountedRef.current) {
-                 await localSettings.set('itemOfTheDay', rtdbItem);
-                 useGameStore.getState().setItemOfTheDay(rtdbItem);
+                 const localItem = await localSettings.get('itemOfTheDay');
+                 const localLikes = (localItem?.value as any)?.likes || 0;
+                 const remoteLikes = (rtdbItem as any)?.likes || 0;
+                 const merged = { ...rtdbItem, likes: Math.max(localLikes, remoteLikes) };
+                 await localSettings.set('itemOfTheDay', merged);
+                 useGameStore.getState().setItemOfTheDay(merged);
                }
              });
            } catch (e) {
@@ -117,8 +124,12 @@ export default function GameMode() {
                  const { rtdbSettings } = await import('@/lib/firebase');
                  const rtdbItem = await rtdbSettings.get('itemOfTheDay');
                  if (rtdbItem && isMountedRef.current) {
-                   await localSettings.set('itemOfTheDay', rtdbItem);
-                   useGameStore.getState().setItemOfTheDay(rtdbItem);
+                   const localItem = await localSettings.get('itemOfTheDay');
+                   const localLikes = (localItem?.value as any)?.likes || 0;
+                   const remoteLikes = (rtdbItem as any)?.likes || 0;
+                   const merged = { ...rtdbItem, likes: Math.max(localLikes, remoteLikes) };
+                   await localSettings.set('itemOfTheDay', merged);
+                   useGameStore.getState().setItemOfTheDay(merged);
                  }
                } catch (e) {}
              };

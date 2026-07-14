@@ -72,16 +72,19 @@ ETO FUN is a promotional reward game app for shops, built with Next.js 16, TypeS
         3. Updated `generateSecureRandomNumber` to use `getCrypto()` helper instead of direct `globalThis.crypto` access
 
  - [x] Fix Item of the Day sync and like propagation across devices
-   - Issue: IOTD edits were not updating on other devices; likes were not syncing correctly
+   - Issue: IOTD edits were not updating on other devices; likes were not syncing correctly; likes appeared to disappear across game sessions
    - Root causes:
      1. `pullFromRTDB()` did not pull `settings/itemOfTheDay` from RTDB
-     2. `AdminDashboard` IOTD save/clear did not queue for sync on RTDB failure
-     3. `GameMode` RTDB listener wrote back to RTDB with local likes, causing race conditions and overwriting admin updates
+     2. `syncSetting()` used `rtdbSettings.set()` which replaces entire object, causing race conditions where concurrent like updates overwrite each other
+     3. `GameMode.tsx` RTDB listener and fallback poller overwrote local likes with remote likes without merging
+     4. AdminDashboard refresh button overwrote local likes with remote likes
    - Solution:
      1. Added `rtdbSettings` and `localSettings` imports to `sync-service.ts`
-     2. Added settings pull to `pullFromRTDB()` with `updatedAt` conflict resolution
-     3. Updated `AdminDashboard.tsx` `handleSaveItemOfDay` and `handleClearItemOfDay` to use `queueForSync` on RTDB failure
-     4. Removed write-back logic from `GameMode.tsx` RTDB listener and fallback poller; RTDB is now source of truth
+     2. Added settings pull to `pullFromRTDB()` with max-intent like merge (`Math.max(localLikes, remoteLikes)`)
+     3. Changed `syncSetting()` to use `rtdbSettings.update()` instead of `set()` for create/update operations — only updates specified fields, preserving others
+     4. Updated `incrementItemOfDayLikes` in store to queue only `{ likes: confirmedLikes }` instead of full IOTD object
+     5. Updated `GameMode.tsx` RTDB listener, fallback poller, and initial load to merge likes with max-intent merge
+     6. Updated AdminDashboard RTDB refresh button to merge likes
 
 ## Current Structure
 

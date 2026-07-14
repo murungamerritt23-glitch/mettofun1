@@ -542,17 +542,15 @@ const syncCustomerNomination = async (operation: SyncOperation, data: CustomerNo
 };
 
 // Sync setting (key-value)
-const syncSetting = async (operation: SyncOperation, data: { key: string; value: any }): Promise<void> => {
+export const syncSetting = async (operation: SyncOperation, data: { key: string; value: any }): Promise<void> => {
   const { rtdbSettings } = await import('./firebase');
 
   let result: { success: boolean; error?: string };
   if (operation === 'create' || operation === 'update') {
-    result = await rtdbSettings.set(data.key, data.value);
+    result = await rtdbSettings.update(data.key, data.value);
   } else if (operation === 'delete') {
-    // Deleting a setting by setting it to null
     result = await rtdbSettings.set(data.key, null);
   } else {
-    // Should not happen
     throw new Error(`Invalid operation for setting: ${operation}`);
   }
   if (!result.success) {
@@ -929,14 +927,21 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
         if (!localSetting) {
           await localSettings.set('itemOfTheDay', fbSettings);
         } else {
+          const localLikes = (localSetting.value as any)?.likes || 0;
+          const remoteLikes = (fbSettings.value as any)?.likes || 0;
           const localTime = localSetting.updatedAt instanceof Date
             ? localSetting.updatedAt.getTime()
             : new Date(localSetting.updatedAt || 0).getTime();
           const remoteTime = fbSettings.updatedAt instanceof Date
             ? fbSettings.updatedAt.getTime()
             : new Date(fbSettings.updatedAt || 0).getTime();
+          
           if (remoteTime > localTime) {
-            await localSettings.set('itemOfTheDay', fbSettings);
+            const merged = { ...fbSettings, value: { ...(fbSettings.value || {}), likes: Math.max(localLikes, remoteLikes) } };
+            await localSettings.set('itemOfTheDay', merged);
+          } else if (localTime > remoteTime && localLikes < remoteLikes) {
+            const merged = { ...localSetting, value: { ...(localSetting.value || {}), likes: remoteLikes } };
+            await localSettings.set('itemOfTheDay', merged);
           }
         }
       }

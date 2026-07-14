@@ -3265,18 +3265,22 @@ export default function AdminDashboard() {
                     {!isEditingItemOfDay ? (
                       <div className="flex gap-2">
                         <button
-                          onClick={async () => {
-                            try {
-                              const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-                              const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
-                              if (rtdbItem) {
-                                await localSettings.set('itemOfTheDay', rtdbItem);
-                                setItemOfTheDay(rtdbItem);
-                              } else {
-                                setItemOfTheDay(null);
-                              }
-                            } catch (e) { /* ignore */ }
-                          }}
+                           onClick={async () => {
+                             try {
+                               const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+                               const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
+                               if (rtdbItem) {
+                                 const localItem = await localSettings.get('itemOfTheDay');
+                                 const localLikes = (localItem?.value as any)?.likes || 0;
+                                 const remoteLikes = (rtdbItem as any)?.likes || 0;
+                                 const merged = { ...rtdbItem, likes: Math.max(localLikes, remoteLikes) };
+                                 await localSettings.set('itemOfTheDay', merged);
+                                 setItemOfTheDay(merged);
+                               } else {
+                                 setItemOfTheDay(null);
+                               }
+                             } catch (e) { /* ignore */ }
+                           }}
                           className="p-2 text-gray-400 hover:text-white transition-colors"
                           title="Refresh Item of the Day"
                         >

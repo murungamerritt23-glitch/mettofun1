@@ -274,52 +274,33 @@ export const useGameStore = create<GameState>()(
         const current = useGameStore.getState().itemOfTheDay;
         if (!current) return;
 
-        // Optimistic: update state immediately for instant UI feedback
-        const optimisticUpdated = { ...current, likes: (current.likes || 0) + 1 };
+        const newLikes = (current.likes || 0) + 1;
+        const optimisticUpdated = { ...current, likes: newLikes };
         set({ itemOfTheDay: optimisticUpdated });
 
-        // Atomically persist to IndexedDB with retry — prevents likes being lost
-        const MAX_RETRIES = 3;
-        let saveError: Error | null = null;
-        let confirmedLikes = optimisticUpdated.likes;
+        let confirmedLikes = newLikes;
 
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-          try {
-            confirmedLikes = await localSettings.incrementIOTDLikes(current.likes || 0);
-            if (confirmedLikes === optimisticUpdated.likes) {
-              saveError = null;
-              break;
-            }
-            // If another process already incremented, adjust our optimistic value
-            // and update the final state to be consistent
+        try {
+          confirmedLikes = await localSettings.incrementIOTDLikes(current.likes || 0);
+          if (confirmedLikes !== newLikes) {
             const adjusted = { ...optimisticUpdated, likes: confirmedLikes };
             set({ itemOfTheDay: adjusted });
-            optimisticUpdated.likes = confirmedLikes;
-          } catch (err) {
-            saveError = err as Error;
-            console.error(`[IOTD] Atomic increment attempt ${attempt}/${MAX_RETRIES} failed:`, err);
-            if (attempt < MAX_RETRIES) {
-              await new Promise(r => setTimeout(r, 50 * attempt));
-            }
           }
-        }
-        if (saveError) {
-          console.error('[IOTD] Increment failed after retries — fallback to direct write:', saveError);
-          // Last-resort direct write using optimistic value
+        } catch (err) {
+          console.error('[IOTD] Local increment failed:', err);
           try {
             await localSettings.set('itemOfTheDay', optimisticUpdated);
           } catch (e) {
-            console.error('[IOTD] Fallback write also failed:', e);
+            console.error('[IOTD] Fallback local write failed:', e);
           }
         }
 
-        // Queue for async sync to RTDB so likes persist across devices (fire and forget)
         try {
           const { queueForSync } = await import('@/lib/sync-service');
           await queueForSync({
             type: 'setting',
             operation: 'update',
-            data: { key: 'itemOfTheDay', value: { ...optimisticUpdated, likes: confirmedLikes } }
+            data: { key: 'itemOfTheDay', value: { likes: confirmedLikes } }
           });
         } catch (error) {
           console.error('[Sync] Failed to queue IOTD update:', error);
