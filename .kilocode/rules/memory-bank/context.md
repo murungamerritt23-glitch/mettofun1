@@ -209,3 +209,4 @@ export async function GET() {
  | Today | Add independent Item of the Day screen after customer entry - shows IOTD with skip option before item selection |
  | Today | Make item selection screen responsive - desktop shows all 17 items without scrolling |
  | Today | Make IOTD likes live across all devices like Facebook - immediate atomic RTDB increment when online, queued atomic increments when offline |
+ | Today | Make Item of the Day save instantly like regular items - local save + immediate reload + background RTDB sync |

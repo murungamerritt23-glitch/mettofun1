@@ -749,63 +749,65 @@ export default function AdminDashboard() {
   };
 
    // Save Item of the Day
-   const handleSaveItemOfDay = async () => {
-     if (!itemOfDayForm.name || !itemOfDayForm.value) {
-       alert('Please enter item name and value');
-       return;
-     }
+    const handleSaveItemOfDay = async () => {
+      if (!itemOfDayForm.name || !itemOfDayForm.value) {
+        alert('Please enter item name and value');
+        return;
+      }
 
-     const newValue = parseFloat(itemOfDayForm.value) || 0;
-     const newImageUrl = itemOfDayForm.imageUrl || undefined;
+      const newValue = parseFloat(itemOfDayForm.value) || 0;
+      const newImageUrl = itemOfDayForm.imageUrl || undefined;
 
-     // Determine if the item content changed (name, value, or image)
-     const hasChanged = !itemOfTheDay ||
-       itemOfTheDay.name !== itemOfDayForm.name ||
-       itemOfTheDay.value !== newValue ||
-       itemOfTheDay.imageUrl !== newImageUrl;
+      // Determine if the item content changed (name, value, or image)
+      const hasChanged = !itemOfTheDay ||
+        itemOfTheDay.name !== itemOfDayForm.name ||
+        itemOfTheDay.value !== newValue ||
+        itemOfTheDay.imageUrl !== newImageUrl;
 
-     const newItem: ItemOfTheDay = {
-       id: 'item-of-the-day',
-       name: itemOfDayForm.name,
-       value: newValue,
-       imageUrl: newImageUrl,
-       isActive: true,
-       // Reset likes to 0 only when the actual item changes; otherwise preserve
-       likes: hasChanged ? 0 : (itemOfTheDay?.likes || 0),
-       createdAt: itemOfTheDay?.createdAt || new Date(),
-       updatedAt: new Date()
-     };
+      const newItem: ItemOfTheDay = {
+        id: 'item-of-the-day',
+        name: itemOfDayForm.name,
+        value: newValue,
+        imageUrl: newImageUrl,
+        isActive: true,
+        // Reset likes to 0 only when the actual item changes; otherwise preserve
+        likes: hasChanged ? 0 : (itemOfTheDay?.likes || 0),
+        createdAt: itemOfTheDay?.createdAt || new Date(),
+        updatedAt: new Date()
+      };
 
-     // Save to local for offline support
-     await localSettings.set('itemOfTheDay', newItem);
-     setItemOfTheDay(newItem);
+      // Save locally first (fast)
+      await localSettings.set('itemOfTheDay', newItem);
 
-     // Also sync to RTDB for other devices
-     try {
-       await rtdbAdmins.save(admin!); // Ensure admin in RTDB first
-       const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-       const result = await rtdbSettingsApi.set('itemOfTheDay', newItem);
-       if (!result.success) {
-         throw new Error(result.error || 'RTDB sync failed');
-       }
-     } catch (e) {
-       // RTDB sync failed, queue for retry
-       console.error('[IOTD] RTDB sync failed, queuing for retry:', e);
-       try {
-         await queueForSync({
-           type: 'setting',
-           operation: 'update',
-           data: { key: 'itemOfTheDay', value: newItem }
-         });
-       } catch (queueError) {
-         console.error('[IOTD] Failed to queue sync:', queueError);
-       }
-     }
+      // Reload immediately from local (fast) - with timeout
+      const localLoadTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('IOTD load timeout')), 10000)
+      );
 
-     setIsEditingItemOfDay(false);
-     setItemOfDaySaved(true);
-     setTimeout(() => setItemOfDaySaved(false), 3000);
-   };
+      try {
+        const reloaded = await Promise.race([
+          localSettings.get('itemOfTheDay'),
+          localLoadTimeout
+        ]);
+        if (reloaded) {
+          setItemOfTheDay(reloaded);
+        }
+      } catch (e) {
+        console.error('Failed to reload IOTD:', e);
+        setItemOfTheDay(newItem);
+      }
+
+      setIsEditingItemOfDay(false);
+      setItemOfDaySaved(true);
+      setTimeout(() => setItemOfDaySaved(false), 3000);
+
+      // Sync to RTDB in background (non-blocking)
+      queueForSync({
+        type: 'setting',
+        operation: 'update',
+        data: { key: 'itemOfTheDay', value: newItem }
+      }).catch(() => {});
+    };
 
    // Clear Item of the Day
    const handleClearItemOfDay = async () => {
