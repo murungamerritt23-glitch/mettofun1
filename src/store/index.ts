@@ -148,16 +148,20 @@ export const useShopStore = create<ShopState>()(
       isLoading: false,
       setCurrentShop: (currentShop) => set({ currentShop }),
       setShops: (shops) => set({ shops }),
-      addShop: (shop) => set((state) => ({ shops: [...state.shops, shop] })),
-      updateShop: (shop) => set((state) => ({
+      addShop: (shop: Shop) => set((state) => ({ shops: [...state.shops, shop] })),
+      updateShop: (shop: Shop) => set((state) => ({
         shops: state.shops.map(s => s.id === shop.id ? shop : s)
       })),
-      removeShop: (id) => set((state) => ({
+      removeShop: (id: string) => set((state) => ({
         shops: state.shops.filter(s => s.id !== id)
       }))
     }),
     {
-      name: 'metofun-shop'
+      name: 'metofun-shop',
+      partialize: (state) => ({
+        currentShop: state.currentShop ? { id: state.currentShop.id } : null,
+        shops: state.shops.map(shop => ({ id: shop.id, shopName: shop.shopName }))
+      })
     }
   )
 );
@@ -182,12 +186,15 @@ export const useItemStore = create<ItemState>()(
       updateItem: (item) => set((state) => ({
         items: state.items.map(i => i.id === item.id ? item : i)
       })),
-      removeItem: (id) => set((state) => ({
+      removeItem: (id: string) => set((state) => ({
         items: state.items.filter(i => i.id !== id)
       }))
     }),
     {
-      name: 'metofun-items'
+      name: 'metofun-items',
+      partialize: (state) => ({
+        isLoading: state.isLoading
+      })
     }
   )
 );
@@ -348,7 +355,21 @@ setTermsContent: (termsContent) => set({ termsContent }),
        })
     }),
     {
-      name: 'metofun-game'
+      name: 'metofun-game',
+      partialize: (state) => ({
+        gameStatus: state.gameStatus,
+        selectedBox: state.selectedBox,
+        correctNumber: state.correctNumber,
+        thresholdNumber: state.thresholdNumber,
+        isDemoMode: state.isDemoMode,
+        language: state.language,
+        isTestMode: state.isTestMode,
+        testPhonePrefix: state.testPhonePrefix,
+        currentGameAttemptId: state.currentGameAttemptId,
+        hasNominatedThisAttempt: state.hasNominatedThisAttempt,
+        hasLikedItemOfDay: state.hasLikedItemOfDay,
+        termsContent: state.termsContent
+      })
     }
   )
 );
