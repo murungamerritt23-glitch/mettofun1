@@ -2621,7 +2621,7 @@ export default function AdminDashboard() {
                   {items.map((item) => (
                     <div key={item.id} className="card">
                       {/* Item Image */}
-                      <div className="h-32 bg-gray-800 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                      <div className="h-32 bg-gray-800 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
                         {item.imageUrl ? (
                           <NextImage 
                             src={item.imageUrl} 
