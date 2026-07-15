@@ -464,32 +464,34 @@ export default function AdminDashboard() {
     setIsEditingNominationItems(true);
   };
 
-   // Save nomination item
-   const handleSaveNominationItem = async (item: NominationItem) => {
-     // Limit total nominatable items to 100 (only when creating new)
-     if (!editingNominationItem && nominationItems.length >= 100) {
-       alert('Maximum 100 nomination items reached. Delete some items first.');
-       return;
-     }
+    // Save nomination item
+    const handleSaveNominationItem = async (item: NominationItem) => {
+      // Limit total nominatable items to 100 (only when creating new)
+      if (!editingNominationItem && nominationItems.length >= 100) {
+        alert('Maximum 100 nomination items reached. Delete some items first.');
+        return;
+      }
 
-     // If editing an existing item, reset nomination count to zero
-     // This ensures that when an item's details are changed, old nominations don't carry over
-     const itemToSave = editingNominationItem
-       ? { ...item, nominationCount: 0 }
-       : item;
+      const isNew = !nominationItems.some(i => i.id === item.id);
 
-     // Save locally first for immediate UI update
-     await localNominationItems.save(itemToSave);
-     // Fire off RTDB sync in background (don't await) to keep UI responsive
-     saveNominationItemWithSync(itemToSave, !editingNominationItem).catch(err => {
-       console.error('[Background sync] nomination item failed:', err);
-     });
-     // Close modal and refresh UI from local DB (already includes the item)
-     setEditingNominationItem(null);
-     setIsCreatingNominationItem(false);
-     loadNominationItems();
-     loadTopNominations();
-   };
+      // If editing an existing item, reset nomination count to zero
+      // This ensures that when an item's details are changed, old nominations don't carry over
+      const itemToSave = editingNominationItem
+        ? { ...item, nominationCount: 0 }
+        : item;
+
+      // Save locally first for immediate UI update
+      await localNominationItems.save(itemToSave);
+      // Fire off RTDB sync in background (don't await) to keep UI responsive
+      saveNominationItemWithSync(itemToSave, isNew).catch(err => {
+        console.error('[Background sync] nomination item failed:', err);
+      });
+      // Close modal and refresh UI from local DB (already includes the item)
+      setEditingNominationItem(null);
+      setIsCreatingNominationItem(false);
+      loadNominationItems();
+      loadTopNominations();
+    };
 
    // Delete nomination item
    const handleDeleteNominationItem = async (itemId: string) => {
@@ -1291,6 +1293,7 @@ export default function AdminDashboard() {
 
   const handleSaveItem = async (item: Item) => {
     console.log('[AdminDashboard] Saving item:', { id: item.id, name: item.name, hasImage: !!item.imageUrl, imageLength: item.imageUrl?.length });
+    const isNew = !items.some(i => i.id === item.id);
     // Save locally first (fast)
     await localItems.save(item);
     setEditingItem(null);
@@ -1315,7 +1318,7 @@ export default function AdminDashboard() {
       }
     }
     // Then sync to RTDB in background (non-blocking)
-    saveItemWithSync(item, !editingItem).catch(() => {});
+    saveItemWithSync(item, isNew).catch(() => {});
   };
 
   const handleDeleteItem = async (itemId: string) => {

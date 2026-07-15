@@ -368,7 +368,8 @@ setTermsContent: (termsContent) => set({ termsContent }),
         currentGameAttemptId: state.currentGameAttemptId,
         hasNominatedThisAttempt: state.hasNominatedThisAttempt,
         hasLikedItemOfDay: state.hasLikedItemOfDay,
-        termsContent: state.termsContent
+        termsContent: state.termsContent,
+        itemOfTheDay: state.itemOfTheDay ? { ...state.itemOfTheDay, imageUrl: undefined } : null
       })
     }
   )

@@ -215,10 +215,10 @@ export const localItems = {
   async saveMultiple(items: Item[]): Promise<void> {
     const database = await initDB();
     const tx = database.transaction('items', 'readwrite');
-    await Promise.all([
-      ...items.map(item => tx.store.put(item)),
-      tx.done
-    ]);
+    for (const item of items) {
+      await tx.store.put(item);
+    }
+    await tx.done;
   },
 
   async delete(id: string): Promise<void> {
