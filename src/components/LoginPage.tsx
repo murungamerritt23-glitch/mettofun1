@@ -279,27 +279,11 @@ export default function LoginPage() {
     // Save admin to RTDB with Firebase Auth UID so security rules pass
     // This is critical: RTDB rules check root.child('admins').child(auth.uid).exists()
     // Without this, ALL RTDB writes fail (attempts, shops, items, deletes)
-    let adminInRTDB = false;
-    for (let attempt = 0; attempt < 3 && !adminInRTDB; attempt++) {
-      const saveResult = await rtdbAdmins.save(adminToUse!);
-      if (saveResult.success) {
-        // Verify it actually saved by reading it back
-        const verify = await rtdbAdmins.get(adminToUse!.id);
-        if (verify) {
-          adminInRTDB = true;
-          console.log('[Auth] Admin synced to RTDB successfully');
-        } else {
-          console.error(`[Auth] Admin save verification failed on attempt ${attempt + 1}`);
-        }
-      } else {
-        console.error(`[Auth] Admin save attempt ${attempt + 1} failed:`, saveResult.error);
-      }
-      if (!adminInRTDB && attempt < 2) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
-      }
-    }
-    if (!adminInRTDB) {
-      console.error('[Auth] CRITICAL: Admin could not be saved to RTDB - all writes will fail');
+    try {
+      await rtdbAdmins.save(adminToUse!);
+    } catch (rtdbSaveErr) {
+      console.error('[Auth] Admin save to RTDB failed:', rtdbSaveErr);
+      // Don't block login on RTDB save failure - local auth still works
     }
 
     // Role-based navigation
@@ -308,9 +292,9 @@ export default function LoginPage() {
       const assignedShopIds = adminToUse!.assignedShops || [];
       let shop: Awaited<ReturnType<typeof localShops.getByDeviceId>> = undefined;
       
-      // Priority 1: Match by adminEmail (most reliable - each email links to exactly one shop)
+      // Reduced timeout for faster login
       const shopLoadTimeout = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Shop load timeout')), 15000)
+        setTimeout(() => reject(new Error('Shop load timeout')), 8000)
       );
       
       let localShopsList: Shop[];
