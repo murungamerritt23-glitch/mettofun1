@@ -847,21 +847,11 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
           const localItem = localItemMap.get(remoteItem.id);
           if (!localItem) {
             await localItems.save(remoteItem);
-          } else {
-            const localTime = localItem.updatedAt instanceof Date
-              ? localItem.updatedAt.getTime()
-              : new Date(localItem.updatedAt || 0).getTime();
-            const remoteTime = remoteItem.updatedAt instanceof Date
-              ? remoteItem.updatedAt.getTime()
-              : new Date(remoteItem.updatedAt || 0).getTime();
-            if (remoteTime >= localTime) {
-              await localItems.save(remoteItem);
-            }
-            // else keep local item (newer)
           }
+          // If local item exists, keep local version — each shop/device owns its own list
         }
       }
-      
+
       // Pull attempts for specific shop
       const fbAttempts = await rtdbAttempts.getByShop(shopId);
       if (fbAttempts && fbAttempts.length > 0) {
@@ -897,7 +887,7 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
     } else {
       // Pull items, attempts, nominations for all shops
       for (const shop of fbShops || []) {
-        // Pull items for this shop with conflict resolution
+        // Pull items for this shop — only add missing items, preserve local edits
         const fbItems = await rtdbItems.getByShop(shop.id);
         if (fbItems && fbItems.length > 0) {
           const existingLocalItems = await localItems.getByShop(shop.id);
@@ -906,18 +896,8 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
             const localItem = localItemMap.get(remoteItem.id);
             if (!localItem) {
               await localItems.save(remoteItem);
-            } else {
-              const localTime = localItem.updatedAt instanceof Date
-                ? localItem.updatedAt.getTime()
-                : new Date(localItem.updatedAt || 0).getTime();
-              const remoteTime = remoteItem.updatedAt instanceof Date
-                ? remoteItem.updatedAt.getTime()
-                : new Date(remoteItem.updatedAt || 0).getTime();
-              if (remoteTime >= localTime) {
-                await localItems.save(remoteItem);
-              }
-              // else keep local item (newer)
             }
+            // If local item exists, keep local version — each shop/device owns its own list
           }
         }
         
@@ -972,20 +952,8 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
         const localSetting = await localSettings.get('itemOfTheDay');
         if (!localSetting) {
           await localSettings.set('itemOfTheDay', fbSettings);
-        } else {
-          const localTime = localSetting.updatedAt instanceof Date
-            ? localSetting.updatedAt.getTime()
-            : new Date(localSetting.updatedAt || 0).getTime();
-          const remoteTime = fbSettings.updatedAt instanceof Date
-            ? fbSettings.updatedAt.getTime()
-            : new Date(fbSettings.updatedAt || 0).getTime();
-          
-          if (remoteTime >= localTime) {
-            await localSettings.set('itemOfTheDay', fbSettings);
-          } else if (localTime > remoteTime) {
-            await localSettings.set('itemOfTheDay', localSetting);
-          }
         }
+        // If local setting exists, keep local version — each device/shop owns its own IOTD
       }
     } catch (settingsErr) {
       console.log('[Sync] Settings pull skipped:', settingsErr);

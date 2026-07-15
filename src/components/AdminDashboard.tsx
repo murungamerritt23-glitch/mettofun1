@@ -241,17 +241,8 @@ export default function AdminDashboard() {
               const localItem = localItemMap.get(remoteItem.id);
               if (!localItem) {
                 await localItems.save(remoteItem);
-              } else {
-                const localTime = localItem.updatedAt instanceof Date
-                  ? localItem.updatedAt.getTime()
-                  : new Date(localItem.updatedAt || 0).getTime();
-                const remoteTime = remoteItem.updatedAt instanceof Date
-                  ? remoteItem.updatedAt.getTime()
-                  : new Date(remoteItem.updatedAt || 0).getTime();
-                if (remoteTime >= localTime) {
-                  await localItems.save(remoteItem);
-                }
               }
+              // If local item exists, keep local version — each shop/device owns its own list
             }
             
             // Reload UI if on relevant tabs
@@ -719,26 +710,10 @@ export default function AdminDashboard() {
     const loadItemOfDay = async () => {
       // Try local first for immediate display
       const savedItem = await localSettings.get('itemOfTheDay');
-       if (savedItem && isMountedRef.current) {
-         setItemOfTheDay(savedItem);
-       }
-     // Always try to fetch latest from RTDB
-       try {
-         const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
-         const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
-          if (rtdbItem && isMountedRef.current) {
-            // Preserve local likes if we have more (offline likes happened)
-            if (savedItem && (rtdbItem.likes || 0) < (savedItem.likes || 0)) {
-              rtdbItem.likes = savedItem.likes;
-            }
-            await localSettings.set('itemOfTheDay', rtdbItem);
-            setItemOfTheDay(rtdbItem);
-          } else if (!rtdbItem && !savedItem && isMountedRef.current) {
-            setItemOfTheDay(null);
-          }
-       } catch (e) {
-         // RTDB fetch failed, use local
-       }
+      if (savedItem && isMountedRef.current) {
+        setItemOfTheDay(savedItem);
+      }
+      // Do NOT overwrite local IOTD with RTDB — each shop/device owns its own IOTD
     };
     loadItemOfDay();
   }, []);
