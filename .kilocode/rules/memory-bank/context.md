@@ -211,3 +211,5 @@ export async function GET() {
  | Today | Make IOTD likes live across all devices like Facebook - immediate atomic RTDB increment when online, queued atomic increments when offline |
  | Today | Make Item of the Day save instantly like regular items - local save + immediate reload + background RTDB sync |
  | Today | Stabilize entire app: fix sync abort on unlinked devices, add item conflict resolution in pullFromRTDB, add IOTD screen reset in GameMode, harden local DB transaction error handling |
+ | Today | Make customer entry form responsive across desktop/tablet/phone |
+ | Today | Fix IOTD like persistence - prevent PERMISSION_DENIED from dropping likes, ensure local save always succeeds |
