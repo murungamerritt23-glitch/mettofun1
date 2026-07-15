@@ -160,9 +160,9 @@ export default function NominationScreen() {
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="max-w-md w-full text-center"
+          className="max-w-7xl w-full text-center"
         >
-          <div className="card-gold">
+          <div className="card-gold max-w-md mx-auto">
             <motion.div
               animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ repeat: Infinity, duration: 0.5 }}
@@ -195,12 +195,13 @@ export default function NominationScreen() {
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="max-w-md w-full text-center"
+          className="max-w-7xl w-full text-center"
         >
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', damping: 10 }}
+            className="max-w-md mx-auto"
           >
             <div className="text-6xl mb-4">🎉</div>
             <h2 className="gold-gradient-text text-3xl font-bold mb-2">
@@ -237,7 +238,7 @@ export default function NominationScreen() {
   return (
     <div className="min-h-screen p-4">
       {/* Header */}
-      <div className="max-w-md mx-auto mb-4">
+      <div className="w-full max-w-7xl mx-auto mb-4">
         <button
           onClick={handleExit}
           className="flex items-center gap-2 text-gray-400 hover:text-gold-400 mb-4"
@@ -258,14 +259,14 @@ export default function NominationScreen() {
       </div>
 
       {/* Search Bar */}
-      <div className="max-w-md mx-auto mb-4">
-        <div className="relative">
+      <div className="w-full max-w-7xl mx-auto mb-4">
+        <div className="relative max-w-2xl mx-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={t.searchPlaceholder}
+            placeholder={t.searchPlaceholder}
             className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-gold-500"
           />
           {searchQuery && (
@@ -280,12 +281,12 @@ export default function NominationScreen() {
       </div>
 
       {/* Item Grid */}
-      <div className="max-w-md mx-auto">
+      <div className="w-full max-w-7xl mx-auto">
         <p className="text-gray-500 text-sm text-center mb-3">
           {t.selectPrompt}
         </p>
         
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 max-h-[50vh] overflow-y-auto">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3 max-h-[60vh] overflow-y-auto">
           {activeItems.length === 0 ? (
             <div className="col-span-full text-center py-8 text-gray-400">
               {searchQuery 
@@ -293,76 +294,76 @@ export default function NominationScreen() {
                 : (language === 'sw' ? 'Hakuna vyakula vya kuonyesha' : 'No items available')
               }
             </div>
-) : activeItems.map((item, index) => (
-                  <motion.button
-                   key={item.id}
-                 initial={{ opacity: 0, scale: 0.8 }}
-                 animate={{ opacity: 1, scale: 1 }}
-                 transition={{ delay: index * 0.02 }}
-                 whileHover={{ scale: 1.05 }}
-                 whileTap={{ scale: 0.95 }}
-                 onClick={() => handleNominate(item)}
-                 disabled={isSaving}
-                 className={`game-box overflow-hidden flex flex-col justify-start relative ${
-                   isSaving ? 'opacity-50 cursor-not-allowed' : ''
-                 } ${tappedItemId === item.id ? 'nomination-success' : ''}`}
-               >
-                 {/* Rank badge for top items */}
-                 {index < 3 && (
-                   <div className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                     index === 0 ? 'bg-yellow-500 text-black' :
-                     index === 1 ? 'bg-gray-400 text-black' :
-                     'bg-amber-700 text-white'
-                   }`}>
-                     {index + 1}
-                   </div>
-                 )}
+          ) : activeItems.map((item, index) => (
+              <motion.button
+               key={item.id}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.02 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleNominate(item)}
+              disabled={isSaving}
+              className={`game-box overflow-hidden flex flex-col justify-start relative ${
+                isSaving ? 'opacity-50 cursor-not-allowed' : ''
+              } ${tappedItemId === item.id ? 'nomination-success' : ''}`}
+            >
+                {/* Rank badge for top items */}
+                {index < 3 && (
+                  <div className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                    index === 0 ? 'bg-yellow-500 text-black' :
+                    index === 1 ? 'bg-gray-400 text-black' :
+                    'bg-amber-700 text-white'
+                  }`}>
+                    {index + 1}
+                  </div>
+                )}
 
-                 {/* Full-width image */}
-                 <div className="w-full flex-1 min-h-0 relative">
-                  {item.imageUrl ? (
-                      <Image 
-                        src={item.imageUrl} 
-                        alt={item.name}
-                        fill
-                        className="absolute inset-0 w-full h-full object-cover"
-                        unoptimized
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Gift className="w-8 h-8 text-gold-400" />
-                      </div>
-                    )}
-                 </div>
-
-                 {/* Details at bottom */}
-                 <div className="w-full px-1 py-1 bg-black/60 text-center shrink-0">
-                   <p className="text-xs font-semibold truncate leading-tight text-white">
-                     {item.name}
-                   </p>
-                   <div className="flex items-center justify-between mt-0.5">
-                     <span className="text-[10px] text-gold-400">
-                       KSh {item.value.toLocaleString()}
-                     </span>
-                     {/* Nomination count */}
-                     <div className="flex items-center gap-1">
-                       <Heart className="w-3 h-3 text-pink-500" />
-                       <span className="text-[10px] text-pink-400">
-                         {item.nominationCount}
-                       </span>
+                {/* Full-width image */}
+                <div className="w-full flex-1 min-h-0 relative">
+                 {item.imageUrl ? (
+                     <Image 
+                       src={item.imageUrl} 
+                       alt={item.name}
+                       fill
+                       className="absolute inset-0 w-full h-full object-cover"
+                       unoptimized
+                       onError={(e) => {
+                         (e.target as HTMLImageElement).style.display = 'none';
+                       }}
+                     />
+                   ) : (
+                     <div className="absolute inset-0 flex items-center justify-center">
+                       <Gift className="w-8 h-8 text-gold-400" />
                      </div>
-                   </div>
-                 </div>
-               </motion.button>
-            ))}
+                   )}
+                </div>
+
+                {/* Details at bottom */}
+                <div className="w-full px-1 py-1 bg-black/60 text-center shrink-0">
+                  <p className="text-xs font-semibold truncate leading-tight text-white">
+                    {item.name}
+                  </p>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <span className="text-[10px] text-gold-400">
+                      KSh {item.value.toLocaleString()}
+                    </span>
+                    {/* Nomination count */}
+                    <div className="flex items-center gap-1">
+                      <Heart className="w-3 h-3 text-pink-500" />
+                      <span className="text-[10px] text-pink-400">
+                        {item.nominationCount}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </motion.button>
+          ))}
         </div>
       </div>
 
       {/* Exit button */}
-      <div className="max-w-md mx-auto mt-6">
+      <div className="w-full max-w-7xl mx-auto mt-6">
         <button
           onClick={handleExit}
           className="btn-gold-outline w-full"
