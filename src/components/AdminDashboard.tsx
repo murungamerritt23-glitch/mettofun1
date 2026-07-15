@@ -16,6 +16,7 @@ import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calcul
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, ItemOfTheDay, NominationItem } from '@/types';
 import { ADMIN_PERMISSIONS } from '@/types';
+import NextImage from 'next/image';
 
 type TabType = 'dashboard' | 'shops' | 'items' | 'qualifyingPurchase' | 'attempts' | 'analytics' | 'settings' | 'customers' | 'myShop' | 'staff';
 
@@ -1572,10 +1573,13 @@ export default function AdminDashboard() {
                             <span className="text-gold-500 font-bold text-lg w-6">#{index + 1}</span>
                             <span className="text-white font-medium">{item.name}</span>
                             {item.imageUrl && (
-                              <img 
+                              <NextImage 
                                 src={item.imageUrl} 
                                 alt={item.name} 
+                                width={32}
+                                height={32}
                                 className="w-8 h-8 rounded object-cover"
+                                unoptimized
                               />
                             )}
                           </div>
@@ -2619,11 +2623,12 @@ export default function AdminDashboard() {
                       {/* Item Image */}
                       <div className="h-32 bg-gray-800 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
                         {item.imageUrl ? (
-                          <img 
+                          <NextImage 
                             src={item.imageUrl} 
                             alt={item.name}
-                            loading="lazy"
+                            fill
                             className="w-full h-full object-cover"
+                            unoptimized
                           />
                         ) : (
                           <Package size={48} className="text-gray-600" />
@@ -3608,7 +3613,7 @@ export default function AdminDashboard() {
                         </div>
                         {itemOfDayForm.imageUrl && (
                           <div className="mt-2 w-20 h-20 rounded-lg overflow-hidden">
-                            <img src={itemOfDayForm.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                            <NextImage src={itemOfDayForm.imageUrl} alt="Preview" width={80} height={80} className="w-full h-full object-cover" unoptimized />
                           </div>
                         )}
                       </div>
@@ -3618,7 +3623,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 bg-amber-900/30 rounded-lg flex items-center justify-center">
                           {itemOfTheDay.imageUrl ? (
-                            <img src={itemOfTheDay.imageUrl} alt={itemOfTheDay.name} className="w-full h-full object-cover rounded-lg" />
+                            <NextImage src={itemOfTheDay.imageUrl} alt={itemOfTheDay.name} width={64} height={64} className="w-full h-full object-cover rounded-lg" unoptimized />
                           ) : (
                             <Gift className="text-amber-400 w-8 h-8" />
                           )}
@@ -3719,9 +3724,11 @@ function AdminSidebar({
       `}>
         <div className="p-6">
           <div className="mb-8">
-            <img 
+            <NextImage 
               src="/metofun-logo.png" 
               alt="ETO FUN" 
+              width={128}
+              height={128}
               className="w-32 h-auto"
             />
           </div>
@@ -4309,11 +4316,14 @@ function ItemForm({
         {/* Image Preview */}
         {imagePreview && (
           <div className="mb-3 relative inline-block">
-            <img 
-              src={imagePreview} 
-              alt="Preview" 
-              className="h-24 w-24 object-cover rounded-lg border border-gray-600"
-            />
+          <NextImage 
+            src={imagePreview} 
+            alt="Preview" 
+            width={96}
+            height={96}
+            className="h-24 w-24 object-cover rounded-lg border border-gray-600"
+            unoptimized
+          />
             <button
               type="button"
               onClick={() => {

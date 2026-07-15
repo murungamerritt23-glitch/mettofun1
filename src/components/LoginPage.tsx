@@ -8,6 +8,7 @@ import { firebaseAuth, rtdbAdmins } from '@/lib/firebase';
 import { getDeviceId } from '@/lib/device';
 import { localAdmins, localShops } from '@/lib/local-db';
 import type { Admin, Shop } from '@/types';
+import Image from 'next/image';
 
 // Simple password hash for offline verification
 const hashPassword = async (password: string): Promise<string> => {
@@ -396,7 +397,7 @@ export default function LoginPage() {
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <img src="/metofun-logo.png" alt="ETO FUN" className="w-40 h-auto mx-auto" />
+          <Image src="/metofun-logo.png" alt="ETO FUN" width={160} height={160} className="w-40 h-auto mx-auto" />
         </div>
 
         <div className="card-gold">

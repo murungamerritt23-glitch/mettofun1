@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUIStore } from '@/store';
+import Image from 'next/image';
 
 export default function SplashScreen() {
   const { showSplash, setShowSplash } = useUIStore();
@@ -19,9 +20,11 @@ export default function SplashScreen() {
 
   return (
     <div className="min-h-screen bg-[#0A1628] flex flex-col items-center justify-center p-4">
-      <img
+      <Image
         src="/metofun-logo.png"
         alt="ETO FUN"
+        width={192}
+        height={192}
         className="w-48 h-auto mb-8"
       />
       <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>

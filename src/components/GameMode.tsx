@@ -18,6 +18,7 @@ import {
   validateGameAttempt
 } from '@/lib/game-utils';
 import type { Item, GameAttempt } from '@/types';
+import Image from 'next/image';
 import { verifyShopLocation } from '@/lib/location';
 import NominationScreen from './NominationScreen';
 
@@ -748,9 +749,11 @@ const handleItemSelect = async (item: Item) => {
         {/* Shop Info */}
         {currentShop && (
           <div className="card text-center mb-6">
-            <img 
+            <Image 
               src="/metofun-logo.png" 
               alt="ETO FUN" 
+              width={128}
+              height={128}
               className="w-32 h-auto mx-auto mb-3"
             />
             <h2 className="gold-gradient-text text-2xl font-bold">{currentShop.shopName}</h2>
@@ -954,10 +957,12 @@ const handleItemSelect = async (item: Item) => {
                 {/* Image takes top ~60% of card */}
                 <div className="w-full h-48 relative">
                   {itemOfTheDay.imageUrl ? (
-                    <img
+                    <Image
                       src={itemOfTheDay.imageUrl}
                       alt={itemOfTheDay.name}
+                      fill
                       className="absolute inset-0 w-full h-full object-cover"
+                      unoptimized
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
@@ -1087,18 +1092,19 @@ const handleItemSelect = async (item: Item) => {
                   } ${tappedItemId === item.id ? 'item-tapped' : ''}`}
                 >
 <div className="w-full flex-1 min-h-0 relative">
-                   {item.imageUrl ? (
-                     <img 
-                       src={item.imageUrl} 
-                       alt={item.name}
-                       className="absolute inset-0 w-full h-full object-cover"
-                       onError={(e) => {
-                         console.warn('[GameMode] Image load error for item:', item.id, item.name, 'src length:', item.imageUrl?.length);
-                         // Hide broken image, fallback to icon
-                         (e.target as HTMLImageElement).style.display = 'none';
-                       }}
-                     />
-                   ) : (
+                    {item.imageUrl ? (
+                      <Image 
+                        src={item.imageUrl} 
+                        alt={item.name}
+                        fill
+                        className="absolute inset-0 w-full h-full object-cover"
+                        unoptimized
+                        onError={(e) => {
+                          console.warn('[GameMode] Image load error for item:', item.id, item.name, 'src length:', item.imageUrl?.length);
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
                      <div className="absolute inset-0 flex items-center justify-center">
                        <Gift className="w-8 h-8 text-gold-400" />
                      </div>
@@ -1257,18 +1263,20 @@ const handleItemSelect = async (item: Item) => {
               >
                 {/* Item Image or Placeholder */}
                 <div className="w-full flex flex-col items-center justify-center gap-1 px-1 flex-1 min-h-0">
-{item?.imageUrl ? (
-                     <div className="w-full flex-1 min-h-0 relative">
-                       <img 
-                         src={item.imageUrl} 
-                         alt={item.name}
-                         className="absolute inset-0 w-full h-full object-cover rounded"
-                         onError={(e) => {
-                           (e.target as HTMLImageElement).parentElement!.innerHTML = '';
-                         }}
-                       />
-                     </div>
-                   ) : (
+                  {item?.imageUrl ? (
+                      <div className="w-full flex-1 min-h-0 relative">
+                        <Image 
+                          src={item.imageUrl} 
+                          alt={item.name}
+                          fill
+                          className="absolute inset-0 w-full h-full object-cover rounded"
+                          unoptimized
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).parentElement!.innerHTML = '';
+                          }}
+                        />
+                      </div>
+                    ) : (
                      <Gift className={`w-8 h-8 ${tappedBoxNum === boxNum ? 'text-white' : ''}`} />
                    )}
                   {/* Item Name */}

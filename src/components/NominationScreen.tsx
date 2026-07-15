@@ -8,6 +8,7 @@ import { localNominationItems, localCustomerNominations } from '@/lib/local-db';
 import { saveNominationWithSync, saveNominationItemWithSync } from '@/lib/sync-service';
 import { randomUUID } from '@/lib/game-utils';
 import type { NominationItem } from '@/types';
+import Image from 'next/image';
 
 export default function NominationScreen() {
   const [items, setItems] = useState<NominationItem[]>([]);
@@ -319,11 +320,13 @@ export default function NominationScreen() {
 
                  {/* Full-width image */}
                  <div className="w-full flex-1 min-h-0 relative">
-{item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
+                  {item.imageUrl ? (
+                      <Image 
+                        src={item.imageUrl} 
                         alt={item.name}
+                        fill
                         className="absolute inset-0 w-full h-full object-cover"
+                        unoptimized
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
                         }}
