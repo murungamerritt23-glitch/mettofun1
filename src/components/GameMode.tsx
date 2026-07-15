@@ -85,61 +85,62 @@ export default function GameMode() {
        let isCancelled = false;
        let unsubscribeIOTD: (() => void) | null = null;
 
-          const loadItemOfDay = async () => {
-            if (isCancelled) return;
+           const loadItemOfDay = async () => {
+             if (isCancelled) return;
 
-            // Try local first
-            const savedItem = await localSettings.get('itemOfTheDay');
-            if (savedItem && isMountedRef.current) {
-              useGameStore.getState().setItemOfTheDay(savedItem);
-            }
+             // Try local first
+             const savedItem = await localSettings.get('itemOfTheDay');
+             if (savedItem && isMountedRef.current) {
+               useGameStore.getState().setItemOfTheDay(savedItem);
+             }
 
-            // Non-blocking RTDB fetch for new devices
-            if (isCancelled) return;
-            try {
-              const { rtdbSettings } = await import('@/lib/firebase');
-              const rtdbItem = await rtdbSettings.get('itemOfTheDay');
-              if (rtdbItem && isMountedRef.current) {
-                // Only apply remote IOTD if local is missing — each device/shop keeps its own IOTD
-                if (!savedItem) {
-                  await localSettings.set('itemOfTheDay', rtdbItem);
-                  useGameStore.getState().setItemOfTheDay(rtdbItem);
-                }
-              }
+             // Non-blocking RTDB fetch for cross-device IOTD sync
+             if (isCancelled) return;
+             try {
+               const { rtdbSettings } = await import('@/lib/firebase');
+               const rtdbItem = await rtdbSettings.get('itemOfTheDay');
+               if (rtdbItem && isMountedRef.current) {
+                 const localLikes = (savedItem?.value as any)?.likes || 0;
+                 const remoteLikes = (rtdbItem as any)?.likes || 0;
+                 const merged = { ...rtdbItem, likes: Math.max(localLikes, remoteLikes) };
+                 await localSettings.set('itemOfTheDay', merged);
+                 useGameStore.getState().setItemOfTheDay(merged);
+               }
 
-              // Subscribe for live IOTD updates — single subscription per mount, cleaned up on unmount
-              try {
-                unsubscribeIOTD = rtdbSettings.onSettingChange('itemOfTheDay', async (rtdbItem: any) => {
-                  if (rtdbItem && isMountedRef.current) {
-                    const localItem = await localSettings.get('itemOfTheDay');
-                    // Only apply remote IOTD if local is missing — each device/shop keeps its own IOTD
-                    if (!localItem) {
-                      await localSettings.set('itemOfTheDay', rtdbItem);
-                      useGameStore.getState().setItemOfTheDay(rtdbItem);
-                    }
-                  }
-                });
-              } catch (e) {
-                // If RTDB listener fails, fall back to periodic polling
-                const fallbackSync = async () => {
-                  try {
-                    const { rtdbSettings } = await import('@/lib/firebase');
-                    const rtdbItem = await rtdbSettings.get('itemOfTheDay');
-                    if (rtdbItem && isMountedRef.current) {
-                      const localItem = await localSettings.get('itemOfTheDay');
-                      if (!localItem) {
-                        await localSettings.set('itemOfTheDay', rtdbItem);
-                        useGameStore.getState().setItemOfTheDay(rtdbItem);
-                      }
-                    }
-                  } catch (e) {}
-                };
-                fallbackSync();
-                const syncInterval = setInterval(fallbackSync, 30000);
-                unsubscribeIOTD = () => clearInterval(syncInterval);
-              }
-            } catch (e) {}
-          };
+               // Subscribe for live IOTD updates — single subscription per mount, cleaned up on unmount
+               try {
+                 unsubscribeIOTD = rtdbSettings.onSettingChange('itemOfTheDay', async (rtdbItem: any) => {
+                   if (rtdbItem && isMountedRef.current) {
+                     const localItem = await localSettings.get('itemOfTheDay');
+                     const localLikes = (localItem?.value as any)?.likes || 0;
+                     const remoteLikes = (rtdbItem as any)?.likes || 0;
+                     const merged = { ...rtdbItem, likes: Math.max(localLikes, remoteLikes) };
+                     await localSettings.set('itemOfTheDay', merged);
+                     useGameStore.getState().setItemOfTheDay(merged);
+                   }
+                 });
+               } catch (e) {
+                 // If RTDB listener fails, fall back to periodic polling
+                 const fallbackSync = async () => {
+                   try {
+                     const { rtdbSettings } = await import('@/lib/firebase');
+                     const rtdbItem = await rtdbSettings.get('itemOfTheDay');
+                     if (rtdbItem && isMountedRef.current) {
+                       const localItem = await localSettings.get('itemOfTheDay');
+                       const localLikes = (localItem?.value as any)?.likes || 0;
+                       const remoteLikes = (rtdbItem as any)?.likes || 0;
+                       const merged = { ...rtdbItem, likes: Math.max(localLikes, remoteLikes) };
+                       await localSettings.set('itemOfTheDay', merged);
+                       useGameStore.getState().setItemOfTheDay(merged);
+                     }
+                   } catch (e) {}
+                 };
+                 fallbackSync();
+                 const syncInterval = setInterval(fallbackSync, 30000);
+                 unsubscribeIOTD = () => clearInterval(syncInterval);
+               }
+             } catch (e) {}
+           };
 
        loadItemOfDay();
 

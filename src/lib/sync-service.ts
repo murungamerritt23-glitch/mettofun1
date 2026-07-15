@@ -945,15 +945,19 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
       console.log('[Sync] Admin pull skipped (auth may not be active)');
     }
 
-    // Pull settings (e.g. itemOfTheDay) with conflict resolution
+    // Pull settings (e.g. itemOfTheDay) — IOTD is shared, merge likes with max-intent
     try {
       const fbSettings = await rtdbSettings.get('itemOfTheDay');
       if (fbSettings) {
         const localSetting = await localSettings.get('itemOfTheDay');
         if (!localSetting) {
           await localSettings.set('itemOfTheDay', fbSettings);
+        } else {
+          const localLikes = (localSetting.value as any)?.likes || 0;
+          const remoteLikes = (fbSettings.value as any)?.likes || 0;
+          const merged = { ...fbSettings, value: { ...(fbSettings.value || {}), likes: Math.max(localLikes, remoteLikes) } };
+          await localSettings.set('itemOfTheDay', merged);
         }
-        // If local setting exists, keep local version — each device/shop owns its own IOTD
       }
     } catch (settingsErr) {
       console.log('[Sync] Settings pull skipped:', settingsErr);

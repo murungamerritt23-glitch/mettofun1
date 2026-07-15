@@ -713,7 +713,22 @@ export default function AdminDashboard() {
       if (savedItem && isMountedRef.current) {
         setItemOfTheDay(savedItem);
       }
-      // Do NOT overwrite local IOTD with RTDB — each shop/device owns its own IOTD
+      // Always fetch latest from RTDB — IOTD is shared across all devices/shops
+      try {
+        const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
+        const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
+        if (rtdbItem && isMountedRef.current) {
+          const localLikes = (savedItem?.value as any)?.likes || 0;
+          const remoteLikes = (rtdbItem as any)?.likes || 0;
+          const merged = { ...rtdbItem, value: { ...(rtdbItem.value || {}), likes: Math.max(localLikes, remoteLikes) } };
+          await localSettings.set('itemOfTheDay', merged);
+          setItemOfTheDay(merged);
+        } else if (!rtdbItem && !savedItem && isMountedRef.current) {
+          setItemOfTheDay(null);
+        }
+      } catch (e) {
+        // RTDB fetch failed, use local
+      }
     };
     loadItemOfDay();
   }, []);
