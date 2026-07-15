@@ -709,7 +709,7 @@ const handleItemSelect = async (item: Item) => {
     return (
       <div className="min-h-screen p-4 relative overflow-auto">
         {/* Header */}
-        <div className="max-w-md mx-auto mb-6">
+        <div className="w-full max-w-7xl mx-auto mb-6">
           <button
             onClick={handleExit}
             className="flex items-center gap-2 text-gray-400 hover:text-gold-400 mb-4"
@@ -723,14 +723,10 @@ const handleItemSelect = async (item: Item) => {
             <div className="absolute top-4 right-4 flex gap-2">
               <button
                 onClick={() => {
-                  // Clear local storage auth
                   localStorage.removeItem('metofun-auth');
                   localStorage.removeItem('metofun-auth-pw');
-                  // Clear shop from store
                   setCurrentShop(null);
-                  // Navigate to login
                   setCurrentView('login');
-                  // Reset auth state
                   logout();
                 }}
                 className="p-2 text-gray-400 hover:text-red-400"
@@ -747,105 +743,107 @@ const handleItemSelect = async (item: Item) => {
               </button>
             </div>
           )}
+        </div>
 
-          {/* Shop Info */}
-          {currentShop && (
-            <div className="card text-center mb-6">
-              <img 
-                src="/metofun-logo.png" 
-                alt="ETO FUN" 
-                className="w-32 h-auto mx-auto mb-3"
+        {/* Shop Info */}
+        {currentShop && (
+          <div className="card text-center mb-6">
+            <img 
+              src="/metofun-logo.png" 
+              alt="ETO FUN" 
+              className="w-32 h-auto mx-auto mb-3"
+            />
+            <h2 className="gold-gradient-text text-2xl font-bold">{currentShop.shopName}</h2>
+            <p className="text-gray-400 text-sm">{currentShop.promoMessage}</p>
+          </div>
+        )}
+
+        {/* Deactivated Shop Warning */}
+        {currentShop && currentShop.isActive === false && (
+          <div className="bg-red-900/50 border border-red-500 rounded-lg p-4 mb-6 text-center">
+            <p className="text-red-400 font-bold text-lg">
+              {language === 'sw' ? 'DUKA LIMEZIMWA' : 'SHOP DEACTIVATED'}
+            </p>
+            <p className="text-red-300 text-sm mt-1">
+              {language === 'sw' 
+                ? 'Duka hili limezimwa na msimamizi. Wasiliana na admin kupata msaada.'
+                : 'This shop has been deactivated by admin. Contact admin for help.'}
+            </p>
+          </div>
+        )}
+
+        {/* Test Mode Indicator - only shown for super_admin */}
+        {isSuperAdminTestMode && (
+          <div className="bg-red-900/50 border border-red-500 rounded-lg p-3 mb-6 text-center">
+            <span className="text-red-400 font-bold">🔴 TEST MODE</span>
+            <p className="text-red-300 text-xs mt-1">
+              {language === 'sw' 
+                ? 'Data haichukuliwi kwa hesabu za kawaida'
+                : 'Test data isolated from real analytics'}
+            </p>
+          </div>
+        )}
+
+        {/* Demo Mode */}
+        <button
+          onClick={handleDemoMode}
+          className="btn-gold-outline w-full mb-3 flex items-center justify-center gap-2"
+        >
+          <Zap size={20} />
+          {t.demoMode}
+        </button>
+
+        {/* Refresh Button */}
+        <button
+          onClick={handleRefresh}
+          className="btn-outline w-full mb-6 flex items-center justify-center gap-2"
+        >
+          <RefreshCw size={20} />
+          {language === 'sw' ? 'Fanya Upya' : 'New Session'}
+        </button>
+
+        {/* Auth Form */}
+        <div className="card-gold w-full max-w-4xl mx-auto">
+          <h3 className="text-xl font-semibold text-center mb-4">
+            {language === 'sw' ? 'Ingiza taarifa zako' : 'Enter Your Details'}
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">{t.enterPhone}</label>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="input"
+                placeholder="+254 700 000 000"
               />
-              <h2 className="gold-gradient-text text-2xl font-bold">{currentShop.shopName}</h2>
-              <p className="text-gray-400 text-sm">{currentShop.promoMessage}</p>
             </div>
-          )}
-
-          {/* Deactivated Shop Warning */}
-          {currentShop && currentShop.isActive === false && (
-            <div className="bg-red-900/50 border border-red-500 rounded-lg p-4 mb-6 text-center">
-              <p className="text-red-400 font-bold text-lg">
-                {language === 'sw' ? 'DUKA LIMEZIMWA' : 'SHOP DEACTIVATED'}
-              </p>
-              <p className="text-red-300 text-sm mt-1">
-                {language === 'sw' 
-                  ? 'Duka hili limezimwa na msimamizi. Wasiliana na admin kupata msaada.'
-                  : 'This shop has been deactivated by admin. Contact admin for help.'}
-              </p>
-            </div>
-          )}
-
-          {/* Test Mode Indicator - only shown for super_admin */}
-          {isSuperAdminTestMode && (
-            <div className="bg-red-900/50 border border-red-500 rounded-lg p-3 mb-6 text-center">
-              <span className="text-red-400 font-bold">🔴 TEST MODE</span>
-              <p className="text-red-300 text-xs mt-1">
-                {language === 'sw' 
-                  ? 'Data haichukuliwi kwa hesabu za kawaida'
-                  : 'Test data isolated from real analytics'}
-              </p>
-            </div>
-          )}
-
-          {/* Demo Mode */}
-          <button
-            onClick={handleDemoMode}
-            className="btn-gold-outline w-full mb-3 flex items-center justify-center gap-2"
-          >
-            <Zap size={20} />
-            {t.demoMode}
-          </button>
-
-          {/* Refresh Button */}
-          <button
-            onClick={handleRefresh}
-            className="btn-outline w-full mb-6 flex items-center justify-center gap-2"
-          >
-            <RefreshCw size={20} />
-            {language === 'sw' ? 'Fanya Upya' : 'New Session'}
-          </button>
-
-          {/* Auth Form */}
-          <div className="card-gold">
-            <h3 className="text-xl font-semibold text-center mb-4">
-              {language === 'sw' ? 'Ingiza taarifa zako' : 'Enter Your Details'}
-            </h3>
             
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">{t.enterPhone}</label>
-                <input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="input"
-                  placeholder="+254 700 000 000"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">
-                  {t.enterAmount}
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
-                  value={purchaseAmount}
-                  onChange={(e) => setPurchaseAmount(e.target.value)}
-                  className="input"
-                  placeholder="100"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {t.qualifyingPurchase}: KSh {currentShop?.qualifyingPurchase || 0}
-                </p>
-              </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">
+                {t.enterAmount}
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                onFocus={(e) => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
+                value={purchaseAmount}
+                onChange={(e) => setPurchaseAmount(e.target.value)}
+                className="input"
+                placeholder="100"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {t.qualifyingPurchase}: KSh {currentShop?.qualifyingPurchase || 0}
+              </p>
+            </div>
 
+            <div className="md:col-span-2">
               <button
                 onClick={handleAuthorize}
                 disabled={isAuthorizing}
-                className="btn-gold w-full flex items-center justify-center gap-2"
+                className="btn-gold w-full md:w-auto md:px-8 flex items-center justify-center gap-2"
               >
                 {isAuthorizing ? (
                   <motion.div
@@ -860,33 +858,33 @@ const handleItemSelect = async (item: Item) => {
               </button>
             </div>
           </div>
+        </div>
 
-{/* Language Toggle */}
-           <div className="flex justify-center mt-6">
-             <button
-               onClick={() => setLanguage(language === 'en' ? 'sw' : 'en')}
-               className="flex items-center gap-2 text-gray-400 hover:text-gold-400"
-             >
-               <Languages size={20} />
-               {t.language}: {language === 'en' ? 'English' : 'Swahili'}
-             </button>
-           </div>
-
-           {/* Terms & Conditions Button */}
-           {termsContent && (
-             <div className="flex justify-center mt-4">
-               <button
-                 onClick={() => setGameStatus('terms')}
-                 className="text-sm text-gold-400 hover:text-gold-300 underline"
-               >
-                 {t.terms}
-               </button>
-             </div>
-           )}
+        {/* Language Toggle */}
+         <div className="flex justify-center mt-6">
+           <button
+             onClick={() => setLanguage(language === 'en' ? 'sw' : 'en')}
+             className="flex items-center gap-2 text-gray-400 hover:text-gold-400"
+           >
+             <Languages size={20} />
+             {t.language}: {language === 'en' ? 'English' : 'Swahili'}
+           </button>
          </div>
-       </div>
-     );
-   }
+
+        {/* Terms & Conditions Button */}
+        {termsContent && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={() => setGameStatus('terms')}
+              className="text-sm text-gold-400 hover:text-gold-300 underline"
+            >
+              {t.terms}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Number picker modal - shows numbers 1 to (18-threshold) based on odds percentage
   if (showNumberPicker && !showResult) {

@@ -304,7 +304,17 @@ export const useGameStore = create<GameState>()(
             if (result.success) {
               return;
             }
+            const errorMessage = result.error || '';
+            if (errorMessage.includes('PERMISSION_DENIED')) {
+              console.warn('[IOTD] RTDB permission denied - like saved locally only');
+              return;
+            }
           } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            if (errorMessage.includes('PERMISSION_DENIED')) {
+              console.warn('[IOTD] RTDB permission denied - like saved locally only');
+              return;
+            }
             console.error('[IOTD] Immediate RTDB increment failed:', e);
           }
         }
