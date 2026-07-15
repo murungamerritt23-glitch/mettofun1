@@ -2692,27 +2692,20 @@ export default function AdminDashboard() {
                   ))}
                 </div>
 
-                <AnimatePresence>
-                  {editingItem && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="card-gold"
-                    >
-                      <h3 className="font-semibold mb-4">Edit Item</h3>
-                      <ItemForm
-                        item={editingItem}
-                        qualifyingPurchase={currentShop.qualifyingPurchase}
-                        onSave={handleSaveItem}
-                        onCancel={() => {
-                          setEditingItem(null);
-                          setUserActive(false);
-                        }}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {editingItem && (
+                  <div className="mt-4 card-gold">
+                    <h3 className="font-semibold mb-4">Edit Item</h3>
+                    <ItemForm
+                      item={editingItem}
+                      qualifyingPurchase={currentShop.qualifyingPurchase}
+                      onSave={handleSaveItem}
+                      onCancel={() => {
+                        setEditingItem(null);
+                        setUserActive(false);
+                      }}
+                    />
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-12">
