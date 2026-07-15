@@ -598,25 +598,41 @@ export default function AdminDashboard() {
                } catch (error) {
                  console.error('Error loading shop attempts:', error);
                }
-             } else if (storedCurrentShop) {
-               // Always update currentShop with fresh data from Firebase/local storage
-               // This ensures qualifying purchase and other fields are up-to-date
-               const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
-               if (updatedShop) {
-                 if (isMountedRef.current) {
-                   setCurrentShop(updatedShop);
-                 }
-                 // Load attempts for the current shop
-                 try {
-                   const shopAttempts = await localAttempts.getByShop(updatedShop.id);
-                   if (isMountedRef.current) {
-                     setAttempts(shopAttempts);
-                   }
-                 } catch (error) {
-                   console.error('Error loading shop attempts:', error);
-                 }
-               }
-             }
+              } else if (storedCurrentShop) {
+                // Always update currentShop with fresh data from Firebase/local storage
+                // This ensures qualifying purchase and other fields are up-to-date
+                const updatedShop = shopList.find(s => s.id === storedCurrentShop.id);
+                if (updatedShop) {
+                  if (isMountedRef.current) {
+                    setCurrentShop(updatedShop);
+                  }
+                  // Load attempts for the current shop
+                  try {
+                    const shopAttempts = await localAttempts.getByShop(updatedShop.id);
+                    if (isMountedRef.current) {
+                      setAttempts(shopAttempts);
+                    }
+                  } catch (error) {
+                    console.error('Error loading shop attempts:', error);
+                  }
+                } else {
+                  // stored shop not in this admin's assigned shops - reset attempts to avoid leaking other shops' data
+                  if (isMountedRef.current) {
+                    setAttempts([]);
+                  }
+                }
+              } else {
+                // No stored shop and shop_admin - load attempts for first available shop
+                if (shopList.length > 0 && isMountedRef.current) {
+                  setCurrentShop(shopList[0]);
+                  try {
+                    const shopAttempts = await localAttempts.getByShop(shopList[0].id);
+                    setAttempts(shopAttempts);
+                  } catch (error) {
+                    console.error('Error loading shop attempts:', error);
+                  }
+                }
+              }
            }
          };
 
@@ -1400,8 +1416,8 @@ export default function AdminDashboard() {
                     } else {
                       setShops(allShops.filter((s: Shop) => s.isActive));
                     }
-                    const allAttempts = await localAttempts.getAll();
-                    setAttempts(allAttempts);
+                    // Reload attempts with correct shop scoping instead of overwriting with all attempts
+                    await loadAttempts();
                   } catch (e) {
                     console.error('Refresh failed:', e);
                   }
@@ -2992,8 +3008,11 @@ export default function AdminDashboard() {
                     <p className="text-gray-500">No attempts yet</p>
                   </div>
                 ) : (() => {
-                  const attemptsByDate: Record<string, typeof attempts> = {};
-                  attempts.forEach((attempt) => {
+                  const shopAttempts = currentShop
+                    ? attempts.filter(a => a.shopId === currentShop.id)
+                    : attempts;
+                  const attemptsByDate: Record<string, typeof shopAttempts> = {};
+                  shopAttempts.forEach((attempt) => {
                     const dateKey = new Date(attempt.timestamp || Date.now()).toISOString().split('T')[0];
                     if (!attemptsByDate[dateKey]) attemptsByDate[dateKey] = [];
                     attemptsByDate[dateKey].push(attempt);
