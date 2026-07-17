@@ -45,6 +45,13 @@ import {
   connectDatabaseEmulator,
   increment
 } from 'firebase/database';
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
+} from 'firebase/storage';
 import type { Shop, Subscription, SubscriptionTier, Admin, GameAttempt, Item, NominationItem, CustomerNomination } from '@/types';
 import { localSettings } from './local-db';
 
@@ -64,12 +71,14 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 export let rtdb: Database;
+let storage: ReturnType<typeof getStorage>;
 
 if (typeof window !== 'undefined') {
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
   rtdb = getDatabase(app);
+  storage = getStorage(app);
   
   // Connect to emulators only if explicitly set to 'true'
   // Default is production (safer default)
@@ -1357,6 +1366,28 @@ export const rtdbAdmins = {
     } catch (error: any) {
       return { success: false, error: error.message };
     }
+  }
+};
+
+// Firebase Storage helpers
+export const uploadImageToStorage = async (path: string, blob: Blob): Promise<string | null> => {
+  try {
+    const fileRef = storageRef(storage, path);
+    await uploadBytes(fileRef, blob);
+    const url = await getDownloadURL(fileRef);
+    return url;
+  } catch (error) {
+    console.error('Storage upload failed:', error);
+    return null;
+  }
+};
+
+export const deleteImageFromStorage = async (path: string): Promise<void> => {
+  try {
+    const fileRef = storageRef(storage, path);
+    await deleteObject(fileRef);
+  } catch (error) {
+    console.error('Storage delete failed:', error);
   }
 };
 

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useShopStore, useItemStore, useUIStore, useGameStore, useSyncStore } from '@/store';
 import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAllData, localShops, localSettings, localNominationItems } from '@/lib/local-db';
-import { rtdbShops, rtdbAdmins, rtdbItems, firebaseSettings } from '@/lib/firebase';
+import { rtdbShops, rtdbAdmins, rtdbItems, firebaseSettings, uploadImageToStorage } from '@/lib/firebase';
 import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive, queueForSync } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber, randomUUID } from '@/lib/game-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
@@ -24,6 +24,7 @@ export default function AdminDashboard() {
   // Safety timeout - ensure loading stops after 15 seconds to prevent hang
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const isMountedRef = useRef(true);
+  const restoreFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1070,7 +1071,10 @@ export default function AdminDashboard() {
     if (admin?.level === 'super_admin' || admin?.level === 'agent_admin') {
       // Non-blocking RTDB pull
       import('@/lib/sync-service').then(({ pullFromRTDB }) => {
-        pullFromRTDB().catch(() => {});
+        pullFromRTDB().then(async () => {
+          const allAttempts = await localAttempts.getAll();
+          if (isMountedRef.current) setAttempts(allAttempts);
+        }).catch(() => {});
       }).catch(() => {});
       const allAttempts = await localAttempts.getAll();
       setAttempts(allAttempts);
@@ -1080,8 +1084,11 @@ export default function AdminDashboard() {
     // shop_admin: only load attempts for their shop
     if (currentShop) {
       // Non-blocking RTDB pull
-      import('@/lib/sync-service').then(({ pullAttemptsFromRTDB }) => {
-        pullAttemptsFromRTDB(currentShop.id).catch(() => {});
+      import('@/lib/sync-service').then(({ pullFromRTDB }) => {
+        pullFromRTDB(currentShop.id).then(async () => {
+          const shopAttempts = await localAttempts.getByShop(currentShop.id);
+          if (isMountedRef.current) setAttempts(shopAttempts);
+        }).catch(() => {});
       }).catch(() => {});
       const shopAttempts = await localAttempts.getByShop(currentShop.id);
       setAttempts(shopAttempts);
@@ -1092,7 +1099,10 @@ export default function AdminDashboard() {
   const loadAllAttempts = async () => {
     // Non-blocking RTDB pull
     import('@/lib/sync-service').then(({ pullFromRTDB }) => {
-      pullFromRTDB().catch(() => {});
+      pullFromRTDB().then(async () => {
+        const allAttempts = await localAttempts.getAll();
+        if (isMountedRef.current) setAttempts(allAttempts);
+      }).catch(() => {});
     }).catch(() => {});
     const allAttempts = await localAttempts.getAll();
     setAttempts(allAttempts);
@@ -1194,7 +1204,13 @@ export default function AdminDashboard() {
       
       // Then sync in background (non-blocking) - one-time pull, no recursion
       import('@/lib/sync-service').then(({ pullFromRTDB }) => {
-        pullFromRTDB(currentShop.id).catch(() => {});
+        pullFromRTDB(currentShop.id).then(async () => {
+          const updated = await localItems.getByShop(currentShop.id);
+          if (updated && updated.length > 0 && isMountedRef.current) {
+            setItems(updated);
+            setItemsList(updated);
+          }
+        }).catch(() => {});
       }).catch(() => {});
     }
   };
@@ -1378,6 +1394,53 @@ export default function AdminDashboard() {
     a.href = url;
     a.download = `metofun-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
+  };
+
+  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      if (data.shops && Array.isArray(data.shops)) {
+        for (const shop of data.shops) {
+          await localShops.save(shop);
+        }
+      }
+
+      if (data.items && Array.isArray(data.items)) {
+        for (const item of data.items) {
+          await localItems.save(item);
+        }
+      }
+
+      if (data.attempts && Array.isArray(data.attempts)) {
+        for (const attempt of data.attempts) {
+          await localAttempts.save(attempt);
+        }
+      }
+
+      alert('Backup restored successfully!');
+      
+      // Reload data
+      const allShops = await localShops.getAll();
+      setShops(allShops);
+      if (currentShop) {
+        const updatedItems = await localItems.getByShop(currentShop.id);
+        setItems(updatedItems);
+        setItemsList(updatedItems);
+      }
+      const allAttempts = await localAttempts.getAll();
+      setAttempts(allAttempts);
+    } catch (err) {
+      console.error('Restore failed:', err);
+      alert('Failed to restore backup. Please check the file format.');
+    }
+
+    // Reset input
+    e.target.value = '';
   };
 
   // Dashboard view
@@ -1789,39 +1852,52 @@ export default function AdminDashboard() {
                             type="file"
                             accept="image/*"
                             className="hidden"
-                            onChange={(e) => {
+                            onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
                               if (file.size > 5 * 1024 * 1024) {
                                 alert('Image too large. Max 5MB');
                                 return;
                               }
-                              const reader = new FileReader();
-                              reader.onload = (event) => {
+                              try {
                                 const img = new Image();
-                                img.onload = () => {
-                                  const canvas = document.createElement('canvas');
-                                  const maxSize = 400;
-                                  let { width, height } = img;
-                                  if (width > maxSize || height > maxSize) {
-                                    if (width > height) {
-                                      height = (height / width) * maxSize;
-                                      width = maxSize;
-                                    } else {
-                                      width = (width / height) * maxSize;
-                                      height = maxSize;
-                                    }
+                                await new Promise<void>((resolve, reject) => {
+                                  img.onload = () => resolve();
+                                  img.onerror = () => reject(new Error('Failed to load image'));
+                                  img.src = URL.createObjectURL(file);
+                                });
+                                const canvas = document.createElement('canvas');
+                                const maxSize = 400;
+                                let { width, height } = img;
+                                if (width > maxSize || height > maxSize) {
+                                  if (width > height) {
+                                    height = (height / width) * maxSize;
+                                    width = maxSize;
+                                  } else {
+                                    width = (width / height) * maxSize;
+                                    height = maxSize;
                                   }
-                                  canvas.width = width;
-                                  canvas.height = height;
-                                  const ctx = canvas.getContext('2d');
-                                  ctx?.drawImage(img, 0, 0, width, height);
-                                  const compressed = canvas.toDataURL('image/jpeg', 0.7);
-                                  (document.getElementById('nominationImageUrl') as HTMLInputElement).value = compressed;
-                                };
-                                img.src = event.target?.result as string;
-                              };
-                              reader.readAsDataURL(file);
+                                }
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext('2d');
+                                ctx?.drawImage(img, 0, 0, width, height);
+                                const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                                (document.getElementById('nominationImageUrl') as HTMLInputElement).value = compressed;
+                                
+                                const blob = await new Promise<Blob | null>((resolve) => {
+                                  canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.7);
+                                });
+                                if (blob && isOnline() && editingNominationItem) {
+                                  const url = await uploadImageToStorage(`nominationItems/${editingNominationItem.id}.jpg`, blob);
+                                  if (url) {
+                                    (document.getElementById('nominationImageUrl') as HTMLInputElement).value = url;
+                                  }
+                                }
+                              } catch (err) {
+                                console.error('Nomination image upload failed:', err);
+                                alert('Failed to process image');
+                              }
                             }}
                           />
                         </label>
@@ -3314,10 +3390,17 @@ export default function AdminDashboard() {
                     <h3 className="font-semibold text-white">Restore Data</h3>
                     <p className="text-gray-400 text-sm">Import data from backup</p>
                   </div>
-                  <button className="btn-gold-outline">
-                    <Settings size={16} className="mr-2" />
-                    Restore
-                  </button>
+                   <button onClick={() => restoreFileRef.current?.click()} className="btn-gold-outline">
+                     <Settings size={16} className="mr-2" />
+                     Restore
+                   </button>
+                   <input
+                     ref={restoreFileRef}
+                     type="file"
+                     accept=".json"
+                     onChange={handleRestore}
+                     className="hidden"
+                   />
                 </div>
               </div>
 
@@ -3570,39 +3653,52 @@ export default function AdminDashboard() {
                               type="file"
                               accept="image/*"
                               className="hidden"
-                              onChange={(e) => {
+                              onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
                                 if (file.size > 5 * 1024 * 1024) {
                                   alert('Image too large. Max 5MB');
                                   return;
                                 }
-                                const reader = new FileReader();
-                                reader.onload = (event) => {
+                                try {
                                   const img = new Image();
-                                  img.onload = () => {
-                                    const canvas = document.createElement('canvas');
-                                    const maxSize = 400;
-                                    let { width, height } = img;
-                                    if (width > maxSize || height > maxSize) {
-                                      if (width > height) {
-                                        height = (height / width) * maxSize;
-                                        width = maxSize;
-                                      } else {
-                                        width = (width / height) * maxSize;
-                                        height = maxSize;
-                                      }
+                                  await new Promise<void>((resolve, reject) => {
+                                    img.onload = () => resolve();
+                                    img.onerror = () => reject(new Error('Failed to load image'));
+                                    img.src = URL.createObjectURL(file);
+                                  });
+                                  const canvas = document.createElement('canvas');
+                                  const maxSize = 400;
+                                  let { width, height } = img;
+                                  if (width > maxSize || height > maxSize) {
+                                    if (width > height) {
+                                      height = (height / width) * maxSize;
+                                      width = maxSize;
+                                    } else {
+                                      width = (width / height) * maxSize;
+                                      height = maxSize;
                                     }
-                                    canvas.width = width;
-                                    canvas.height = height;
-                                    const ctx = canvas.getContext('2d');
-                                    ctx?.drawImage(img, 0, 0, width, height);
-                                    const compressed = canvas.toDataURL('image/jpeg', 0.7);
-                                    setItemOfDayForm({ ...itemOfDayForm, imageUrl: compressed });
-                                  };
-                                  img.src = event.target?.result as string;
-                                };
-                                reader.readAsDataURL(file);
+                                  }
+                                  canvas.width = width;
+                                  canvas.height = height;
+                                  const ctx = canvas.getContext('2d');
+                                  ctx?.drawImage(img, 0, 0, width, height);
+                                  const compressed = canvas.toDataURL('image/jpeg', 0.7);
+                                  setItemOfDayForm({ ...itemOfDayForm, imageUrl: compressed });
+                                  
+                                  const blob = await new Promise<Blob | null>((resolve) => {
+                                    canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.7);
+                                  });
+                                  if (blob && isOnline()) {
+                                    const url = await uploadImageToStorage('settings/itemOfTheDay.jpg', blob);
+                                    if (url) {
+                                      setItemOfDayForm({ ...itemOfDayForm, imageUrl: url });
+                                    }
+                                  }
+                                } catch (err) {
+                                  console.error('IOTD image upload failed:', err);
+                                  alert('Failed to process image');
+                                }
                               }}
                             />
                           </label>
@@ -4209,37 +4305,41 @@ function ItemForm({
 
   const isPriceValid = formData.value <= qualifyingPurchase * 0.8;
 
-  // Handle file upload - convert to base64
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file upload - upload to Firebase Storage
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     console.log('[AdminDashboard] Image upload started:', { name: file.name, size: file.size, type: file.type });
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file');
       return;
     }
 
-    // Reject files over 5MB immediately (before hanging)
     if (file.size > 5 * 1024 * 1024) {
       alert('Image too large. Please use an image under 5MB');
       return;
     }
 
     setIsUploading(true);
-    
-    // Set timeout to prevent hang
     const timeout = setTimeout(() => {
       setIsUploading(false);
       alert('Image processing timed out. Try a smaller image or use URL instead.');
-    }, 10000); // 10 second timeout
-    
-    // Compress image before storing (for offline storage efficiency)
-    const compressImage = (img: HTMLImageElement): string => {
+    }, 10000);
+
+    try {
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = URL.createObjectURL(file);
+      });
+
+      clearTimeout(timeout);
+
       const canvas = document.createElement('canvas');
-      const maxSize = 400; // Compress to 400x400 max
+      const maxSize = 400;
       let { width, height } = img;
       if (width > maxSize || height > maxSize) {
         if (width > height) {
@@ -4254,33 +4354,33 @@ function ItemForm({
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0, width, height);
-      return canvas.toDataURL('image/jpeg', 0.7); // Compress to 70% quality
-    };
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        clearTimeout(timeout);
-        const compressed = compressImage(img);
-        console.log('[AdminDashboard] Image compressed:', { originalSize: file.size, compressedLength: compressed.length });
-        setImagePreview(compressed);
-        setFormData({ ...formData, imageUrl: compressed });
-        setIsUploading(false);
-      };
-      img.onerror = () => {
-        clearTimeout(timeout);
-        alert('Failed to process image');
-        setIsUploading(false);
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.onerror = () => {
-      clearTimeout(timeout);
-      alert('Failed to read file');
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.7);
+      });
+
+      const preview = canvas.toDataURL('image/jpeg', 0.7);
+      setImagePreview(preview);
+
+      if (blob && isOnline()) {
+        const storagePath = `shops/${item.shopId}/items/${item.id}.jpg`;
+        const downloadUrl = await uploadImageToStorage(storagePath, blob);
+        if (downloadUrl) {
+          setFormData({ ...formData, imageUrl: downloadUrl });
+        } else {
+          setFormData({ ...formData, imageUrl: preview });
+        }
+      } else if (blob) {
+        setFormData({ ...formData, imageUrl: preview });
+      }
+
       setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      clearTimeout(timeout);
+      console.error('Image upload failed:', err);
+      alert('Failed to process image');
+      setIsUploading(false);
+    }
   };
 
   // Handle URL input change
