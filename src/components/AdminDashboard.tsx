@@ -735,9 +735,9 @@ export default function AdminDashboard() {
         const { rtdbSettings: rtdbSettingsApi } = await import('@/lib/firebase');
         const rtdbItem = await rtdbSettingsApi.get('itemOfTheDay');
         if (rtdbItem && isMountedRef.current) {
-          const localLikes = (savedItem?.value as any)?.likes || 0;
+          const localLikes = (savedItem as any)?.likes || 0;
           const remoteLikes = (rtdbItem as any)?.likes || 0;
-          const merged = { ...rtdbItem, value: { ...(rtdbItem.value || {}), likes: Math.max(localLikes, remoteLikes) } };
+          const merged = { ...rtdbItem, likes: Math.max(localLikes, remoteLikes) };
           await localSettings.set('itemOfTheDay', merged);
           setItemOfTheDay(merged);
         } else if (!rtdbItem && !savedItem && isMountedRef.current) {

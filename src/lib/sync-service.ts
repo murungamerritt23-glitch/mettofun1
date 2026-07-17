@@ -955,9 +955,9 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
         if (!localSetting) {
           await localSettings.set('itemOfTheDay', fbSettings);
         } else {
-          const localLikes = (localSetting.value as any)?.likes || 0;
-          const remoteLikes = (fbSettings.value as any)?.likes || 0;
-          const merged = { ...fbSettings, value: { ...(fbSettings.value || {}), likes: Math.max(localLikes, remoteLikes) } };
+          const localLikes = (localSetting as any)?.likes || 0;
+          const remoteLikes = (fbSettings as any)?.likes || 0;
+          const merged = { ...fbSettings, likes: Math.max(localLikes, remoteLikes) };
           await localSettings.set('itemOfTheDay', merged);
         }
       }
