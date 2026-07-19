@@ -81,6 +81,8 @@ export default function AdminDashboard() {
   const [isEditingNominationItems, setIsEditingNominationItems] = useState(false);
   const [editingNominationItem, setEditingNominationItem] = useState<NominationItem | null>(null);
   const [isCreatingNominationItem, setIsCreatingNominationItem] = useState(false);
+  const [showNominationDefaultPicker, setShowNominationDefaultPicker] = useState(false);
+  const [selectedNominationCategory, setSelectedNominationCategory] = useState<string>(DEFAULT_ITEM_CATEGORIES[0] || '');
   const [nominationItemsLoading, setNominationItemsLoading] = useState(false);
 
   // Password protection state
@@ -1715,8 +1717,69 @@ export default function AdminDashboard() {
                                 <div className="flex-1">
                                   <p className="text-white font-medium">{item.name || '(No name)'}</p>
                                   <p className="text-gray-400 text-sm">Value: {(item.value || 0).toLocaleString()} | Nominations: {item.nominationCount}</p>
-                                </div>
-                              </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowNominationDefaultPicker(!showNominationDefaultPicker)}
+                          className="btn-gold-outline w-full"
+                        >
+                          <Package size={16} className="mr-2" />
+                          {showNominationDefaultPicker ? 'Hide Default Images' : 'Choose Default Image'}
+                        </button>
+
+                        {showNominationDefaultPicker && (
+                          <div className="mt-3 border border-gray-700 rounded-lg p-3 bg-gray-900">
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              {DEFAULT_ITEM_CATEGORIES.map(category => (
+                                <button
+                                  key={category}
+                                  type="button"
+                                  onClick={() => setSelectedNominationCategory(category)}
+                                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                                    selectedNominationCategory === category
+                                      ? 'bg-gold-500 text-black'
+                                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                                  }`}
+                                >
+                                  {category}
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-60 overflow-y-auto p-1">
+                              {DEFAULT_ITEMS.filter(item => item.category === selectedNominationCategory).map((defaultItem) => (
+                                <button
+                                  key={defaultItem.name}
+                                  type="button"
+                                  onClick={() => {
+                                    const imageUrl = generateDefaultItemImage(defaultItem.name);
+                                    (document.getElementById('nominationImageUrl') as HTMLInputElement).value = imageUrl;
+                                  }}
+                                  className="flex flex-col items-center gap-1 p-1 rounded-lg hover:bg-gray-800 transition-colors"
+                                  title={defaultItem.name}
+                                >
+                                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
+                                    <NextImage
+                                      src={generateDefaultItemImage(defaultItem.name)}
+                                      alt={defaultItem.name}
+                                      width={48}
+                                      height={48}
+                                      className="w-full h-full object-cover"
+                                      unoptimized
+                                    />
+                                  </div>
+                                  <span className="text-[10px] text-gray-400 text-center leading-tight line-clamp-2">
+                                    {defaultItem.name}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => handleToggleNominationItemActive(item)}
