@@ -174,11 +174,11 @@ describe('generateDefaultItems', () => {
     expect(items.length).toBe(17);
   });
 
-  it('should have realistic prize values', () => {
+  it('should have realistic grocery prices', () => {
     const items = generateDefaultItems('shop1');
     const values = items.map(i => i.value);
-    expect(Math.min(...values)).toBeGreaterThanOrEqual(1000);
-    expect(Math.max(...values)).toBeLessThanOrEqual(20000);
+    expect(Math.min(...values)).toBeGreaterThanOrEqual(40);
+    expect(Math.max(...values)).toBeLessThanOrEqual(1000);
   });
 
   it('should set all items as active', () => {
@@ -193,6 +193,21 @@ describe('generateDefaultItems', () => {
     const ids = items.map(i => i.id);
     const uniqueIds = new Set(ids);
     expect(uniqueIds.size).toBe(17);
+  });
+
+  it('should have default images for all items', () => {
+    const items = generateDefaultItems('shop1');
+    items.forEach(item => {
+      expect(item.imageUrl).toBeTruthy();
+      expect(item.imageUrl).toContain('data:image/svg+xml;base64,');
+    });
+  });
+
+  it('should generate unique images per item name', () => {
+    const items = generateDefaultItems('shop1');
+    const images = items.map(i => i.imageUrl);
+    const uniqueImages = new Set(images);
+    expect(uniqueImages.size).toBe(17);
   });
 });
 

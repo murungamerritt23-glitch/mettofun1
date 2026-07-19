@@ -1,5 +1,6 @@
 import CryptoJS from 'crypto-js';
 import type { Item, GameAttempt, BoxConfiguration } from '@/types';
+import { generateDefaultItemImage } from './default-item-images';
 
 // --- Safe crypto wrapper (avoids ReferenceError when `crypto` is not globally defined) ---
 // Some environments (web workers, iframes, strict CSP) expose it only via `globalThis.crypto`.
@@ -132,24 +133,31 @@ export const validateItemPrice = (itemValue: number, qualifyingPurchase: number)
 
 // Generate 17 default items for a new shop
 export const generateDefaultItems = (shopId: string): Item[] => {
-  const defaultNames = [
-    'Mystery Box', 'Gift Card', 'Discount Voucher', 'Free Product', 
-    'Bonus Points', 'Cash Prize', 'Coupon', 'Mystery Prize',
-    'Special Offer', 'Lucky Draw', 'Reward Points', 'Mystery Gift',
-    'Prize Pack', 'Surprise Item', 'Bonus Gift', 'Mystery Reward', 'Grand Prize'
+  const defaultItems = [
+    { name: 'Maize flour 2kg', value: 250 },
+    { name: 'Wheat flour 2kg', value: 280 },
+    { name: 'Rice 1kg', value: 180 },
+    { name: 'Sugar 1kg', value: 150 },
+    { name: 'Cooking oil 1L', value: 300 },
+    { name: 'Fresh milk 1L', value: 120 },
+    { name: 'Tea leaves', value: 200 },
+    { name: 'White bread', value: 60 },
+    { name: 'Chicken (whole)', value: 800 },
+    { name: 'Tomatoes (1kg)', value: 80 },
+    { name: 'Onions (1kg)', value: 60 },
+    { name: 'Bananas (bunch)', value: 100 },
+    { name: 'Coca-Cola 1L', value: 80 },
+    { name: 'Biscuits', value: 50 },
+    { name: 'Bar soap', value: 40 },
+    { name: 'Eggs (tray)', value: 350 },
+    { name: 'Avocados (3 pcs)', value: 90 }
   ];
-  
-  // Default values ranging from 1000 to 17000 (realistic prize values)
-  const defaultValues = [
-    1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500,
-    5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 17000
-  ];
-  
-  return defaultNames.map((name, index) => ({
+
+  return defaultItems.map((item, index) => ({
     id: `${shopId}-item-${index + 1}`,
-    name,
-    value: defaultValues[index] || (index + 1) * 1000,
-    imageUrl: undefined,
+    name: item.name,
+    value: item.value,
+    imageUrl: generateDefaultItemImage(item.name),
     stockStatus: 'unlimited' as const,
     isActive: true,
     shopId,

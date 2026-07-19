@@ -13,6 +13,7 @@ import { localItems, localAttempts, localAdmins, localPendingCustomers, clearAll
 import { rtdbShops, rtdbAdmins, rtdbItems, firebaseSettings, uploadImageToStorage } from '@/lib/firebase';
 import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive, queueForSync } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber, randomUUID } from '@/lib/game-utils';
+import { DEFAULT_ITEMS, DEFAULT_ITEM_CATEGORIES, generateDefaultItemImage } from '@/lib/default-item-images';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, ItemOfTheDay, NominationItem } from '@/types';
 import { ADMIN_PERMISSIONS } from '@/types';
@@ -1128,15 +1129,7 @@ export default function AdminDashboard() {
         // Set flag to prevent auto-login loop on restart
         localStorage.setItem('metofun-load-timeout', Date.now().toString());
         // Return default items on error
-        shopItems = Array.from({ length: 17 }, (_, i) => ({
-          id: `${currentShop.id}-item-${i + 1}`,
-          name: `Prize ${i + 1}`,
-          value: (i + 1) * 1000,
-          stockStatus: 'unlimited' as const,
-          isActive: true,
-          shopId: currentShop.id,
-          order: i
-        }));
+        shopItems = generateDefaultItems(currentShop.id);
       }
       
       // Fix large images - compress them if needed
@@ -1184,12 +1177,15 @@ export default function AdminDashboard() {
       
       // Ensure exactly 17 items with all active
       if (shopItems.length !== 17) {
+        const defaults = generateDefaultItems(currentShop.id);
         shopItems = Array.from({ length: 17 }, (_, i) => {
           const existing = shopItems[i];
+          const defaultItem = defaults[i];
           return existing || {
             id: `${currentShop.id}-item-${i + 1}`,
-            name: `Prize ${i + 1}`,
-            value: (i + 1) * 1000,
+            name: defaultItem?.name || `Item ${i + 1}`,
+            value: defaultItem?.value || (i + 1) * 1000,
+            imageUrl: defaultItem?.imageUrl || generateDefaultItemImage(defaultItem?.name || `Item ${i + 1}`),
             stockStatus: 'unlimited',
             isActive: true,
             shopId: currentShop.id,
@@ -4302,6 +4298,8 @@ function ItemForm({
   });
   const [imagePreview, setImagePreview] = useState<string | null>(item.imageUrl || null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showDefaultPicker, setShowDefaultPicker] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>(DEFAULT_ITEM_CATEGORIES[0] || '');
 
   const isPriceValid = formData.value <= qualifyingPurchase * 0.8;
 
@@ -4476,6 +4474,69 @@ function ItemForm({
             className="input"
             placeholder="https://example.com/image.jpg"
           />
+        </div>
+
+        {/* Default Image Picker */}
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowDefaultPicker(!showDefaultPicker)}
+            className="btn-gold-outline w-full"
+          >
+            <Package size={16} className="mr-2" />
+            {showDefaultPicker ? 'Hide Default Images' : 'Choose Default Image'}
+          </button>
+
+          {showDefaultPicker && (
+            <div className="mt-3 border border-gray-700 rounded-lg p-3 bg-gray-900">
+              <div className="flex flex-wrap gap-2 mb-3">
+                {DEFAULT_ITEM_CATEGORIES.map(category => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setSelectedCategory(category)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      selectedCategory === category
+                        ? 'bg-gold-500 text-black'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-60 overflow-y-auto p-1">
+                {DEFAULT_ITEMS.filter(item => item.category === selectedCategory).map((defaultItem) => (
+                  <button
+                    key={defaultItem.name}
+                    type="button"
+                    onClick={() => {
+                      const imageUrl = generateDefaultItemImage(defaultItem.name);
+                      setImagePreview(imageUrl);
+                      setFormData({ ...formData, imageUrl });
+                    }}
+                    className="flex flex-col items-center gap-1 p-1 rounded-lg hover:bg-gray-800 transition-colors"
+                    title={defaultItem.name}
+                  >
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
+                      <NextImage
+                        src={generateDefaultItemImage(defaultItem.name)}
+                        alt={defaultItem.name}
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
+                        unoptimized
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-400 text-center leading-tight line-clamp-2">
+                      {defaultItem.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
