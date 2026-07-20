@@ -566,12 +566,20 @@ export default function AdminDashboard() {
   // Override canEditQualifyingPurchase for shop_admin
   const canEditQualifyingPurchase = isShopAdmin || permissions?.canEditQualifyingPurchase;
 
+  const saveCurrentShopRef = (shop: Shop) => {
+    try {
+      const ref = { id: shop.id, shopName: shop.shopName, shopCode: shop.shopCode };
+      localStorage.setItem('metofun-current-shop', JSON.stringify(ref));
+    } catch (e) {
+      console.warn('[AdminDashboard] Failed to save current shop ref:', e);
+    }
+  };
+
    // Load shops on mount
    useEffect(() => {
-     const loadShops = async () => {
-       try {
-         // Get current shop from store first
-         const storedCurrentShop = useShopStore.getState().currentShop;
+    const loadShops = async () => {
+      try {
+        const storedCurrentShop = useShopStore.getState().currentShop;
 
          // Check if this is a shop_admin with assigned shops
          const isShopAdmin = admin?.level === 'shop_admin';
@@ -1385,7 +1393,7 @@ export default function AdminDashboard() {
         await saveShopWithSync(updatedShop, false);
         setCurrentShop(updatedShop);
         setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
-        localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+        saveCurrentShopRef(updatedShop);
         alert('Device locked successfully!');
       } catch (err) {
         console.error('Error locking device:', err);
@@ -2160,7 +2168,7 @@ export default function AdminDashboard() {
                            // Update state immediately
                            setCurrentShop(updatedShop);
                            setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
-                           localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+                           saveCurrentShopRef(updatedShop);
                            loadAttempts();
                            
                            alert('Qualifying purchase updated successfully!');
@@ -2999,7 +3007,7 @@ export default function AdminDashboard() {
                             // Update state immediately
                             setCurrentShop(updatedShop);
                             setShops(prev => prev.map(s => s.id === updatedShop.id ? updatedShop : s));
-                            localStorage.setItem('metofun-current-shop', JSON.stringify(updatedShop));
+                            saveCurrentShopRef(updatedShop);
                             loadAttempts();
                             
                             alert('Qualifying purchase updated successfully!');
