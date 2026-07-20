@@ -1777,8 +1777,8 @@ export default function AdminDashboard() {
             {/* Edit/Create Nomination Item Modal */}
             {editingNominationItem && (
               <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-                <div className="bg-gray-900 rounded-lg max-w-md w-full">
-                  <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+                <div className="bg-gray-900 rounded-lg max-w-md w-full max-h-[90vh] flex flex-col">
+                  <div className="p-4 border-b border-gray-800 flex items-center justify-between flex-shrink-0">
                     <h2 className="gold-gradient-text text-xl font-bold">
                       {isCreatingNominationItem ? 'Add Nomination Item' : 'Edit Nomination Item'}
                     </h2>
@@ -1809,7 +1809,7 @@ export default function AdminDashboard() {
                         updatedAt: new Date()
                       });
                     }}
-                    className="p-4 space-y-4"
+                    className="p-4 space-y-4 overflow-y-auto flex-1"
                   >
                     <div>
                       <label className="block text-gray-400 text-sm mb-1">Item Name</label>
@@ -1939,7 +1939,7 @@ export default function AdminDashboard() {
                               ))}
                             </div>
 
-                            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-60 overflow-y-auto p-1">
+                            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-40 overflow-y-auto p-1">
                               {DEFAULT_ITEMS.filter(item => item.category === selectedNominationCategory).map((defaultItem) => (
                                 <button
                                   key={defaultItem.name}
