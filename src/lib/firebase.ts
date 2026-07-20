@@ -1218,6 +1218,20 @@ export const rtdbNominationItems = {
     }
   },
 
+  async getByShop(shopId: string): Promise<NominationItem[]> {
+    try {
+      const snapshot = await get(ref(rtdb, 'nominationItems'));
+      if (!snapshot.exists()) return [];
+      const data = snapshot.val();
+      return Object.entries(data)
+        .map(([id, item]: [string, any]) => ({ ...item, id }))
+        .filter((item: NominationItem) => item.shopId === shopId);
+    } catch (error) {
+      console.error('RTDB Error fetching nomination items by shop:', error);
+      return [];
+    }
+  },
+
   async create(item: NominationItem): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
       // Use original item.id as the key for consistent cross-device sync

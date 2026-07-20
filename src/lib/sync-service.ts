@@ -49,22 +49,14 @@ export interface SyncTask {
 
 // Configuration for offline support
 const SYNC_CONFIG = {
-  // Initial sync delay in milliseconds (2 seconds after going online)
-  INITIAL_SYNC_DELAY: 2000,
-  // Auto-sync interval in milliseconds (5 minutes) - only while online
-  AUTO_SYNC_INTERVAL: 5 * 60 * 1000,
-  // Maximum retry attempts before giving up
+  INITIAL_SYNC_DELAY: 500,
+  AUTO_SYNC_INTERVAL: 2 * 60 * 1000,
   MAX_RETRY_ATTEMPTS: 3,
-  // Base delay for exponential backoff (seconds) - wait longer between retries
-  BASE_RETRY_DELAY: 10,
-  // Maximum queue size (older items will be dropped if exceeded)
+  BASE_RETRY_DELAY: 3,
   MAX_QUEUE_SIZE: 1000,
-  // Maximum age of queued items before considered stale (7 days)
   MAX_QUEUE_AGE_MS: 7 * 24 * 60 * 60 * 1000,
-  // Maximum local data age before cleanup (30 days)
   MAX_DATA_AGE_MS: 30 * 24 * 60 * 60 * 1000,
-  // Batch size for processing sync items
-  BATCH_SIZE: 50,
+  BATCH_SIZE: 100,
 };
 
 // Global sync state
@@ -87,11 +79,10 @@ export const getTimeSinceLastOnline = (): number | null => {
   return Date.now() - lastOnlineTime;
 };
 
-// Calculate exponential backoff delay - much longer to avoid numerous attempts
+// Calculate exponential backoff delay
 const getRetryDelay = (retryCount: number): number => {
   const delay = SYNC_CONFIG.BASE_RETRY_DELAY * Math.pow(2, retryCount);
-  // Cap at 5 minutes max
-  return Math.min(delay * 1000, 5 * 60 * 1000);
+  return Math.min(delay * 1000, 60 * 1000);
 };
 
 // Check if queue is full
@@ -316,15 +307,10 @@ export const processSyncQueue = async (): Promise<void> => {
   syncInProgress = true;
 
   try {
-    // Use setTimeout to defer and not block the main thread
-    await new Promise(resolve => setTimeout(resolve, 100));
-
     // Ensure admin exists in RTDB before any writes (security rule requirement)
     const adminReady = await ensureAdminInRTDB();
     if (!adminReady) {
       console.warn('[Sync] Admin not ready in RTDB - will attempt sync anyway; items needing auth will fail individually');
-      // Do NOT abort the whole sync cycle here. Continue processing so that
-      // non-auth-dependent pulls still happen and failed writes are recorded properly.
     }
 
     // Get pending items from IndexedDB
@@ -386,14 +372,13 @@ export const processSyncQueue = async (): Promise<void> => {
           continue;
         }
         
-        console.error(`[Sync] Error syncing ${item.type}:`, error);
-        
-        // Increment retry count - just update IndexedDB, don't trigger UI updates
-        const newRetryCount = currentRetryCount + 1;
-        await localDB.updateSyncItemStatus(item.id, 'pending', newRetryCount);
-        // Don't update UI store here - causes re-renders!
-        failed++;
-      }
+      console.error(`[Sync] Error syncing ${item.type}:`, error);
+      
+      // Increment retry count - just update IndexedDB, don't trigger UI updates
+      const newRetryCount = currentRetryCount + 1;
+      await localDB.updateSyncItemStatus(item.id, 'pending', newRetryCount);
+      failed++;
+    }
       
       // Small delay between items to not block UI
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -840,90 +825,97 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
     
     // Pull items, attempts, nominations for specific shop or all shops
     if (shopId) {
+      // Pull all data for specific shop in parallel
+      const [fbItems, fbAttempts, fbNominationItems, fbCustomerNominations] = await Promise.all([
+        rtdbItems.getByShop(shopId),
+        rtdbAttempts.getByShop(shopId),
+        rtdbNominationItems.getByShop(shopId),
+        rtdbCustomerNominations.getByShop(shopId)
+      ]);
+
       // Pull items for specific shop with conflict resolution
-      const fbItems = await rtdbItems.getByShop(shopId);
       if (fbItems && fbItems.length > 0) {
         const existingLocalItems = await localItems.getByShop(shopId);
         const localItemMap = new Map(existingLocalItems.map(i => [i.id, i]));
-        for (const remoteItem of fbItems) {
+        const saves = fbItems.map(remoteItem => {
           const localItem = localItemMap.get(remoteItem.id);
           if (!localItem) {
-            await localItems.save(remoteItem);
+            return localItems.save(remoteItem);
           }
-          // If local item exists, keep local version — each shop/device owns its own list
-        }
+          return null;
+        }).filter(Boolean);
+        await Promise.all(saves);
       }
 
       // Pull attempts for specific shop
-      const fbAttempts = await rtdbAttempts.getByShop(shopId);
       if (fbAttempts && fbAttempts.length > 0) {
-        for (const attempt of fbAttempts) {
-          await localAttempts.save(attempt);
-        }
+        await Promise.all(fbAttempts.map(attempt => localAttempts.save(attempt)));
       }
 
       // Pull nomination items for specific shop with conflict resolution
       // Use max-intent merge: keep the higher of local vs remote nominationCount
-      const fbNominationItems = await rtdbNominationItems.getAll();
-      const shopNominationItems = fbNominationItems.filter(item => item.shopId === shopId);
-      if (shopNominationItems.length > 0) {
-        for (const remoteItem of shopNominationItems) {
+      if (fbNominationItems && fbNominationItems.length > 0) {
+        await Promise.all(fbNominationItems.map(async (remoteItem) => {
           const localItem = await localNominationItems.get(remoteItem.id);
           const localCount = localItem?.nominationCount ?? 0;
           const remoteCount = remoteItem.nominationCount ?? 0;
-          // Only write back if remote has a higher count; never overwrite local increments
           const merged = remoteCount > localCount
             ? remoteItem
             : { ...remoteItem, nominationCount: localCount };
           await localNominationItems.save(merged);
-        }
+        }));
       }
 
       // Pull customer nominations for specific shop
-      const fbCustomerNominations = await rtdbCustomerNominations.getByShop(shopId);
       if (fbCustomerNominations && fbCustomerNominations.length > 0) {
-        for (const nomination of fbCustomerNominations) {
-          await localCustomerNominations.save(nomination);
-        }
+        await Promise.all(fbCustomerNominations.map(nomination => localCustomerNominations.save(nomination)));
       }
     } else {
       // Pull items, attempts, nominations for all shops
-      for (const shop of fbShops || []) {
+      const shopPromises = (fbShops || []).map(async (shop) => {
+        // Pull all data for this shop in parallel
+        const [fbItems, fbAttempts, fbCustomerNominations] = await Promise.all([
+          rtdbItems.getByShop(shop.id),
+          rtdbAttempts.getByShop(shop.id),
+          rtdbCustomerNominations.getByShop(shop.id)
+        ]);
+
         // Pull items for this shop — only add missing items, preserve local edits
-        const fbItems = await rtdbItems.getByShop(shop.id);
         if (fbItems && fbItems.length > 0) {
           const existingLocalItems = await localItems.getByShop(shop.id);
           const localItemMap = new Map(existingLocalItems.map(i => [i.id, i]));
-          for (const remoteItem of fbItems) {
+          const saves = fbItems.map(remoteItem => {
             const localItem = localItemMap.get(remoteItem.id);
             if (!localItem) {
-              await localItems.save(remoteItem);
+              return localItems.save(remoteItem);
             }
-            // If local item exists, keep local version — each shop/device owns its own list
-          }
+            return null;
+          }).filter(Boolean);
+          await Promise.all(saves);
         }
         
         // Pull attempts for this shop
-        const fbAttempts = await rtdbAttempts.getByShop(shop.id);
         if (fbAttempts && fbAttempts.length > 0) {
-          for (const attempt of fbAttempts) {
-            await localAttempts.save(attempt);
-          }
+          await Promise.all(fbAttempts.map(attempt => localAttempts.save(attempt)));
         }
 
         // Pull customer nominations for this shop
-        const fbNominations = await rtdbCustomerNominations.getByShop(shop.id);
-        if (fbNominations && fbNominations.length > 0) {
-          for (const nomination of fbNominations) {
-            await localCustomerNominations.save(nomination);
-          }
+        if (fbCustomerNominations && fbCustomerNominations.length > 0) {
+          await Promise.all(fbCustomerNominations.map(nomination => localCustomerNominations.save(nomination)));
         }
+      });
+
+      // Process shops in batches to avoid overwhelming Firebase
+      const BATCH_CONCURRENCY = 10;
+      for (let i = 0; i < shopPromises.length; i += BATCH_CONCURRENCY) {
+        const batch = shopPromises.slice(i, i + BATCH_CONCURRENCY);
+        await Promise.all(batch);
       }
 
       // Pull all nomination items — keep higher count if local has it
       const fbNominationItems = await rtdbNominationItems.getAll();
       if (fbNominationItems && fbNominationItems.length > 0) {
-        for (const remoteItem of fbNominationItems) {
+        await Promise.all(fbNominationItems.map(async (remoteItem) => {
           const localItem = await localNominationItems.get(remoteItem.id);
           const localCount = localItem?.nominationCount ?? 0;
           const remoteCount = remoteItem.nominationCount ?? 0;
@@ -931,7 +923,7 @@ export const pullFromRTDB = async (shopId?: string): Promise<void> => {
             ? remoteItem
             : { ...remoteItem, nominationCount: localCount };
           await localNominationItems.save(merged);
-        }
+        }));
       }
     }
     
