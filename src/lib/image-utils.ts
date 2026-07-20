@@ -5,11 +5,13 @@ const QUALITY_STEP = 0.15;
 
 export const compressImageToTarget = async (file: File | Blob): Promise<{ blob: Blob; dataUrl: string }> => {
   const img = new Image();
+  const objectUrl = URL.createObjectURL(file);
   await new Promise<void>((resolve, reject) => {
     img.onload = () => resolve();
     img.onerror = () => reject(new Error('Failed to load image'));
-    img.src = URL.createObjectURL(file);
+    img.src = objectUrl;
   });
+  URL.revokeObjectURL(objectUrl);
 
   let width = img.naturalWidth;
   let height = img.naturalHeight;
@@ -43,20 +45,33 @@ export const compressImageToTarget = async (file: File | Blob): Promise<{ blob: 
   }
 
   if (!blob || blob.size > MAX_IMAGE_SIZE) {
-    const scale = Math.sqrt(MAX_IMAGE_SIZE / (blob?.size || MAX_IMAGE_SIZE)) * 0.8;
-    const newWidth = Math.max(100, Math.round(width * scale));
-    const newHeight = Math.max(100, Math.round(height * scale));
-    canvas.width = newWidth;
-    canvas.height = newHeight;
-    ctx?.drawImage(img, 0, 0, newWidth, newHeight);
-    blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.6);
-    });
+    let currentWidth = width;
+    let currentHeight = height;
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    while ((!blob || blob.size > MAX_IMAGE_SIZE) && attempts < maxAttempts) {
+      const scale = Math.sqrt(MAX_IMAGE_SIZE / Math.max(blob?.size || MAX_IMAGE_SIZE, 1)) * 0.8;
+      currentWidth = Math.max(100, Math.round(currentWidth * scale));
+      currentHeight = Math.max(100, Math.round(currentHeight * scale));
+      canvas.width = currentWidth;
+      canvas.height = currentHeight;
+      ctx?.drawImage(img, 0, 0, currentWidth, currentHeight);
+      quality = Math.max(quality - 0.1, 0.4);
+      blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), 'image/jpeg', quality);
+      });
+      attempts++;
+    }
+  }
+
+  if (!blob || blob.size > MAX_IMAGE_SIZE) {
+    throw new Error('Unable to compress image to under 500KB');
   }
 
   const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
   return {
-    blob: blob || new Blob(),
+    blob,
     dataUrl
   };
 };
