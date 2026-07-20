@@ -3,15 +3,19 @@ const MAX_DIMENSION = 600;
 
 const toBlob = (canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob | null> => {
   return new Promise((resolve) => {
-    if (canvas.toBlob) {
-      canvas.toBlob((b) => resolve(b), type, quality);
-    } else if (canvas.toDataURL) {
-      const dataUrl = canvas.toDataURL(type, quality);
-      fetch(dataUrl)
-        .then(res => res.blob())
-        .then(resolve)
-        .catch(() => resolve(null));
-    } else {
+    try {
+      if (typeof canvas.toBlob === 'function') {
+        canvas.toBlob((b) => resolve(b), type, quality);
+      } else if (typeof canvas.toDataURL === 'function') {
+        const dataUrl = canvas.toDataURL(type, quality);
+        fetch(dataUrl)
+          .then(res => res.blob())
+          .then(resolve)
+          .catch(() => resolve(null));
+      } else {
+        resolve(null);
+      }
+    } catch {
       resolve(null);
     }
   });
@@ -20,7 +24,7 @@ const toBlob = (canvas: HTMLCanvasElement, type: string, quality: number): Promi
 export const compressImageToTarget = async (file: File | Blob): Promise<{ blob: Blob; dataUrl: string }> => {
   const img = new Image();
   const objectUrl = URL.createObjectURL(file);
-  
+
   try {
     await new Promise<void>((resolve, reject) => {
       img.onload = () => resolve();
@@ -28,7 +32,7 @@ export const compressImageToTarget = async (file: File | Blob): Promise<{ blob: 
       img.src = objectUrl;
     });
 
-    if (file.size <= MAX_IMAGE_SIZE && img.naturalWidth <= MAX_DIMENSION && img.naturalHeight <= MAX_DIMENSION) {
+    if (file.size <= MAX_IMAGE_SIZE) {
       const dataUrl = await new Promise<string>((resolve) => {
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth;
