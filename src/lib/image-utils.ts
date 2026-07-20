@@ -1,5 +1,5 @@
 const MAX_IMAGE_SIZE = 500 * 1024; // 500KB
-const MAX_DIMENSION = 800;
+const MAX_DIMENSION = 600;
 const MIN_QUALITY = 0.3;
 const QUALITY_STEP = 0.15;
 
@@ -32,7 +32,7 @@ export const compressImageToTarget = async (file: File | Blob): Promise<{ blob: 
   const ctx = canvas.getContext('2d');
   ctx?.drawImage(img, 0, 0, width, height);
 
-  let quality = 0.8;
+  let quality = file.size > 2 * 1024 * 1024 ? 0.5 : 0.8;
   let blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob((b) => resolve(b), 'image/jpeg', quality);
   });
@@ -48,16 +48,16 @@ export const compressImageToTarget = async (file: File | Blob): Promise<{ blob: 
     let currentWidth = width;
     let currentHeight = height;
     let attempts = 0;
-    const maxAttempts = 5;
+    const maxAttempts = 6;
 
     while ((!blob || blob.size > MAX_IMAGE_SIZE) && attempts < maxAttempts) {
-      const scale = Math.sqrt(MAX_IMAGE_SIZE / Math.max(blob?.size || MAX_IMAGE_SIZE, 1)) * 0.8;
-      currentWidth = Math.max(100, Math.round(currentWidth * scale));
-      currentHeight = Math.max(100, Math.round(currentHeight * scale));
+      const scale = Math.sqrt(MAX_IMAGE_SIZE / Math.max(blob?.size || MAX_IMAGE_SIZE, 1)) * 0.75;
+      currentWidth = Math.max(120, Math.round(currentWidth * scale));
+      currentHeight = Math.max(120, Math.round(currentHeight * scale));
       canvas.width = currentWidth;
       canvas.height = currentHeight;
       ctx?.drawImage(img, 0, 0, currentWidth, currentHeight);
-      quality = Math.max(quality - 0.1, 0.4);
+      quality = Math.max(quality - 0.1, 0.35);
       blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((b) => resolve(b), 'image/jpeg', quality);
       });

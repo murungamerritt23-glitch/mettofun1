@@ -4397,7 +4397,7 @@ function ItemForm({
     const timeout = setTimeout(() => {
       setIsUploading(false);
       alert('Image processing timed out. Try a smaller image or use URL instead.');
-    }, 10000);
+    }, 30000);
 
     try {
       const { blob, dataUrl } = await compressImageToTarget(file);
