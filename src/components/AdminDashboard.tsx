@@ -462,18 +462,15 @@ export default function AdminDashboard() {
 
     // Save nomination item
     const handleSaveNominationItem = async (item: NominationItem) => {
-      // Limit total nominatable items to 100 (only when creating new)
-      if (!editingNominationItem || editingNominationItem.id !== item.id) {
-        if (nominationItems.length >= 100) {
-          alert('Maximum 100 nomination items reached. Delete some items first.');
-          return;
-        }
+      // Limit total nominatable items to 100
+      if (nominationItems.length >= 100) {
+        alert('Maximum 100 nomination items reached. Delete some items first.');
+        return;
       }
 
       const isNew = !nominationItems.some(i => i.id === item.id);
 
       // If editing an existing item, reset nomination count to zero
-      // This ensures that when an item's details are changed, old nominations don't carry over
       const itemToSave = editingNominationItem && editingNominationItem.id === item.id
         ? { ...item, nominationCount: 0 }
         : item;
@@ -506,10 +503,6 @@ export default function AdminDashboard() {
         updatedAt: new Date()
       });
       setIsCreatingNominationItem(true);
-
-      // Refresh background data
-      loadNominationItems();
-      loadTopNominations();
     };
 
    // Delete nomination item
