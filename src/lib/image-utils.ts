@@ -9,8 +9,7 @@ const toBlob = (canvas: HTMLCanvasElement, type: string, quality: number): Promi
       } else if (typeof canvas.toDataURL === 'function') {
         const dataUrl = canvas.toDataURL(type, quality);
         fetch(dataUrl)
-          .then(res => res.blob())
-          .then(resolve)
+          .then(res => resolve(res.blob()))
           .catch(() => resolve(null));
       } else {
         resolve(null);
