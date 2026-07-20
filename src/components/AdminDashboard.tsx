@@ -14,6 +14,7 @@ import { rtdbShops, rtdbAdmins, rtdbItems, firebaseSettings, uploadImageToStorag
 import { saveItemWithSync, saveShopWithSync, saveNominationItemWithSync, triggerSync, isOnline, setUserActive, queueForSync } from '@/lib/sync-service';
 import { generateDefaultItems, calculateShopAnalytics, validateItemPrice, calculateBoxConfiguration, generateSecureRandomNumber, randomUUID } from '@/lib/game-utils';
 import { DEFAULT_ITEMS, DEFAULT_ITEM_CATEGORIES, generateDefaultItemImage } from '@/lib/default-item-images';
+import { compressImageToTarget } from '@/lib/image-utils';
 import { registerCurrentDevice, getDeviceId } from '@/lib/device';
 import type { Shop, Item, AdminPermissions, Admin, AdminLevel, PendingCustomer, ItemOfTheDay, NominationItem } from '@/types';
 import { ADMIN_PERMISSIONS } from '@/types';
@@ -1856,34 +1857,9 @@ export default function AdminDashboard() {
                                 return;
                               }
                               try {
-                                const img = new Image();
-                                await new Promise<void>((resolve, reject) => {
-                                  img.onload = () => resolve();
-                                  img.onerror = () => reject(new Error('Failed to load image'));
-                                  img.src = URL.createObjectURL(file);
-                                });
-                                const canvas = document.createElement('canvas');
-                                const maxSize = 400;
-                                let { width, height } = img;
-                                if (width > maxSize || height > maxSize) {
-                                  if (width > height) {
-                                    height = (height / width) * maxSize;
-                                    width = maxSize;
-                                  } else {
-                                    width = (width / height) * maxSize;
-                                    height = maxSize;
-                                  }
-                                }
-                                canvas.width = width;
-                                canvas.height = height;
-                                const ctx = canvas.getContext('2d');
-                                ctx?.drawImage(img, 0, 0, width, height);
-                                const compressed = canvas.toDataURL('image/jpeg', 0.7);
-                                (document.getElementById('nominationImageUrl') as HTMLInputElement).value = compressed;
+                                const { blob, dataUrl } = await compressImageToTarget(file);
+                                (document.getElementById('nominationImageUrl') as HTMLInputElement).value = dataUrl;
                                 
-                                const blob = await new Promise<Blob | null>((resolve) => {
-                                  canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.7);
-                                });
                                 if (blob && isOnline() && editingNominationItem) {
                                   const url = await uploadImageToStorage(`nominationItems/${editingNominationItem.id}.jpg`, blob);
                                   if (url) {
@@ -3761,34 +3737,9 @@ export default function AdminDashboard() {
                                   return;
                                 }
                                 try {
-                                  const img = new Image();
-                                  await new Promise<void>((resolve, reject) => {
-                                    img.onload = () => resolve();
-                                    img.onerror = () => reject(new Error('Failed to load image'));
-                                    img.src = URL.createObjectURL(file);
-                                  });
-                                  const canvas = document.createElement('canvas');
-                                  const maxSize = 400;
-                                  let { width, height } = img;
-                                  if (width > maxSize || height > maxSize) {
-                                    if (width > height) {
-                                      height = (height / width) * maxSize;
-                                      width = maxSize;
-                                    } else {
-                                      width = (width / height) * maxSize;
-                                      height = maxSize;
-                                    }
-                                  }
-                                  canvas.width = width;
-                                  canvas.height = height;
-                                  const ctx = canvas.getContext('2d');
-                                  ctx?.drawImage(img, 0, 0, width, height);
-                                  const compressed = canvas.toDataURL('image/jpeg', 0.7);
-                                  setItemOfDayForm({ ...itemOfDayForm, imageUrl: compressed });
+                                  const { blob, dataUrl } = await compressImageToTarget(file);
+                                  setItemOfDayForm({ ...itemOfDayForm, imageUrl: dataUrl });
                                   
-                                  const blob = await new Promise<Blob | null>((resolve) => {
-                                    canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.7);
-                                  });
                                   if (blob && isOnline()) {
                                     const url = await uploadImageToStorage('settings/itemOfTheDay.jpg', blob);
                                     if (url) {
@@ -4431,40 +4382,11 @@ function ItemForm({
     }, 10000);
 
     try {
-      const img = new Image();
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('Failed to load image'));
-        img.src = URL.createObjectURL(file);
-      });
-
-      clearTimeout(timeout);
-
-      const canvas = document.createElement('canvas');
-      const maxSize = 400;
-      let { width, height } = img;
-      if (width > maxSize || height > maxSize) {
-        if (width > height) {
-          height = (height / width) * maxSize;
-          width = maxSize;
-        } else {
-          width = (width / height) * maxSize;
-          height = maxSize;
-        }
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0, width, height);
-
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.7);
-      });
-
-      const preview = canvas.toDataURL('image/jpeg', 0.7);
+      const { blob, dataUrl } = await compressImageToTarget(file);
+      const preview = dataUrl;
       setImagePreview(preview);
 
-      if (blob && isOnline()) {
+      if (isOnline()) {
         const storagePath = `shops/${item.shopId}/items/${item.id}.jpg`;
         const downloadUrl = await uploadImageToStorage(storagePath, blob);
         if (downloadUrl) {
@@ -4472,7 +4394,7 @@ function ItemForm({
         } else {
           setFormData({ ...formData, imageUrl: preview });
         }
-      } else if (blob) {
+      } else {
         setFormData({ ...formData, imageUrl: preview });
       }
 
