@@ -463,16 +463,18 @@ export default function AdminDashboard() {
     // Save nomination item
     const handleSaveNominationItem = async (item: NominationItem) => {
       // Limit total nominatable items to 100 (only when creating new)
-      if (!editingNominationItem && nominationItems.length >= 100) {
-        alert('Maximum 100 nomination items reached. Delete some items first.');
-        return;
+      if (!editingNominationItem || editingNominationItem.id !== item.id) {
+        if (nominationItems.length >= 100) {
+          alert('Maximum 100 nomination items reached. Delete some items first.');
+          return;
+        }
       }
 
       const isNew = !nominationItems.some(i => i.id === item.id);
 
       // If editing an existing item, reset nomination count to zero
       // This ensures that when an item's details are changed, old nominations don't carry over
-      const itemToSave = editingNominationItem
+      const itemToSave = editingNominationItem && editingNominationItem.id === item.id
         ? { ...item, nominationCount: 0 }
         : item;
 
@@ -482,9 +484,30 @@ export default function AdminDashboard() {
       saveNominationItemWithSync(itemToSave, isNew).catch(err => {
         console.error('[Background sync] nomination item failed:', err);
       });
-      // Close modal and refresh UI from local DB (already includes the item)
-      setEditingNominationItem(null);
-      setIsCreatingNominationItem(false);
+
+      // Optimistically update inline list and keep modal open for next entry
+      setNominationItems(prev => {
+        const exists = prev.some(i => i.id === itemToSave.id);
+        if (exists) {
+          return prev.map(i => i.id === itemToSave.id ? itemToSave : i);
+        }
+        return [...prev, itemToSave];
+      });
+
+      // Reset form for next item instead of closing modal
+      setEditingNominationItem({
+        id: `${currentShop?.id}-nom-${Date.now()}`,
+        name: '',
+        value: 0,
+        nominationCount: 0,
+        isActive: true,
+        shopId: currentShop?.id || '',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      setIsCreatingNominationItem(true);
+
+      // Refresh background data
       loadNominationItems();
       loadTopNominations();
     };
