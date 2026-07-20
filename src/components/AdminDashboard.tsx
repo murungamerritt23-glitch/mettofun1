@@ -917,15 +917,13 @@ export default function AdminDashboard() {
               onClick={() => { logout(); setCurrentView('login'); }}
               className="mt-4 flex items-center justify-center gap-2 w-full py-2 px-3 bg-red-900/50 text-red-400 rounded-lg text-sm"
             >
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Save terms and conditions
+               Logout
+             </button>
+           </div>
+         </div>
+       </div>
+     );
+   }
   const handleSaveTerms = async () => {
     const result = await firebaseSettings.updateTerms(termsContent);
     if (result.success) {
@@ -1969,6 +1967,49 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                         )}
+                      </div>
+
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-gray-400 text-sm font-medium">Added Nomination Items ({nominationItems.length})</label>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto border border-gray-800 rounded-lg bg-gray-800/30">
+                          {nominationItems.length === 0 ? (
+                            <p className="text-gray-500 text-sm p-3 text-center">No nomination items added yet</p>
+                          ) : (
+                            <div className="divide-y divide-gray-800">
+                              {nominationItems.slice(0, 10).map((item) => (
+                                <div key={item.id} className="flex items-center justify-between p-2 hover:bg-gray-800/50">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    {item.imageUrl ? (
+                                      <NextImage src={item.imageUrl} alt="" width={32} height={32} className="w-8 h-8 rounded object-cover flex-shrink-0" unoptimized />
+                                    ) : (
+                                      <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                        <span className="text-xs text-gray-400">?</span>
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <p className="text-white text-sm font-medium truncate">{item.name || '(No name)'}</p>
+                                      <p className="text-gray-500 text-xs">KSh {(item.value || 0).toLocaleString()} | Nominations: {item.nominationCount}</p>
+                                    </div>
+                                  </div>
+                                  <span className={`text-xs px-2 py-1 rounded flex-shrink-0 ${
+                                    item.isActive
+                                      ? 'bg-green-900/50 text-green-400'
+                                      : 'bg-gray-700 text-gray-400'
+                                  }`}>
+                                    {item.isActive ? 'Active' : 'Inactive'}
+                                  </span>
+                                </div>
+                              ))}
+                              {nominationItems.length > 10 && (
+                                <p className="text-gray-500 text-xs p-2 text-center">
+                                  +{nominationItems.length - 10} more items
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
