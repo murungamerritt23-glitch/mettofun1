@@ -1880,23 +1880,36 @@ export default function AdminDashboard() {
                                 alert('Image too large. Max 5MB');
                                 return;
                               }
-                              try {
-                                const { blob, dataUrl } = await compressImageToTarget(file);
-                                (document.getElementById('nominationImageUrl') as HTMLInputElement).value = dataUrl;
-                                
-                                if (blob && isOnline() && editingNominationItem) {
-                                  uploadImageToStorage(`nominationItems/${editingNominationItem.id}.jpg`, blob).then((url) => {
-                                    if (url) {
-                                      (document.getElementById('nominationImageUrl') as HTMLInputElement).value = url;
+                              
+                              // Instant preview
+                              const instantPreview = URL.createObjectURL(file);
+                              const input = document.getElementById('nominationImageUrl') as HTMLInputElement;
+                              if (input) input.value = instantPreview;
+                              
+                              // Background compression + upload
+                              const backgroundWork = async () => {
+                                try {
+                                  const { blob, dataUrl } = await compressImageToTarget(file);
+                                  
+                                  if (input) input.value = dataUrl;
+                                  
+                                  if (blob && isOnline() && editingNominationItem) {
+                                    const url = await uploadImageToStorage(`nominationItems/${editingNominationItem.id}.jpg`, blob);
+                                    if (url && input) {
+                                      input.value = url;
                                     }
-                                  }).catch((err) => {
-                                    console.error('[AdminDashboard] Background nomination image upload failed:', err);
-                                  });
+                                  }
+                                } catch (err) {
+                                  console.error('[AdminDashboard] Background nomination image processing failed:', err);
+                                  if (input && !input.value) {
+                                    input.value = instantPreview;
+                                  }
+                                } finally {
+                                  URL.revokeObjectURL(instantPreview);
                                 }
-                              } catch (err) {
-                                console.error('Nomination image upload failed:', err);
-                                alert('Failed to process image');
-                              }
+                              };
+                              
+                              backgroundWork();
                             }}
                           />
                         </label>
@@ -3765,23 +3778,32 @@ export default function AdminDashboard() {
                                   alert('Image too large. Max 5MB');
                                   return;
                                 }
-                                try {
-                                  const { blob, dataUrl } = await compressImageToTarget(file);
-                                  setItemOfDayForm({ ...itemOfDayForm, imageUrl: dataUrl });
-                                  
-                                  if (blob && isOnline()) {
-                                    uploadImageToStorage('settings/itemOfTheDay.jpg', blob).then((url) => {
+                                
+                                // Instant preview
+                                const instantPreview = URL.createObjectURL(file);
+                                setItemOfDayForm((prev) => ({ ...prev, imageUrl: instantPreview }));
+                                
+                                // Background compression + upload
+                                const backgroundWork = async () => {
+                                  try {
+                                    const { blob, dataUrl } = await compressImageToTarget(file);
+                                    setItemOfDayForm((prev) => ({ ...prev, imageUrl: dataUrl }));
+                                    
+                                    if (blob && isOnline()) {
+                                      const url = await uploadImageToStorage('settings/itemOfTheDay.jpg', blob);
                                       if (url) {
                                         setItemOfDayForm((prev) => ({ ...prev, imageUrl: url }));
                                       }
-                                    }).catch((err) => {
-                                      console.error('[AdminDashboard] Background IOTD image upload failed:', err);
-                                    });
+                                    }
+                                  } catch (err) {
+                                    console.error('[AdminDashboard] Background IOTD image processing failed:', err);
+                                    setItemOfDayForm((prev) => ({ ...prev, imageUrl: instantPreview }));
+                                  } finally {
+                                    URL.revokeObjectURL(instantPreview);
                                   }
-                                } catch (err) {
-                                  console.error('IOTD image upload failed:', err);
-                                  alert('Failed to process image');
-                                }
+                                };
+                                
+                                backgroundWork();
                               }}
                             />
                           </label>
@@ -4390,7 +4412,7 @@ function ItemForm({
 
   const isPriceValid = formData.value <= qualifyingPurchase * 0.8;
 
-  // Handle file upload - save locally first, upload in background
+  // Handle file upload - show preview instantly, compress/upload in background
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -4407,37 +4429,41 @@ function ItemForm({
       return;
     }
 
+    // Instant preview from original file - no waiting
+    const instantPreview = URL.createObjectURL(file);
+    setImagePreview(instantPreview);
+    setFormData({ ...formData, imageUrl: instantPreview });
     setIsUploading(true);
-    const timeout = setTimeout(() => {
-      setIsUploading(false);
-      alert('Image processing timed out. Try a smaller image or use URL instead.');
-    }, 30000);
 
-    try {
-      const { blob, dataUrl } = await compressImageToTarget(file);
-      const preview = dataUrl;
-      setImagePreview(preview);
-      setFormData({ ...formData, imageUrl: preview });
+    // Background compression + upload
+    const backgroundWork = async () => {
+      try {
+        const { blob, dataUrl } = await compressImageToTarget(file);
+        
+        // Update preview to compressed version if different
+        if (dataUrl !== instantPreview) {
+          setImagePreview(dataUrl);
+          setFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
+        }
 
-      // Fire-and-forget background upload to Firebase Storage
-      if (isOnline() && blob) {
-        const storagePath = `shops/${item.shopId}/items/${item.id}.jpg`;
-        uploadImageToStorage(storagePath, blob).then((downloadUrl) => {
+        // Upload to Firebase Storage in background
+        if (isOnline() && blob) {
+          const storagePath = `shops/${item.shopId}/items/${item.id}.jpg`;
+          const downloadUrl = await uploadImageToStorage(storagePath, blob);
           if (downloadUrl) {
             setFormData((prev) => ({ ...prev, imageUrl: downloadUrl }));
           }
-        }).catch((err) => {
-          console.error('[AdminDashboard] Background image upload failed:', err);
-        });
+        }
+      } catch (err) {
+        console.error('[AdminDashboard] Background image processing failed:', err);
+        // Keep original preview on failure
+      } finally {
+        URL.revokeObjectURL(instantPreview);
+        setIsUploading(false);
       }
+    };
 
-      setIsUploading(false);
-    } catch (err) {
-      clearTimeout(timeout);
-      console.error('Image upload failed:', err);
-      alert('Failed to process image');
-      setIsUploading(false);
-    }
+    backgroundWork();
   };
 
   // Handle URL input change
