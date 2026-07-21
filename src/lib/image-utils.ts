@@ -33,12 +33,9 @@ export const compressImageToTarget = async (file: File | Blob): Promise<{ blob: 
 
     if (file.size <= MAX_IMAGE_SIZE) {
       const dataUrl = await new Promise<string>((resolve) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
       });
       return { blob: file instanceof Blob ? file : new Blob([file]), dataUrl };
     }
