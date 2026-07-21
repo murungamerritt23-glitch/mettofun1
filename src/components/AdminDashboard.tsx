@@ -1881,17 +1881,28 @@ export default function AdminDashboard() {
                                 return;
                               }
                               
-                              // Instant preview
+                              // Instant visual preview
                               const instantPreview = URL.createObjectURL(file);
                               const input = document.getElementById('nominationImageUrl') as HTMLInputElement;
                               if (input) input.value = instantPreview;
+                              
+                              // Instantly persist as data URL so save works immediately
+                              const instantDataUrl = await new Promise<string>((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = () => resolve(reader.result as string);
+                                reader.onerror = reject;
+                                reader.readAsDataURL(file);
+                              });
+                              if (input) input.value = instantDataUrl;
                               
                               // Background compression + upload
                               const backgroundWork = async () => {
                                 try {
                                   const { blob, dataUrl } = await compressImageToTarget(file);
                                   
-                                  if (input) input.value = dataUrl;
+                                  if (input && dataUrl !== instantDataUrl) {
+                                    input.value = dataUrl;
+                                  }
                                   
                                   if (blob && isOnline() && editingNominationItem) {
                                     const url = await uploadImageToStorage(`nominationItems/${editingNominationItem.id}.jpg`, blob);
@@ -1902,7 +1913,7 @@ export default function AdminDashboard() {
                                 } catch (err) {
                                   console.error('[AdminDashboard] Background nomination image processing failed:', err);
                                   if (input && !input.value) {
-                                    input.value = instantPreview;
+                                    input.value = instantDataUrl;
                                   }
                                 } finally {
                                   URL.revokeObjectURL(instantPreview);
@@ -3779,9 +3790,18 @@ export default function AdminDashboard() {
                                   return;
                                 }
                                 
-                                // Instant preview
+                                // Instant visual preview
                                 const instantPreview = URL.createObjectURL(file);
                                 setItemOfDayForm((prev) => ({ ...prev, imageUrl: instantPreview }));
+                                
+                                // Instantly persist as data URL so save works immediately
+                                const instantDataUrl = await new Promise<string>((resolve, reject) => {
+                                  const reader = new FileReader();
+                                  reader.onload = () => resolve(reader.result as string);
+                                  reader.onerror = reject;
+                                  reader.readAsDataURL(file);
+                                });
+                                setItemOfDayForm((prev) => ({ ...prev, imageUrl: instantDataUrl }));
                                 
                                 // Background compression + upload
                                 const backgroundWork = async () => {
@@ -3797,7 +3817,7 @@ export default function AdminDashboard() {
                                     }
                                   } catch (err) {
                                     console.error('[AdminDashboard] Background IOTD image processing failed:', err);
-                                    setItemOfDayForm((prev) => ({ ...prev, imageUrl: instantPreview }));
+                                    setItemOfDayForm((prev) => ({ ...prev, imageUrl: instantDataUrl }));
                                   } finally {
                                     URL.revokeObjectURL(instantPreview);
                                   }
@@ -4412,7 +4432,7 @@ function ItemForm({
 
   const isPriceValid = formData.value <= qualifyingPurchase * 0.8;
 
-  // Handle file upload - show preview instantly, compress/upload in background
+  // Handle file upload - save instantly as data URL, compress/upload in background
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -4429,10 +4449,18 @@ function ItemForm({
       return;
     }
 
-    // Instant preview from original file - no waiting
+    // Instant visual preview from blob URL
     const instantPreview = URL.createObjectURL(file);
     setImagePreview(instantPreview);
-    setFormData({ ...formData, imageUrl: instantPreview });
+
+    // Instantly read file as data URL so the saved value persists immediately
+    const instantDataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    setFormData({ ...formData, imageUrl: instantDataUrl });
     setIsUploading(true);
 
     // Background compression + upload
@@ -4441,7 +4469,7 @@ function ItemForm({
         const { blob, dataUrl } = await compressImageToTarget(file);
         
         // Update preview to compressed version if different
-        if (dataUrl !== instantPreview) {
+        if (dataUrl !== instantPreview && dataUrl !== instantDataUrl) {
           setImagePreview(dataUrl);
           setFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
         }
@@ -4456,7 +4484,7 @@ function ItemForm({
         }
       } catch (err) {
         console.error('[AdminDashboard] Background image processing failed:', err);
-        // Keep original preview on failure
+        // Keep instant data URL on failure - already saved
       } finally {
         URL.revokeObjectURL(instantPreview);
         setIsUploading(false);
