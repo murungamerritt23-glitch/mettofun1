@@ -1885,10 +1885,13 @@ export default function AdminDashboard() {
                                 (document.getElementById('nominationImageUrl') as HTMLInputElement).value = dataUrl;
                                 
                                 if (blob && isOnline() && editingNominationItem) {
-                                  const url = await uploadImageToStorage(`nominationItems/${editingNominationItem.id}.jpg`, blob);
-                                  if (url) {
-                                    (document.getElementById('nominationImageUrl') as HTMLInputElement).value = url;
-                                  }
+                                  uploadImageToStorage(`nominationItems/${editingNominationItem.id}.jpg`, blob).then((url) => {
+                                    if (url) {
+                                      (document.getElementById('nominationImageUrl') as HTMLInputElement).value = url;
+                                    }
+                                  }).catch((err) => {
+                                    console.error('[AdminDashboard] Background nomination image upload failed:', err);
+                                  });
                                 }
                               } catch (err) {
                                 console.error('Nomination image upload failed:', err);
@@ -3767,10 +3770,13 @@ export default function AdminDashboard() {
                                   setItemOfDayForm({ ...itemOfDayForm, imageUrl: dataUrl });
                                   
                                   if (blob && isOnline()) {
-                                    const url = await uploadImageToStorage('settings/itemOfTheDay.jpg', blob);
-                                    if (url) {
-                                      setItemOfDayForm({ ...itemOfDayForm, imageUrl: url });
-                                    }
+                                    uploadImageToStorage('settings/itemOfTheDay.jpg', blob).then((url) => {
+                                      if (url) {
+                                        setItemOfDayForm((prev) => ({ ...prev, imageUrl: url }));
+                                      }
+                                    }).catch((err) => {
+                                      console.error('[AdminDashboard] Background IOTD image upload failed:', err);
+                                    });
                                   }
                                 } catch (err) {
                                   console.error('IOTD image upload failed:', err);
@@ -4384,7 +4390,7 @@ function ItemForm({
 
   const isPriceValid = formData.value <= qualifyingPurchase * 0.8;
 
-  // Handle file upload - upload to Firebase Storage
+  // Handle file upload - save locally first, upload in background
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -4411,17 +4417,18 @@ function ItemForm({
       const { blob, dataUrl } = await compressImageToTarget(file);
       const preview = dataUrl;
       setImagePreview(preview);
+      setFormData({ ...formData, imageUrl: preview });
 
-      if (isOnline()) {
+      // Fire-and-forget background upload to Firebase Storage
+      if (isOnline() && blob) {
         const storagePath = `shops/${item.shopId}/items/${item.id}.jpg`;
-        const downloadUrl = await uploadImageToStorage(storagePath, blob);
-        if (downloadUrl) {
-          setFormData({ ...formData, imageUrl: downloadUrl });
-        } else {
-          setFormData({ ...formData, imageUrl: preview });
-        }
-      } else {
-        setFormData({ ...formData, imageUrl: preview });
+        uploadImageToStorage(storagePath, blob).then((downloadUrl) => {
+          if (downloadUrl) {
+            setFormData((prev) => ({ ...prev, imageUrl: downloadUrl }));
+          }
+        }).catch((err) => {
+          console.error('[AdminDashboard] Background image upload failed:', err);
+        });
       }
 
       setIsUploading(false);
